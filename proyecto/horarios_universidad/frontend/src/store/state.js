@@ -1,4 +1,4 @@
-import { reactive, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { loadState, saveState } from '../lib/storage'
 
 function nextId(key) {
@@ -16,8 +16,9 @@ const defaults = {
   profesores: [],
   tiempoSegundos: 10,
   salonFilter: null,
-  lastRun: null, // { status, message, timestamp, elapsed }
-  // Classroom capacity configuration for the solver
+  lastRun: null,
+  calendarioLocked: false,
+  tema: 'dark',
   aulas: {
     capacidad_salon_comun: 40,
     capacidad_salon_pc:    30,
@@ -43,14 +44,16 @@ if (loaded?.profesores) {
     }
     // v2→v3: add maxHoras if missing
     if (p.maxHoras === undefined) p.maxHoras = 40
+    // v3→v4: add estado (activo | suspendido)
+    if (p.estado === undefined) p.estado = 'activo'
   }
 }
 
 // v2→v3: add demanda / autoGrupos / capacidadGrupo to materias
 if (loaded?.materias) {
   for (const m of loaded.materias) {
-    if (m.demanda      === undefined) m.demanda      = 0
-    if (m.autoGrupos   === undefined) m.autoGrupos   = false
+    if (m.demanda        === undefined) m.demanda      = 0
+    if (m.autoGrupos     === undefined) m.autoGrupos   = false
     if (m.capacidadGrupo === undefined) m.capacidadGrupo = 30
   }
 }
@@ -65,20 +68,25 @@ export const state = reactive({
   ...(loaded ?? {}),
 })
 
+// Snapshot transient — not persisted to localStorage
+export const calendarioSnapshot = ref(null)
+
 watch(
   state,
   () => {
     saveState({
-      step:           state.step,
-      nextMatId:      state.nextMatId,
-      nextProfId:     state.nextProfId,
-      materias:       state.materias,
-      profesores:     state.profesores,
-      tiempoSegundos: state.tiempoSegundos,
-      salonFilter:    state.salonFilter,
-      lastRun:        state.lastRun,
-      aulas:          state.aulas,
-      calendario:     state.calendario,
+      step:             state.step,
+      nextMatId:        state.nextMatId,
+      nextProfId:       state.nextProfId,
+      materias:         state.materias,
+      profesores:       state.profesores,
+      tiempoSegundos:   state.tiempoSegundos,
+      salonFilter:      state.salonFilter,
+      lastRun:          state.lastRun,
+      calendarioLocked: state.calendarioLocked,
+      tema:             state.tema,
+      aulas:            state.aulas,
+      calendario:       state.calendario,
     })
   },
   { deep: true },
@@ -115,6 +123,7 @@ export function ensureProfesoresCount(n) {
       profesorId: '',
       materiaIds: [],
       maxHoras:   40,
+      estado:     'activo',
       editing:    true,
     })
   }
@@ -151,6 +160,7 @@ export function addProfesor() {
     profesorId: '',
     materiaIds: [],
     maxHoras:   40,
+    estado:     'activo',
     editing:    true,
   })
 }
@@ -169,6 +179,8 @@ export function setSalonFilter(salon) {
 
 export function resetCalendar() {
   state.calendario.eventos = []
+  state.calendarioLocked   = false
+  calendarioSnapshot.value = null
 }
 
 export function setEventos(eventos) {
@@ -176,12 +188,14 @@ export function setEventos(eventos) {
 }
 
 export function upsertEvento(evento) {
+  if (state.calendarioLocked) return
   const idx = state.calendario.eventos.findIndex((e) => e.id === evento.id)
   if (idx >= 0) state.calendario.eventos[idx] = evento
   else state.calendario.eventos.push(evento)
 }
 
 export function moveEvento(eventoId, dayIndex, hourIndex) {
+  if (state.calendarioLocked) return
   const e = state.calendario.eventos.find((x) => x.id === eventoId)
   if (!e) return
   e.dayIndex  = dayIndex
@@ -189,11 +203,36 @@ export function moveEvento(eventoId, dayIndex, hourIndex) {
 }
 
 export function removeEvento(eventoId) {
+  if (state.calendarioLocked) return
   state.calendario.eventos = state.calendario.eventos.filter((e) => e.id !== eventoId)
 }
 
 export function setLastRun(result) {
   state.lastRun = result
+}
+
+export function lockCalendario() {
+  state.calendarioLocked = true
+}
+
+export function unlockCalendario() {
+  state.calendarioLocked = false
+}
+
+// Deep-clone current eventos into the snapshot ref
+export function snapshotCalendario() {
+  calendarioSnapshot.value = JSON.parse(JSON.stringify(state.calendario.eventos))
+}
+
+// Restore snapshot; returns false if no snapshot exists
+export function restoreCalendarioSnapshot() {
+  if (!calendarioSnapshot.value) return false
+  state.calendario.eventos = JSON.parse(JSON.stringify(calendarioSnapshot.value))
+  return true
+}
+
+export function setTema(tema) {
+  state.tema = tema
 }
 
 export function generateDemoSchedule() {
@@ -209,8 +248,8 @@ export function generateDemoSchedule() {
   for (const m of mats) {
     const grupos = Math.max(1, Number(m.grupos) || 1)
     for (let g = 1; g <= grupos; g++) {
-      const p        = profs[k % profs.length]
-      const dayIndex = k % dias
+      const p         = profs[k % profs.length]
+      const dayIndex  = k % dias
       const hourIndex = (k * 2) % horas
       eventos.push({
         id:         `evt_demo_${m.id}_${p.id}_${g}_${k}`,

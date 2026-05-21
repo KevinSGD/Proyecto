@@ -1,20 +1,62 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { moveEvento, removeEvento, resetCalendar, setSalonFilter, state, upsertEvento } from '../store/state'
+import {
+  calendarioSnapshot,
+  lockCalendario,
+  moveEvento,
+  removeEvento,
+  resetCalendar,
+  restoreCalendarioSnapshot,
+  setSalonFilter,
+  snapshotCalendario,
+  state,
+  unlockCalendario,
+  upsertEvento,
+} from '../store/state'
 import { verifySchedule } from '../services/api'
 import { tailwindColorFor } from '../composables/useEventColors'
 
 const emit = defineEmits(['toast', 'prev'])
 
-const editMode   = ref(false)
-const dragOver   = ref({ dayIndex: -1, hourIndex: -1 })
-const modalOn    = ref(false)
-const modalEvt   = ref(null)
-const verifying  = ref(false)
-const conflicts  = ref([])
+const editMode     = ref(false)
+const dragOver     = ref({ dayIndex: -1, hourIndex: -1 })
+const modalOn      = ref(false)
+const modalEvt     = ref(null)
+const verifying    = ref(false)
+const conflicts    = ref([])
 const showConflicts = ref(false)
+const confirmLockOpen = ref(false)  // confirmation dialog before locking
 
-// ─── Room filter ───
+// ─── Zoom level: 1 = compact (80px), 2 = normal (120px), 3 = expanded (180px) ───
+const zoomLevel = ref(1)
+const cellHeights = { 1: '5rem', 2: '8rem', 3: '12rem' }
+const cellH = computed(() => cellHeights[zoomLevel.value] || '5rem')
+
+// ─── Professor filter ────────────────────────────────────────────────────────
+const profFiltro    = ref('')
+const profSearch    = ref('')
+const showProfDrop  = ref(false)
+
+const profDropOptions = computed(() => {
+  const q = profSearch.value.toLowerCase()
+  return state.profesores.filter(p =>
+    (p.nombre || '').trim() &&
+    (!q || p.nombre.toLowerCase().includes(q))
+  )
+})
+
+function selectProfFiltro(id) {
+  profFiltro.value = id
+  showProfDrop.value = false
+  profSearch.value = ''
+}
+
+function clearProfFiltro() {
+  profFiltro.value = ''
+  profSearch.value = ''
+}
+
+// ─── Room filter ─────────────────────────────────────────────────────────────
 const salonFilterLocal = ref(state.salonFilter || '')
 watch(() => state.salonFilter, v => { salonFilterLocal.value = v || '' })
 
@@ -27,17 +69,18 @@ function changeSalonFilter(val) {
   setSalonFilter(val || null)
 }
 
-// Events filtered by room
+// ─── Lookups ─────────────────────────────────────────────────────────────────
+const materiasById = computed(() => Object.fromEntries(state.materias.map(m => [m.id, m])))
+const profesById   = computed(() => Object.fromEntries(state.profesores.map(p => [p.id, p])))
+
+// Events filtered by salon
 const eventosFiltrados = computed(() =>
   state.salonFilter
     ? state.calendario.eventos.filter(e => e.salon === state.salonFilter)
     : state.calendario.eventos
 )
 
-// ─── Lookups ───
-const materiasById = computed(() => Object.fromEntries(state.materias.map(m => [m.id, m])))
-const profesById   = computed(() => Object.fromEntries(state.profesores.map(p => [p.id, p])))
-
+// Build cell map from filtered events
 const eventosByCell = computed(() => {
   const map = new Map()
   for (const e of eventosFiltrados.value) {
@@ -50,7 +93,41 @@ const eventosByCell = computed(() => {
 
 function cellKey(d, h) { return `${d}:${h}` }
 
-// ─── Drag & drop ───
+// ─── Edit mode — snapshot on enter, clear snapshot on exit ───────────────────
+function toggleEditMode() {
+  if (state.calendarioLocked) {
+    return emit('toast', 'El horario está confirmado. Desbloquea para editar.', 'info')
+  }
+  if (!editMode.value) {
+    snapshotCalendario()
+  }
+  editMode.value = !editMode.value
+}
+
+function deshacerCambios() {
+  const ok = restoreCalendarioSnapshot()
+  if (ok) {
+    editMode.value = false
+    emit('toast', 'Cambios revertidos al último punto guardado.', 'success')
+  } else {
+    emit('toast', 'No hay cambios para deshacer.', 'info')
+  }
+}
+
+// ─── Lock / confirm ──────────────────────────────────────────────────────────
+function confirmarHorario() {
+  lockCalendario()
+  editMode.value = false
+  confirmLockOpen.value = false
+  emit('toast', 'Horario confirmado y bloqueado.', 'success')
+}
+
+function desbloquearHorario() {
+  unlockCalendario()
+  emit('toast', 'Horario desbloqueado para edición.', 'info')
+}
+
+// ─── Drag & drop ─────────────────────────────────────────────────────────────
 function onDragStart(evt, e) {
   if (!editMode.value) return
   evt.dataTransfer.setData('text/plain', e.id)
@@ -73,8 +150,12 @@ function onDragLeave(dayIndex, hourIndex) {
     dragOver.value = { dayIndex: -1, hourIndex: -1 }
 }
 
-// ─── Modal ───
-function openModal(e) { modalEvt.value = { ...e }; modalOn.value = true }
+// ─── Modal ────────────────────────────────────────────────────────────────────
+function openModal(e) {
+  if (state.calendarioLocked) return
+  modalEvt.value = { ...e }
+  modalOn.value = true
+}
 function closeModal()  { modalOn.value = false; modalEvt.value = null }
 function saveModal() {
   const e = modalEvt.value
@@ -91,13 +172,13 @@ function delModal() {
   closeModal()
 }
 
-// ─── Color coding — delegates to shared palette (single source of truth) ───
+// ─── Color coding ─────────────────────────────────────────────────────────────
 function colorFor(materiaId) {
   const idx = state.materias.findIndex(m => m.id === materiaId)
   return tailwindColorFor(idx)
 }
 
-// ─── Stats ───
+// ─── Stats ────────────────────────────────────────────────────────────────────
 const statsLine = computed(() => {
   const n   = eventosFiltrados.value.length
   const tot = state.calendario.dias.length * state.calendario.horas.length
@@ -105,7 +186,7 @@ const statsLine = computed(() => {
   return { n, pct }
 })
 
-// ─── Verify conflicts ───
+// ─── Verify conflicts ─────────────────────────────────────────────────────────
 async function verificar() {
   if (!state.calendario.eventos.length) return emit('toast', 'No hay clases para verificar.', 'info')
   verifying.value = true
@@ -125,13 +206,55 @@ async function verificar() {
     verifying.value = false
   }
 }
+
+// ─── Export to CSV (UTF-8 BOM — opens cleanly in Excel) ──────────────────────
+function exportarCSV() {
+  if (!state.calendario.eventos.length) return emit('toast', 'No hay clases para exportar.', 'info')
+
+  const headers = ['Día', 'Hora Inicio', 'Materia', 'Grupo', 'Profesor', 'Salón', 'Créditos', 'Categoría']
+
+  const rows = [...state.calendario.eventos]
+    .sort((a, b) => a.dayIndex - b.dayIndex || a.hourIndex - b.hourIndex)
+    .map(e => {
+      const dia      = state.calendario.dias[e.dayIndex]  || ''
+      const hora     = state.calendario.horas[e.hourIndex] || ''
+      const mat      = materiasById.value[e.materiaId]
+      const prof     = profesById.value[e.profesorId]
+      const materia  = mat?.nombre  || ''
+      const creditos = mat?.creditos || ''
+      const categoria = mat?.categoria || ''
+      const grupo    = e.grupo || 1
+      const profesor = prof?.nombre || ''
+      const salon    = e.salon || ''
+      return [dia, hora, materia, grupo, profesor, salon, creditos, categoria]
+    })
+
+  const esc = v => `"${String(v).replace(/"/g, '""')}"`
+  const csv = [headers, ...rows].map(r => r.map(esc).join(',')).join('\r\n')
+
+  const bom  = '﻿'  // UTF-8 BOM for Excel compatibility with Spanish chars
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `cronograma_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  emit('toast', 'Cronograma exportado como CSV (abre en Excel)', 'success')
+}
+
+// Professor opacity logic: dim events from other profs when filter is active
+function eventOpacity(e) {
+  if (!profFiltro.value) return ''
+  return e.profesorId === profFiltro.value ? '' : 'opacity-20'
+}
 </script>
 
 <template>
   <div class="flex flex-col h-full overflow-hidden">
 
     <!-- ─── Header bar ─── -->
-    <div class="px-4 md:px-margin-desktop py-4 border-b border-outline-variant bg-surface-container-lowest
+    <div class="px-4 md:px-6 py-3 border-b border-outline-variant bg-surface-container-lowest
                 flex flex-col gap-3 flex-shrink-0">
 
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
@@ -140,17 +263,27 @@ async function verificar() {
             <h2 class="text-headline-md font-sans font-bold text-on-surface">
               {{ state.salonFilter ? state.salonFilter : 'Horario Global' }}
             </h2>
+            <!-- Last run status badge -->
             <span
               v-if="state.lastRun"
               :class="[
                 'text-label-md font-mono px-2.5 py-1 rounded border flex items-center gap-1.5',
                 ['OPTIMAL','FEASIBLE'].includes(state.lastRun.status)
                   ? 'bg-primary/10 text-primary border-primary/20'
-                  : 'bg-surface-container-high text-on-surface-variant border-outline-variant'
+                  : 'bg-surface-container-high text-on-surface-variant border-outline-variant',
               ]"
             >
               <span class="material-symbols-outlined text-[14px]">check_circle</span>
               {{ state.lastRun.status }}
+            </span>
+            <!-- Locked badge -->
+            <span
+              v-if="state.calendarioLocked"
+              class="text-label-md font-mono px-2.5 py-1 rounded border flex items-center gap-1.5
+                     bg-secondary/10 text-secondary border-secondary/20"
+            >
+              <span class="material-symbols-outlined filled text-[14px]">verified</span>
+              Horario Confirmado
             </span>
             <span class="text-label-md font-mono px-2 py-0.5 bg-surface-container-high text-on-surface-variant rounded border border-outline-variant">
               {{ statsLine.n }} clases
@@ -158,7 +291,9 @@ async function verificar() {
             </span>
           </div>
           <p class="text-body-sm text-on-surface-variant mt-0.5">
-            {{ editMode ? 'Modo edición — arrastra para mover.' : 'Clic en una clase para editar.' }}
+            <template v-if="state.calendarioLocked">Horario bloqueado — usa "Desbloquear" para editar.</template>
+            <template v-else-if="editMode">Modo edición — arrastra para mover · clic para editar.</template>
+            <template v-else>Clic en una clase para editar.</template>
           </p>
         </div>
 
@@ -169,10 +304,10 @@ async function verificar() {
             @click="verificar"
             :disabled="verifying"
             :class="[
-              'text-label-md font-mono px-4 py-2 rounded-xl border flex items-center gap-2 transition-colors',
+              'text-label-md font-mono px-3 py-2 rounded-xl border flex items-center gap-1.5 transition-colors',
               conflicts.length && showConflicts
                 ? 'bg-error/10 border-error/30 text-error'
-                : 'bg-surface-container-high border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary'
+                : 'bg-surface-container-high border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary',
             ]"
             title="Verificar conflictos de horario"
           >
@@ -183,30 +318,81 @@ async function verificar() {
 
           <!-- Edit mode -->
           <button
-            @click="editMode = !editMode"
+            @click="toggleEditMode"
+            :disabled="state.calendarioLocked"
             :class="[
-              'text-label-md font-mono px-4 py-2 rounded-xl border flex items-center gap-2 transition-colors',
+              'text-label-md font-mono px-3 py-2 rounded-xl border flex items-center gap-1.5 transition-colors',
               editMode
                 ? 'bg-secondary/10 border-secondary text-secondary'
-                : 'bg-surface-container-high border-outline-variant text-on-surface-variant hover:border-secondary hover:text-secondary'
+                : 'bg-surface-container-high border-outline-variant text-on-surface-variant hover:border-secondary hover:text-secondary',
+              state.calendarioLocked && 'opacity-40 cursor-not-allowed',
             ]"
           >
             <span class="material-symbols-outlined text-[18px]">{{ editMode ? 'edit_off' : 'edit' }}</span>
-            {{ editMode ? 'Salir' : 'Editar' }}
+            {{ editMode ? 'Salir Edición' : 'Editar' }}
           </button>
 
+          <!-- Undo — only visible during edit and when snapshot exists -->
           <button
+            v-if="editMode && calendarioSnapshot"
+            @click="deshacerCambios"
+            class="text-label-md font-mono px-3 py-2 rounded-xl border border-tertiary/30 text-tertiary
+                   hover:bg-tertiary/10 flex items-center gap-1.5 transition-colors"
+            title="Revertir al último punto guardado"
+          >
+            <span class="material-symbols-outlined text-[18px]">undo</span>
+            Deshacer
+          </button>
+
+          <!-- Confirm / Lock -->
+          <button
+            v-if="!state.calendarioLocked && state.calendario.eventos.length"
+            @click="confirmLockOpen = true"
+            class="text-label-md font-mono px-3 py-2 rounded-xl border border-secondary/30 text-secondary
+                   hover:bg-secondary/10 flex items-center gap-1.5 transition-colors"
+            title="Confirmar y bloquear el horario definitivamente"
+          >
+            <span class="material-symbols-outlined text-[18px]">lock</span>
+            Confirmar
+          </button>
+          <button
+            v-else-if="state.calendarioLocked"
+            @click="desbloquearHorario"
+            class="text-label-md font-mono px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant
+                   hover:bg-surface-container-high flex items-center gap-1.5 transition-colors"
+            title="Desbloquear para continuar editando"
+          >
+            <span class="material-symbols-outlined text-[18px]">lock_open</span>
+            Desbloquear
+          </button>
+
+          <!-- Export CSV -->
+          <button
+            v-if="state.calendario.eventos.length"
+            @click="exportarCSV"
+            class="text-label-md font-mono px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant
+                   hover:bg-surface-container-high flex items-center gap-1.5 transition-colors"
+            title="Exportar cronograma a Excel (CSV)"
+          >
+            <span class="material-symbols-outlined text-[18px]">table_view</span>
+            Exportar Excel
+          </button>
+
+          <!-- Reset -->
+          <button
+            v-if="!state.calendarioLocked"
             @click="resetCalendar"
-            class="text-label-md font-mono px-4 py-2 rounded-xl border border-error/30 text-error
-                   hover:bg-error/10 flex items-center gap-2 transition-colors"
+            class="text-label-md font-mono px-3 py-2 rounded-xl border border-error/30 text-error
+                   hover:bg-error/10 flex items-center gap-1.5 transition-colors"
           >
             <span class="material-symbols-outlined text-[18px]">delete_sweep</span>
             Vaciar
           </button>
+
           <button
             @click="$emit('prev')"
-            class="text-label-md font-mono px-4 py-2 rounded-xl border border-outline-variant
-                   text-on-surface-variant hover:bg-surface-container-high flex items-center gap-2 transition-colors"
+            class="text-label-md font-mono px-3 py-2 rounded-xl border border-outline-variant
+                   text-on-surface-variant hover:bg-surface-container-high flex items-center gap-1.5 transition-colors"
           >
             <span class="material-symbols-outlined text-[18px]">arrow_back</span>
             Parámetros
@@ -214,30 +400,119 @@ async function verificar() {
         </div>
       </div>
 
-      <!-- ─── Room filter bar ─── -->
-      <div class="flex items-center gap-3 flex-wrap">
-        <span class="text-label-md font-mono text-on-surface-variant">Filtrar por salón:</span>
-        <select
-          :value="salonFilterLocal"
-          @change="changeSalonFilter($event.target.value)"
-          class="bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5
-                 text-label-md font-mono text-on-surface
-                 focus:outline-none focus:border-secondary transition-colors"
-        >
-          <option value="">Todos los salones ({{ state.calendario.eventos.length }})</option>
-          <option v-for="s in uniqueSalones" :key="s" :value="s">
-            {{ s }} ({{ state.calendario.eventos.filter(e => e.salon === s).length }})
-          </option>
-        </select>
-        <button
-          v-if="state.salonFilter"
-          @click="changeSalonFilter('')"
-          class="text-label-md font-mono text-on-surface-variant hover:text-on-surface flex items-center gap-1
-                 bg-surface-container-high border border-outline-variant rounded-lg px-3 py-1.5 transition-colors"
-        >
-          <span class="material-symbols-outlined text-[16px]">close</span>
-          Limpiar filtro
-        </button>
+      <!-- ─── Controls bar: room filter + professor filter + zoom ─── -->
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+
+        <!-- Room filter -->
+        <div class="flex items-center gap-2">
+          <span class="text-label-md font-mono text-on-surface-variant whitespace-nowrap">Salón:</span>
+          <select
+            :value="salonFilterLocal"
+            @change="changeSalonFilter($event.target.value)"
+            class="bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5
+                   text-label-md font-mono text-on-surface
+                   focus:outline-none focus:border-secondary transition-colors"
+          >
+            <option value="">Todos ({{ state.calendario.eventos.length }})</option>
+            <option v-for="s in uniqueSalones" :key="s" :value="s">
+              {{ s }} ({{ state.calendario.eventos.filter(e => e.salon === s).length }})
+            </option>
+          </select>
+          <button
+            v-if="state.salonFilter"
+            @click="changeSalonFilter('')"
+            class="text-label-md font-mono text-on-surface-variant hover:text-on-surface
+                   flex items-center gap-1 px-2 py-1.5 rounded-lg border border-outline-variant
+                   bg-surface-container-high transition-colors"
+          >
+            <span class="material-symbols-outlined text-[15px]">close</span>
+          </button>
+        </div>
+
+        <!-- Professor filter (searchable dropdown) -->
+        <div class="flex items-center gap-2">
+          <span class="text-label-md font-mono text-on-surface-variant whitespace-nowrap">Profesor:</span>
+          <div class="relative">
+            <div class="flex items-center gap-1">
+              <button
+                v-if="profFiltro"
+                @click="clearProfFiltro"
+                :class="[
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-label-md font-mono transition-colors',
+                  'bg-secondary/10 border-secondary/30 text-secondary hover:bg-secondary/20',
+                ]"
+              >
+                <span class="material-symbols-outlined text-[14px]">person</span>
+                {{ profesById[profFiltro]?.nombre?.split(' ')[0] || '—' }}
+                <span class="material-symbols-outlined text-[13px]">close</span>
+              </button>
+              <button
+                v-else
+                @click="showProfDrop = !showProfDrop"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant
+                       text-label-md font-mono text-on-surface-variant bg-surface-container
+                       hover:bg-surface-container-high transition-colors"
+              >
+                <span class="material-symbols-outlined text-[14px]">person_search</span>
+                Filtrar...
+                <span class="material-symbols-outlined text-[13px]">expand_more</span>
+              </button>
+            </div>
+            <!-- Searchable dropdown -->
+            <div
+              v-if="showProfDrop"
+              class="absolute top-full left-0 mt-1 z-30 bg-surface-container border border-outline-variant
+                     rounded-xl shadow-lg min-w-[220px] overflow-hidden"
+            >
+              <div class="p-2 border-b border-outline-variant">
+                <input
+                  v-model="profSearch"
+                  type="search"
+                  placeholder="Buscar profesor..."
+                  class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-1.5
+                         text-label-md font-mono text-on-surface
+                         focus:outline-none focus:border-secondary"
+                  @click.stop
+                />
+              </div>
+              <div class="max-h-48 overflow-y-auto">
+                <button
+                  v-for="p in profDropOptions"
+                  :key="p.id"
+                  @click="selectProfFiltro(p.id)"
+                  class="w-full text-left px-3 py-2.5 flex items-center gap-2
+                         text-label-md font-mono text-on-surface-variant
+                         hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                >
+                  <span class="material-symbols-outlined text-[14px]">person</span>
+                  {{ p.nombre }}
+                </button>
+                <div v-if="!profDropOptions.length" class="px-3 py-3 text-label-md font-mono text-on-surface-variant text-center">
+                  Sin resultados
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zoom control -->
+        <div class="flex items-center gap-2 ml-auto">
+          <span class="text-label-md font-mono text-on-surface-variant">Zoom:</span>
+          <div class="flex items-center border border-outline-variant rounded-lg overflow-hidden">
+            <button
+              v-for="z in [1, 2, 3]"
+              :key="z"
+              @click="zoomLevel = z"
+              :class="[
+                'px-2.5 py-1.5 text-label-md font-mono transition-colors',
+                zoomLevel === z
+                  ? 'bg-primary text-on-primary'
+                  : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high',
+              ]"
+              :title="['Compacto', 'Normal', 'Ampliado'][z - 1]"
+            >{{ ['1×', '1.5×', '2×'][z - 1] }}</button>
+          </div>
+        </div>
       </div>
 
       <!-- ─── Conflicts panel ─── -->
@@ -278,7 +553,7 @@ async function verificar() {
       </p>
       <button
         @click="$emit('prev')"
-        class="mt-6 bg-primary text-background text-label-md font-mono
+        class="mt-6 bg-primary text-on-primary text-label-md font-mono
                px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-primary-fixed transition-colors"
       >
         <span class="material-symbols-outlined text-[18px]">play_arrow</span>
@@ -287,7 +562,7 @@ async function verificar() {
     </div>
 
     <!-- ─── Calendar Grid ─── -->
-    <div v-else class="flex-1 overflow-auto bg-surface-container-lowest">
+    <div v-else class="flex-1 overflow-auto bg-surface-container-lowest" @click="showProfDrop = false">
       <div class="cal-grid min-w-[700px]">
 
         <!-- Corner -->
@@ -297,7 +572,7 @@ async function verificar() {
         <div
           v-for="(d, di) in state.calendario.dias"
           :key="'dh_' + di"
-          class="bg-surface-container-high border-b border-r border-outline-variant p-2
+          class="bg-surface-container-high border-b border-r border-outline-variant p-3
                  text-center text-label-md font-mono text-on-surface sticky top-0 z-20"
         >
           {{ d }}
@@ -308,7 +583,8 @@ async function verificar() {
           <!-- Hour label -->
           <div
             class="border-b border-r border-outline-variant p-2 text-right text-label-md font-mono
-                   text-on-surface-variant bg-surface-container-high sticky left-0 z-10"
+                   text-on-surface-variant bg-surface-container-high sticky left-0 z-10 flex items-start justify-end"
+            :style="{ minHeight: cellH }"
           >
             {{ h }}
           </div>
@@ -317,7 +593,8 @@ async function verificar() {
           <div
             v-for="(d, di) in state.calendario.dias"
             :key="cellKey(di, hi)"
-            class="border-b border-r border-outline-variant p-1 min-h-[5rem] relative transition-colors"
+            class="border-b border-r border-outline-variant p-1 relative transition-colors"
+            :style="{ minHeight: cellH }"
             :class="{
               'outline-dashed outline-2 outline-secondary/30': editMode && dragOver.dayIndex === di && dragOver.hourIndex === hi,
             }"
@@ -325,8 +602,7 @@ async function verificar() {
             @dragleave="() => onDragLeave(di, hi)"
             @drop="e => onDrop(e, di, hi)"
           >
-            <!-- Bug fix #7: stack events vertically instead of overlapping -->
-            <div class="flex flex-col gap-0.5 h-full">
+            <div class="flex flex-col gap-1 h-full">
               <div
                 v-for="e in eventosByCell.get(cellKey(di, hi)) || []"
                 :key="e.id"
@@ -334,23 +610,38 @@ async function verificar() {
                 @dragstart="ev => onDragStart(ev, e)"
                 @click="openModal(e)"
                 :class="[
-                  'flex-1 rounded p-1 flex flex-col justify-between cursor-pointer transition-opacity min-h-[1.5rem]',
-                  'border',
+                  'flex-1 rounded-lg p-1.5 flex flex-col justify-between cursor-pointer border transition-all',
                   colorFor(e.materiaId).bg,
                   colorFor(e.materiaId).border,
                   'hover:opacity-80',
-                  editMode ? 'cursor-grab' : 'cursor-pointer'
+                  editMode ? 'cursor-grab' : 'cursor-pointer',
+                  eventOpacity(e),
+                  'min-h-[2rem]',
                 ]"
                 :title="editMode ? 'Arrastra para mover · clic para editar' : 'Clic para editar'"
               >
-                <span :class="['text-[9px] font-mono font-bold truncate leading-tight', colorFor(e.materiaId).text]">
+                <!-- Subject name — more visible at larger zoom -->
+                <span :class="[
+                  'font-mono font-bold leading-tight',
+                  zoomLevel === 1 ? 'text-[9px] truncate' : 'text-[11px] break-words',
+                  colorFor(e.materiaId).text,
+                ]">
                   {{ materiasById[e.materiaId]?.nombre || 'Materia' }}
                   <span class="opacity-60">G{{ e.grupo }}</span>
                 </span>
-                <span class="text-[8px] font-mono text-on-surface-variant/80 truncate leading-tight hidden sm:block">
-                  {{ profesById[e.profesorId]?.nombre?.split(' ')[0] || '—' }}
+                <!-- Professor — visible at zoom 2+ -->
+                <span
+                  v-if="zoomLevel >= 2"
+                  class="text-[10px] font-mono text-on-surface-variant/90 leading-tight"
+                  :title="profesById[e.profesorId]?.nombre"
+                >
+                  {{ profesById[e.profesorId]?.nombre || '—' }}
                 </span>
-                <span class="text-[8px] font-mono text-on-surface-variant/60 truncate leading-tight">
+                <!-- Classroom -->
+                <span :class="[
+                  'font-mono text-on-surface-variant/70 leading-tight',
+                  zoomLevel === 1 ? 'text-[8px] truncate' : 'text-[10px]',
+                ]">
                   {{ e.salon }}
                 </span>
               </div>
@@ -366,16 +657,77 @@ async function verificar() {
       class="flex-shrink-0 border-t border-outline-variant bg-surface-container-lowest px-4 py-2.5 flex flex-wrap gap-3 items-center"
     >
       <span class="text-label-md font-mono text-on-surface-variant">Materias:</span>
-      <div v-for="m in state.materias.slice(0, 8)" :key="m.id" class="flex items-center gap-1.5">
+      <div v-for="m in state.materias.slice(0, 10)" :key="m.id" class="flex items-center gap-1.5">
         <div :class="['w-2.5 h-2.5 rounded-sm border', colorFor(m.id).border, colorFor(m.id).bg]"></div>
-        <span class="text-[10px] font-mono text-on-surface-variant truncate max-w-[8rem]">{{ m.nombre }}</span>
+        <span class="text-[11px] font-mono text-on-surface-variant" :title="m.nombre">
+          {{ m.nombre?.length > 14 ? m.nombre.slice(0, 13) + '…' : m.nombre }}
+        </span>
       </div>
-      <span v-if="state.materias.length > 8" class="text-[10px] font-mono text-outline">
-        +{{ state.materias.length - 8 }} más
+      <span v-if="state.materias.length > 10" class="text-[11px] font-mono text-outline">
+        +{{ state.materias.length - 10 }} más
       </span>
     </div>
 
   </div>
+
+  <!-- ─── Confirm Lock Dialog ─── -->
+  <Teleport to="body">
+    <div
+      v-if="confirmLockOpen"
+      class="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      @click.self="confirmLockOpen = false"
+    >
+      <div class="w-full max-w-md bg-surface-container border border-outline-variant rounded-xl overflow-hidden">
+        <div class="px-6 py-5 border-b border-outline-variant flex items-center gap-3">
+          <span class="material-symbols-outlined filled text-secondary text-[28px]">verified</span>
+          <div>
+            <h3 class="text-headline-sm font-sans text-on-surface">Confirmar Horario Permanente</h3>
+            <p class="text-body-sm text-on-surface-variant mt-0.5">Esta acción bloqueará la edición manual del calendario.</p>
+          </div>
+        </div>
+        <div class="px-6 py-4 space-y-3">
+          <div class="flex items-start gap-3 bg-secondary/10 border border-secondary/20 rounded-xl px-4 py-3">
+            <span class="material-symbols-outlined text-secondary text-[20px] flex-shrink-0 mt-0.5">info</span>
+            <p class="text-body-sm text-on-surface">
+              El horario quedará bloqueado para evitar alteraciones accidentales. Podrás desbloquearlo en cualquier momento si necesitas hacer ajustes.
+            </p>
+          </div>
+          <div class="grid grid-cols-3 gap-3 text-center">
+            <div class="bg-surface-container-low border border-outline-variant rounded-xl p-3">
+              <div class="text-headline-sm font-bold text-primary">{{ state.calendario.eventos.length }}</div>
+              <div class="text-label-md font-mono text-on-surface-variant">Clases</div>
+            </div>
+            <div class="bg-surface-container-low border border-outline-variant rounded-xl p-3">
+              <div class="text-headline-sm font-bold text-secondary">{{ state.materias.length }}</div>
+              <div class="text-label-md font-mono text-on-surface-variant">Materias</div>
+            </div>
+            <div class="bg-surface-container-low border border-outline-variant rounded-xl p-3">
+              <div class="text-headline-sm font-bold text-tertiary">{{ state.profesores.length }}</div>
+              <div class="text-label-md font-mono text-on-surface-variant">Profesores</div>
+            </div>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t border-outline-variant flex justify-end gap-3">
+          <button
+            @click="confirmLockOpen = false"
+            class="text-label-md font-mono px-4 py-2.5 rounded-xl border border-outline-variant
+                   text-on-surface-variant hover:bg-surface-container-high transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="confirmarHorario"
+            class="text-label-md font-mono px-6 py-2.5 rounded-xl bg-secondary text-on-secondary
+                   hover:bg-secondary-container flex items-center gap-2 transition-colors"
+            style="box-shadow: var(--glow-secondary)"
+          >
+            <span class="material-symbols-outlined text-[18px]">lock</span>
+            Confirmar y Bloquear
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 
   <!-- ─── Edit Modal ─── -->
   <Teleport to="body">
@@ -480,7 +832,7 @@ async function verificar() {
             </button>
             <button
               @click="saveModal"
-              class="text-label-md font-mono px-5 py-2 rounded-lg bg-primary text-background
+              class="text-label-md font-mono px-5 py-2 rounded-lg bg-primary text-on-primary
                      hover:bg-primary-fixed transition-colors flex items-center gap-2"
             >
               <span class="material-symbols-outlined text-[18px]">save</span>

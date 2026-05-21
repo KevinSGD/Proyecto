@@ -32,8 +32,29 @@ function _parseScheduleEvents(records) {
   return eventos
 }
 
-const loading     = ref(false)
-const logMessages = ref([])
+const loading      = ref(false)
+const logMessages  = ref([])
+const infeasible   = ref(null)   // { status, suggestions[] } when solver fails
+
+const INFEASIBLE_SUGGESTIONS = {
+  INFEASIBLE: [
+    'Aumenta la capacidad de las aulas (Salones Convencionales y Laboratorios).',
+    'Suspende temporalmente la restricción horaria de algún profesor con alta demanda.',
+    'Reduce el número de grupos de las materias con mayor número de sesiones.',
+    'Habilita la modalidad virtual en materias de alta demanda para liberar espacios físicos.',
+    'Verifica que el número de salones sea suficiente para la cantidad de grupos simultáneos.',
+  ],
+  UNKNOWN: [
+    'El solver agotó el tiempo sin encontrar solución factible.',
+    'Aumenta el tiempo de ejecución a 60 segundos o más.',
+    'Simplifica el problema: reduce grupos o elimina restricciones opcionales temporalmente.',
+  ],
+  MODEL_INVALID: [
+    'Revisa que todas las materias tengan créditos ≥ 1 y grupos ≥ 1.',
+    'Verifica que cada profesor tenga al menos una materia asignada.',
+    'Asegúrate de que la configuración de aulas sea válida (capacidad > 0).',
+  ],
+}
 
 function addLog(msg, type = 'info') {
   logMessages.value.unshift({ msg, type, ts: new Date().toLocaleTimeString('es-CO') })
@@ -76,6 +97,7 @@ async function ejecutarAlgoritmo() {
 
   loading.value     = true
   logMessages.value = []
+  infeasible.value  = null
   addLog('Iniciando proceso de generación de horarios...', 'info')
 
   try {
@@ -93,7 +115,9 @@ async function ejecutarAlgoritmo() {
         materias: state.materias.map(m => ({
           nombre: m.nombre, creditos: m.creditos, grupos: m.grupos, categoria: m.categoria,
         })),
-        profesores: state.profesores.map(p => ({
+        profesores: state.profesores
+          .filter(p => (p.estado || 'activo') === 'activo')
+          .map(p => ({
           nombre:      p.nombre,
           codigo:      p.profesorId,
           materia_ids: (p.materiaIds || []).map(id => materiaIdToNombre[id] || id),
@@ -132,7 +156,9 @@ async function ejecutarAlgoritmo() {
         categoria: m.categoria,
         demanda:  m.demanda || 0,
       })),
-      profesores: state.profesores.map(p => ({
+      profesores: state.profesores
+        .filter(p => (p.estado || 'activo') === 'activo')
+        .map(p => ({
         id:        p.id,
         nombre:    p.nombre,
         codigo:    p.profesorId,
@@ -146,6 +172,13 @@ async function ejecutarAlgoritmo() {
     if (!out) { addLog('Respuesta inválida del backend.', 'error'); return emit('toast', 'Respuesta inválida.', 'error') }
     if (!['OPTIMAL', 'FEASIBLE'].includes(out.status)) {
       addLog(`Estado: ${out.status} — ${out.message || ''}`, 'error')
+      const category = out.status === 'INFEASIBLE' ? 'INFEASIBLE'
+        : out.status === 'MODEL_INVALID' ? 'MODEL_INVALID' : 'UNKNOWN'
+      infeasible.value = {
+        status: out.status,
+        message: out.message || out.status,
+        suggestions: INFEASIBLE_SUGGESTIONS[category] || INFEASIBLE_SUGGESTIONS.UNKNOWN,
+      }
       return emit('toast', out.message || `Estado: ${out.status}`, 'error')
     }
 
@@ -201,6 +234,54 @@ async function ejecutarAlgoritmo() {
       >
         <span class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider">{{ key }}</span>
         <span class="text-display-lg font-sans font-bold text-on-surface leading-none">{{ val }}</span>
+      </div>
+    </div>
+
+    <!-- ─── Suspended professors notice ─── -->
+    <div
+      v-if="state.profesores.some(p => p.estado === 'suspendido')"
+      class="flex items-start gap-3 bg-tertiary/10 border border-tertiary/30 rounded-xl px-4 py-3"
+      role="status"
+    >
+      <span class="material-symbols-outlined text-tertiary text-[20px] flex-shrink-0 mt-0.5">info</span>
+      <p class="text-body-sm text-on-surface">
+        <span class="font-bold">{{ state.profesores.filter(p => p.estado === 'suspendido').length }} profesor(es) suspendido(s)</span>
+        serán excluidos automáticamente del algoritmo.
+        Sus materias asignadas deberán ser cubiertas por otros docentes activos.
+      </p>
+    </div>
+
+    <!-- ─── Infeasibility Alert ─── -->
+    <div
+      v-if="infeasible"
+      class="bg-error/10 border border-error/30 rounded-xl overflow-hidden"
+      role="alert"
+    >
+      <div class="flex items-center gap-3 px-5 py-4 border-b border-error/20 bg-error/5">
+        <span class="material-symbols-outlined filled text-error text-[24px]">warning</span>
+        <div>
+          <h3 class="text-headline-sm font-sans text-error">Horario No Factible — {{ infeasible.status }}</h3>
+          <p class="text-body-sm text-error/80 mt-0.5">{{ infeasible.message }}</p>
+        </div>
+        <button @click="infeasible = null" class="ml-auto text-error/50 hover:text-error flex-shrink-0">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+      <div class="px-5 py-4">
+        <p class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider mb-3">
+          Sugerencias para resolver la infactibilidad
+        </p>
+        <ul class="space-y-2">
+          <li
+            v-for="(sug, i) in infeasible.suggestions"
+            :key="i"
+            class="flex items-start gap-3 text-body-sm text-on-surface"
+          >
+            <span class="w-5 h-5 rounded-full bg-tertiary/15 text-tertiary flex items-center justify-center
+                         text-[11px] font-mono font-bold flex-shrink-0 mt-0.5">{{ i + 1 }}</span>
+            {{ sug }}
+          </li>
+        </ul>
       </div>
     </div>
 
