@@ -4,7 +4,8 @@ import { addMateria, ensureMateriasCount, removeMateria, state } from '../store/
 
 const emit = defineEmits(['toast', 'next'])
 
-const nMaterias = ref(state.materias.length || 5)
+const nMaterias    = ref(state.materias.length || 5)
+const erroresBanner = ref([])
 
 const CATEGORIAS = ['Software', 'Humanidades', 'Ciencias Básicas']
 
@@ -52,6 +53,35 @@ function guardar(m) {
   if (!Number(m.grupos)   || Number(m.grupos)   < 1) return emit('toast', 'Grupos inválidos (≥1).', 'error')
   if (!(m.categoria || '').trim())         return emit('toast', 'Selecciona una categoría.', 'error')
   m.editing = false
+  erroresBanner.value = []
+}
+
+function guardarTodas() {
+  erroresBanner.value = []
+  let savedCount = 0
+
+  for (const m of state.materias) {
+    if (!m.editing) { savedCount++; continue }
+    const filaErrors = []
+    if (!(m.nombre || '').trim()) filaErrors.push('nombre requerido')
+    else {
+      if (!Number(m.creditos) || Number(m.creditos) < 1) filaErrors.push('créditos inválidos (≥1)')
+      if (!Number(m.grupos)   || Number(m.grupos)   < 1) filaErrors.push('grupos inválidos (≥1)')
+      if (!(m.categoria || '').trim())                    filaErrors.push('categoría requerida')
+    }
+    if (filaErrors.length) {
+      erroresBanner.value.push(`"${m.nombre || '(sin nombre)'}": ${filaErrors.join(', ')}`)
+    } else {
+      m.editing = false
+      savedCount++
+    }
+  }
+
+  if (!erroresBanner.value.length && savedCount > 0) {
+    emit('toast', `${savedCount} materias guardadas correctamente`, 'success')
+  } else if (!erroresBanner.value.length) {
+    emit('toast', 'Todas las materias ya estaban guardadas.', 'info')
+  }
 }
 
 function editar(m) { m.editing = true }
@@ -156,6 +186,27 @@ function toggleAutoGrupos(m) {
       </div>
     </header>
 
+    <!-- ─── Errors Banner ─── -->
+    <div
+      v-if="erroresBanner.length"
+      class="bg-error/10 border border-error/30 rounded-xl p-4"
+      role="alert"
+    >
+      <div class="flex items-center gap-2 mb-2">
+        <span class="material-symbols-outlined text-error text-[18px]">error</span>
+        <span class="text-label-md font-mono text-error font-bold">Errores de validación ({{ erroresBanner.length }})</span>
+        <button @click="erroresBanner = []" class="ml-auto text-error/60 hover:text-error">
+          <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      </div>
+      <ul class="space-y-1">
+        <li v-for="(err, i) in erroresBanner" :key="i" class="text-label-md font-mono text-error/80 flex items-start gap-1.5">
+          <span class="material-symbols-outlined text-[14px] flex-shrink-0 mt-0.5">chevron_right</span>
+          {{ err }}
+        </li>
+      </ul>
+    </div>
+
     <!-- ─── Tabla de Materias ─── -->
     <section class="w-full bg-surface-container rounded-xl border-t-2 border-t-primary border-x border-b border-outline-variant flex flex-col overflow-hidden">
       <!-- Card header -->
@@ -166,7 +217,7 @@ function toggleAutoGrupos(m) {
             Ingresa el catálogo de materias, créditos y cantidad de grupos a programar.
           </p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
           <span class="text-label-md font-mono text-primary bg-primary/10 px-2 py-1 rounded-full border border-primary/20">
             {{ state.materias.length }} materias
           </span>
@@ -176,6 +227,17 @@ function toggleAutoGrupos(m) {
           >
             <span class="material-symbols-outlined text-[14px]">check_circle</span> Completo
           </span>
+          <!-- Guardar Todas -->
+          <button
+            v-if="state.materias.some(m => m.editing)"
+            @click="guardarTodas"
+            class="text-label-md font-mono px-4 py-2 rounded-xl bg-primary/10 text-primary
+                   border border-primary/30 hover:bg-primary hover:text-on-primary
+                   flex items-center gap-2 transition-colors"
+          >
+            <span class="material-symbols-outlined text-[16px]">save_all</span>
+            Guardar Todas
+          </button>
         </div>
       </div>
 

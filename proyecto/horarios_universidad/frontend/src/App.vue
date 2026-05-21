@@ -1,6 +1,6 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { state, setStep } from './store/state'
+import { computed, ref, watch } from 'vue'
+import { state, setStep, setTema } from './store/state'
 import { useHealthCheck } from './composables/useHealthCheck'
 import DashboardPage  from './pages/DashboardPage.vue'
 import MateriasPage   from './pages/MateriasPage.vue'
@@ -9,10 +9,10 @@ import ParametrosPage from './pages/ParametrosPage.vue'
 import CalendarioPage from './pages/CalendarioPage.vue'
 import UiToast        from './components/UiToast.vue'
 
-// ── Shared health state (single source of truth, no duplicate fetches) ──
+// ── Shared health state ──────────────────────────────────────────────────
 const { backendOk, dbOk } = useHealthCheck()
 
-// ── Toast ───────────────────────────────────────────────────────────────
+// ── Toast ────────────────────────────────────────────────────────────────
 const toastMsg  = ref('')
 const toastType = ref('info')
 const toastOn   = ref(false)
@@ -25,9 +25,10 @@ function toast(msg, type = 'info') {
   toast._t = window.setTimeout(() => (toastOn.value = false), 3400)
 }
 
-// ── Navigation ──────────────────────────────────────────────────────────
-const mobileMenuOpen = ref(false)
-const helpOpen       = ref(false)
+// ── Navigation ───────────────────────────────────────────────────────────
+const mobileMenuOpen   = ref(false)
+const helpOpen         = ref(false)
+const sidebarCollapsed = ref(false)
 
 function goto(n) {
   setStep(n)
@@ -42,11 +43,10 @@ const navItems = [
   { step: 4, icon: 'calendar_month',   label: 'Calendario' },
 ]
 
-// ── Badges ──────────────────────────────────────────────────────────────
+// ── Badges ───────────────────────────────────────────────────────────────
 const badges = computed(() => ({
   materias:   state.materias.length,
   profesores: state.profesores.length,
-  // BUG FIX: was p.materiaId (singular) — store uses materiaIds[] since v2
   asignados:  state.profesores.filter(p => p.materiaIds?.length > 0).length,
   eventos:    state.calendario.eventos.length,
 }))
@@ -59,11 +59,23 @@ function badgeFor(step) {
   return null
 }
 
-const hasData = computed(() => state.materias.length > 0)
+// ── Dark / Light mode ────────────────────────────────────────────────────
+function applyTema(t) {
+  document.documentElement.classList.toggle('light', t === 'light')
+}
+
+// Initialize theme from persisted state
+applyTema(state.tema)
+
+function toggleTema() {
+  const next = state.tema === 'dark' ? 'light' : 'dark'
+  setTema(next)
+  applyTema(next)
+}
 </script>
 
 <template>
-  <!-- ── Skip link (a11y: keyboard users skip nav) ── -->
+  <!-- ── Skip link (a11y) ── -->
   <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
 
   <div class="flex h-screen overflow-hidden bg-background text-on-background font-sans antialiased">
@@ -71,24 +83,35 @@ const hasData = computed(() => state.materias.length > 0)
     <!-- ─── Sidebar Desktop ─── -->
     <nav
       aria-label="Navegación principal"
-      class="hidden md:flex fixed left-0 top-0 h-full w-64 flex-col z-40
-             bg-surface-container border-r border-outline-variant"
+      :class="[
+        'hidden md:flex fixed left-0 top-0 h-full flex-col z-40 sidebar-transition',
+        'bg-surface-container border-r border-outline-variant',
+        sidebarCollapsed ? 'w-16' : 'w-64',
+      ]"
     >
-      <!-- Logo -->
-      <div class="px-6 py-8 flex flex-col gap-4 border-b border-outline-variant/50">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center">
-            <span class="material-symbols-outlined filled text-on-primary-container text-[22px]">school</span>
+      <!-- Logo + collapse toggle -->
+      <div
+        :class="[
+          'py-5 flex flex-col border-b border-outline-variant/50',
+          sidebarCollapsed ? 'px-2 items-center gap-3' : 'px-5 gap-4',
+        ]"
+      >
+        <!-- Logo row -->
+        <div :class="['flex items-center gap-3', sidebarCollapsed && 'justify-center']">
+          <div class="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined filled text-on-primary-container text-[20px]">school</span>
           </div>
-          <div>
+          <div v-if="!sidebarCollapsed" class="min-w-0">
             <h1 class="text-headline-sm font-sans font-black text-primary leading-none">GestorAulas</h1>
-            <p class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider mt-1">Sistema de Horarios</p>
+            <p class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider mt-0.5 truncate">Sistema de Horarios</p>
           </div>
         </div>
-        <!-- CTA — FIX: text-on-primary (high contrast #002918 on #35c98a = 8.3:1 ✓) -->
+
+        <!-- CTA button — hidden when collapsed -->
         <button
+          v-if="!sidebarCollapsed"
           @click="goto(1)"
-          class="mt-2 w-full bg-primary hover:bg-primary-fixed text-on-primary
+          class="w-full bg-primary hover:bg-primary-fixed text-on-primary
                  text-label-md font-mono py-2.5 px-4 rounded-xl transition-colors
                  flex justify-center items-center gap-2"
           style="box-shadow: var(--glow-primary)"
@@ -99,89 +122,141 @@ const hasData = computed(() => state.materias.length > 0)
       </div>
 
       <!-- Navigation -->
-      <div class="flex-1 overflow-y-auto py-4 flex flex-col gap-0.5">
+      <div class="flex-1 overflow-y-auto py-3 flex flex-col gap-0.5">
         <template v-for="item in navItems" :key="item.step">
           <button
             @click="goto(item.step)"
             :aria-current="state.step === item.step ? 'page' : undefined"
+            :title="sidebarCollapsed ? item.label : undefined"
             :class="[
-              'w-full rounded-xl mx-2 my-0.5 px-4 py-3 flex items-center gap-3 transition-colors text-left',
+              'relative rounded-xl transition-colors text-left flex items-center gap-3',
+              sidebarCollapsed
+                ? 'mx-2 my-0.5 p-2.5 justify-center'
+                : 'mx-2 my-0.5 px-4 py-3',
               state.step === item.step
-                ? 'bg-primary-container text-on-primary-container relative'
-                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                ? 'bg-primary-container text-on-primary-container'
+                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
             ]"
-            style="width: calc(100% - 16px)"
           >
             <!-- Active indicator -->
             <div
               v-if="state.step === item.step"
               class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
             ></div>
-            <!-- FIX: 'filled' applied in both desktop and mobile consistently -->
             <span
-              class="material-symbols-outlined text-[20px]"
+              class="material-symbols-outlined text-[20px] flex-shrink-0"
               :class="state.step === item.step ? 'filled' : ''"
             >{{ item.icon }}</span>
-            <span class="text-label-md font-mono flex-1">{{ item.label }}</span>
-            <!-- Badge -->
+            <span v-if="!sidebarCollapsed" class="text-label-md font-mono flex-1 truncate">{{ item.label }}</span>
+            <!-- Badge — only when expanded -->
             <span
-              v-if="badgeFor(item.step)"
+              v-if="!sidebarCollapsed && badgeFor(item.step)"
               :class="[
-                'text-label-md font-mono px-1.5 py-0.5 rounded-full border min-w-[20px] text-center',
+                'text-label-md font-mono px-1.5 py-0.5 rounded-full border min-w-[20px] text-center flex-shrink-0',
                 state.step === item.step
                   ? 'bg-primary/20 text-primary border-primary/30'
-                  : 'bg-surface-container-highest text-on-surface-variant border-outline-variant'
+                  : 'bg-surface-container-highest text-on-surface-variant border-outline-variant',
               ]"
             >{{ badgeFor(item.step) }}</span>
-            <!-- Lock for Calendario if no events — with tooltip for context -->
+            <!-- Lock — only when expanded -->
             <span
-              v-if="item.step === 4 && !badges.eventos"
-              class="material-symbols-outlined text-[14px] opacity-40"
+              v-if="!sidebarCollapsed && item.step === 4 && !badges.eventos"
+              class="material-symbols-outlined text-[14px] opacity-40 flex-shrink-0"
               title="Genera un horario primero en el paso de Parámetros"
               aria-label="Bloqueado: genera un horario primero"
             >lock</span>
+            <!-- Confirmed badge for calendar — only when expanded -->
+            <span
+              v-if="!sidebarCollapsed && item.step === 4 && state.calendarioLocked"
+              class="material-symbols-outlined text-[14px] text-primary flex-shrink-0"
+              title="Horario confirmado y bloqueado"
+            >verified</span>
           </button>
         </template>
       </div>
 
-      <!-- Footer -->
-      <div class="p-4 border-t border-outline-variant/50 space-y-1">
-        <!-- Backend + DB status — FIX: role="status" + shape indicator, not color only -->
+      <!-- Footer: status + theme + help + collapse -->
+      <div class="p-3 border-t border-outline-variant/50 space-y-1.5">
+
+        <!-- Theme toggle -->
+        <button
+          @click="toggleTema"
+          :class="[
+            'w-full rounded-xl transition-colors flex items-center gap-3',
+            sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2',
+            'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+          ]"
+          :title="state.tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+          :aria-label="state.tema === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'"
+        >
+          <span class="material-symbols-outlined text-[20px] flex-shrink-0">
+            {{ state.tema === 'dark' ? 'light_mode' : 'dark_mode' }}
+          </span>
+          <span v-if="!sidebarCollapsed" class="text-label-md font-mono">
+            {{ state.tema === 'dark' ? 'Modo Claro' : 'Modo Oscuro' }}
+          </span>
+        </button>
+
+        <!-- Backend + DB status — only when expanded -->
         <div
+          v-if="!sidebarCollapsed"
           role="status"
           :aria-label="backendOk ? 'API conectada' : backendOk === false ? 'API inaccesible' : 'Verificando API'"
-          class="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-low border border-outline-variant"
+          class="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant"
         >
-          <!-- Shape icon differentiates state beyond color alone -->
           <span
             :class="[
               'material-symbols-outlined text-[14px] flex-shrink-0',
               backendOk === true  ? 'text-primary'  :
-              backendOk === false ? 'text-error'     : 'text-outline'
+              backendOk === false ? 'text-error'     : 'text-outline',
             ]"
           >{{ backendOk === true ? 'check_circle' : backendOk === false ? 'cancel' : 'pending' }}</span>
-          <span class="text-label-md font-mono text-on-surface-variant truncate">
-            {{ backendOk === true ? 'API conectada' : backendOk === false ? 'API inaccesible' : 'verificando...' }}
+          <span class="text-label-md font-mono text-on-surface-variant truncate flex-1">
+            {{ backendOk === true ? 'API OK' : backendOk === false ? 'Sin API' : 'verificando...' }}
           </span>
           <span
             v-if="dbOk !== null"
-            :class="['ml-auto text-label-md font-mono px-1.5 py-0.5 rounded-full border',
+            :class="['text-label-md font-mono px-1.5 py-0.5 rounded-full border flex-shrink-0',
               dbOk
                 ? 'text-primary border-primary/30 bg-primary/10'
-                : 'text-on-surface-variant border-outline-variant bg-surface-container'
+                : 'text-on-surface-variant border-outline-variant bg-surface-container',
             ]"
             :title="dbOk ? 'Base de datos conectada' : 'Base de datos no disponible'"
           >DB</span>
         </div>
-        <!-- Ayuda — connected to help modal -->
+
+        <!-- Help -->
         <button
           @click="helpOpen = true"
-          class="w-full text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface
-                 rounded-xl px-4 py-2.5 flex items-center gap-3 transition-colors text-label-md font-mono"
+          :class="[
+            'w-full rounded-xl transition-colors flex items-center gap-3',
+            sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2',
+            'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+          ]"
+          :title="sidebarCollapsed ? 'Ayuda' : undefined"
           aria-label="Abrir ayuda"
         >
-          <span class="material-symbols-outlined text-[20px]">help</span>
-          Ayuda
+          <span class="material-symbols-outlined text-[20px] flex-shrink-0">help</span>
+          <span v-if="!sidebarCollapsed" class="text-label-md font-mono">Ayuda</span>
+        </button>
+
+        <!-- Collapse toggle -->
+        <button
+          @click="sidebarCollapsed = !sidebarCollapsed"
+          :class="[
+            'w-full rounded-xl transition-colors flex items-center gap-3',
+            sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2',
+            'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+          ]"
+          :title="sidebarCollapsed ? 'Expandir sidebar' : 'Contraer sidebar'"
+          :aria-label="sidebarCollapsed ? 'Expandir barra de navegación' : 'Contraer barra de navegación'"
+          :aria-expanded="!sidebarCollapsed"
+        >
+          <span class="material-symbols-outlined text-[20px] flex-shrink-0 transition-transform duration-300"
+                :class="sidebarCollapsed ? 'rotate-0' : 'rotate-180'">
+            chevron_left
+          </span>
+          <span v-if="!sidebarCollapsed" class="text-label-md font-mono">Contraer</span>
         </button>
       </div>
     </nav>
@@ -193,15 +268,26 @@ const hasData = computed(() => state.materias.length > 0)
         <span class="material-symbols-outlined filled text-primary">school</span>
         <span class="font-sans font-black text-primary text-headline-sm">GestorAulas</span>
       </div>
-      <!-- FIX: aria-label added to hamburger -->
-      <button
-        @click="mobileMenuOpen = !mobileMenuOpen"
-        class="text-on-surface p-1 rounded-lg hover:bg-surface-container-high transition-colors"
-        :aria-label="mobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'"
-        :aria-expanded="mobileMenuOpen"
-      >
-        <span class="material-symbols-outlined">{{ mobileMenuOpen ? 'close' : 'menu' }}</span>
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- Mobile theme toggle -->
+        <button
+          @click="toggleTema"
+          class="text-on-surface-variant p-1.5 rounded-lg hover:bg-surface-container-high transition-colors"
+          :aria-label="state.tema === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'"
+        >
+          <span class="material-symbols-outlined text-[20px]">
+            {{ state.tema === 'dark' ? 'light_mode' : 'dark_mode' }}
+          </span>
+        </button>
+        <button
+          @click="mobileMenuOpen = !mobileMenuOpen"
+          class="text-on-surface p-1 rounded-lg hover:bg-surface-container-high transition-colors"
+          :aria-label="mobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'"
+          :aria-expanded="mobileMenuOpen"
+        >
+          <span class="material-symbols-outlined">{{ mobileMenuOpen ? 'close' : 'menu' }}</span>
+        </button>
+      </div>
     </header>
 
     <!-- Mobile Menu Overlay -->
@@ -225,15 +311,14 @@ const hasData = computed(() => state.materias.length > 0)
               'mx-2 rounded-xl px-4 py-3 flex items-center gap-3 transition-colors text-left',
               state.step === item.step
                 ? 'bg-primary-container text-on-primary-container'
-                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
             ]"
           >
-            <!-- FIX: filled class now matches desktop logic -->
             <span
               class="material-symbols-outlined text-[20px]"
               :class="state.step === item.step ? 'filled' : ''"
             >{{ item.icon }}</span>
-            <span class="text-label-md font-mono">{{ item.label }}</span>
+            <span class="text-label-md font-mono flex-1">{{ item.label }}</span>
             <span
               v-if="badgeFor(item.step)"
               class="ml-auto text-label-md font-mono px-1.5 py-0.5 rounded-full border
@@ -245,7 +330,13 @@ const hasData = computed(() => state.materias.length > 0)
     </div>
 
     <!-- ─── Main Content ─── -->
-    <main id="main-content" class="flex-1 md:ml-64 h-full overflow-y-auto pt-16 md:pt-0">
+    <main
+      id="main-content"
+      :class="[
+        'flex-1 h-full overflow-y-auto pt-16 md:pt-0 sidebar-transition',
+        sidebarCollapsed ? 'md:ml-16' : 'md:ml-64',
+      ]"
+    >
       <div class="fade-up" :key="state.step">
         <DashboardPage  v-if="state.step === 0" @toast="toast" @goto="goto" />
         <MateriasPage   v-if="state.step === 1" @toast="toast" @next="goto(2)" />
@@ -280,32 +371,19 @@ const hasData = computed(() => state.materias.length > 0)
           </button>
         </div>
         <ol class="space-y-3">
-          <li class="flex items-start gap-3">
-            <span class="w-6 h-6 rounded-full bg-primary/15 text-primary text-label-md font-mono flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+          <li v-for="(item, idx) in [
+            { title: 'Configurar Materias', desc: 'Nombre, créditos, grupos y categoría de cada materia.', color: 'primary' },
+            { title: 'Registrar Profesores', desc: 'Asigna una o varias materias a cada docente.', color: 'primary' },
+            { title: 'Ejecutar el Solver', desc: 'Configura el tiempo y ejecuta el algoritmo CP-SAT.', color: 'primary' },
+            { title: 'Revisar el Calendario', desc: 'Visualiza, edita y confirma el horario definitivo.', color: 'secondary' },
+          ]" :key="idx" class="flex items-start gap-3">
+            <span :class="[
+              'w-6 h-6 rounded-full text-label-md font-mono flex items-center justify-center flex-shrink-0 mt-0.5',
+              idx < 3 ? 'bg-primary/15 text-primary' : 'bg-secondary/15 text-secondary',
+            ]">{{ idx + 1 }}</span>
             <div>
-              <p class="text-body-sm text-on-surface font-medium">Configurar Materias</p>
-              <p class="text-label-md font-mono text-on-surface-variant mt-0.5">Nombre, créditos, grupos y categoría de cada materia.</p>
-            </div>
-          </li>
-          <li class="flex items-start gap-3">
-            <span class="w-6 h-6 rounded-full bg-primary/15 text-primary text-label-md font-mono flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-            <div>
-              <p class="text-body-sm text-on-surface font-medium">Registrar Profesores</p>
-              <p class="text-label-md font-mono text-on-surface-variant mt-0.5">Asigna una o varias materias a cada docente.</p>
-            </div>
-          </li>
-          <li class="flex items-start gap-3">
-            <span class="w-6 h-6 rounded-full bg-primary/15 text-primary text-label-md font-mono flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-            <div>
-              <p class="text-body-sm text-on-surface font-medium">Ejecutar el Solver</p>
-              <p class="text-label-md font-mono text-on-surface-variant mt-0.5">Configura el tiempo y ejecuta el algoritmo CP-SAT.</p>
-            </div>
-          </li>
-          <li class="flex items-start gap-3">
-            <span class="w-6 h-6 rounded-full bg-secondary/15 text-secondary text-label-md font-mono flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
-            <div>
-              <p class="text-body-sm text-on-surface font-medium">Revisar el Calendario</p>
-              <p class="text-label-md font-mono text-on-surface-variant mt-0.5">Visualiza, edita y verifica conflictos en el horario.</p>
+              <p class="text-body-sm text-on-surface font-medium">{{ item.title }}</p>
+              <p class="text-label-md font-mono text-on-surface-variant mt-0.5">{{ item.desc }}</p>
             </div>
           </li>
         </ol>
