@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { addProfesor, ensureProfesoresCount, removeProfesor, state } from '../store/state'
 import TagSelect from '../components/TagSelect.vue'
+import StepperBar from '../components/StepperBar.vue'
 
 const emit = defineEmits(['toast', 'prev', 'next'])
 
@@ -149,6 +150,9 @@ onUnmounted(() => window.removeEventListener('click', handleOutsideClick))
 <template>
   <div class="px-4 md:px-margin-desktop py-8 max-w-container-max mx-auto flex flex-col h-full">
 
+    <!-- Stepper global -->
+    <StepperBar :current-step="2" />
+
     <!-- ─── Page Header ─── -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
       <div>
@@ -288,7 +292,7 @@ onUnmounted(() => window.removeEventListener('click', handleOutsideClick))
               :key="p.id"
               :class="[
                 'hover:bg-surface-container-low transition-colors align-top',
-                p.estado === 'suspendido' && 'opacity-60',
+                p.estado === 'suspendido' ? 'opacity-60' : 'opacity-100',
               ]"
             >
               <!-- Nombre + avatar -->

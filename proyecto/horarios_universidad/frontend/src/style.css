@@ -179,11 +179,21 @@ html.light {
   background-size: 24px 24px;
 }
 
-/* Calendar grid — columns: time-label + 5 day columns */
+/* Calendar grid — columns: time-label + N day columns (default 6) */
 .cal-grid {
   display: grid;
-  grid-template-columns: 72px repeat(5, 1fr);
-  min-width: 700px;
+  grid-template-columns: 72px repeat(6, 1fr);
+  min-width: 840px;
+}
+
+/* Light mode: softer off-white background to reduce glare */
+html.light .cal-bg {
+  background-color: rgb(var(--c-surface-container-low));
+}
+
+/* Light mode: event card opacity boost — prevents transparent look */
+html.light .cal-event-card {
+  opacity: 1 !important;
 }
 
 /* ── Animations ────────────────────────────────────────────────────────── */

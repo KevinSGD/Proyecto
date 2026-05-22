@@ -26,7 +26,7 @@ const defaults = {
     num_salones_pc:        4,
   },
   calendario: {
-    dias:    ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
+    dias:    ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
     horas:   ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'],
     eventos: [],
   },
@@ -61,6 +61,11 @@ if (loaded?.materias) {
 // v2→v3: add aulas block if missing
 if (loaded && !loaded.aulas) {
   loaded.aulas = { ...defaults.aulas }
+}
+
+// v3→v5: add Sábado to calendar days if missing
+if (loaded?.calendario?.dias && !loaded.calendario.dias.includes('Sábado')) {
+  loaded.calendario.dias = [...loaded.calendario.dias, 'Sábado']
 }
 
 export const state = reactive({

@@ -2,10 +2,14 @@
 import { computed, ref } from 'vue'
 import { state, resetCalendar, setEventos, setLastRun } from '../store/state'
 import { getDbHealth, runScheduler, saveData } from '../services/api'
+import StepperBar from '../components/StepperBar.vue'
 
 const emit = defineEmits(['toast', 'prev', 'next'])
 
-const DAY_MAP = { 'Lunes': 0, 'Martes': 1, 'Miércoles': 2, 'Jueves': 3, 'Viernes': 4 }
+const DAY_MAP = { 'Lunes': 0, 'Martes': 1, 'Miércoles': 2, 'Jueves': 3, 'Viernes': 4, 'Sábado': 5 }
+
+// Tiempo de ejecución fijo a 6000 s (≈ 100 min)
+const TIEMPO_EJECUCION_SEGUNDOS = 6000
 
 function _parseScheduleEvents(records) {
   if (!Array.isArray(records)) return []
@@ -86,8 +90,6 @@ function validarPrevio() {
   const profsOk = state.profesores.every(p =>
     (p.nombre || '').trim() && (p.profesorId || '').trim() && p.materiaIds?.length > 0 && !p.editing)
   if (!profsOk) return 'Asegúrate de guardar todos los profesores y asignarles materia.'
-  if (!Number(state.tiempoSegundos) || Number(state.tiempoSegundos) < 1)
-    return 'Ingresa un tiempo válido en segundos (≥1).'
   return null
 }
 
@@ -132,13 +134,13 @@ async function ejecutarAlgoritmo() {
       emit('toast', 'DB no disponible: se omite guardado.', 'info')
     }
 
-    addLog(`Ejecutando solver CP-SAT (timeout: ${state.tiempoSegundos}s)...`, 'info')
+    addLog(`Ejecutando solver CP-SAT (timeout: ${TIEMPO_EJECUCION_SEGUNDOS}s)...`, 'info')
     emit('toast', 'Ejecutando algoritmo...', 'info')
 
     const t0  = Date.now()
     const out = await runScheduler({
       seed:             42,
-      max_time_seconds: Number(state.tiempoSegundos),
+      max_time_seconds: TIEMPO_EJECUCION_SEGUNDOS,
       use_ui_data:      true,
       // Capacidades de aulas — nuevos campos para el solver
       aulas: {
@@ -214,6 +216,9 @@ async function ejecutarAlgoritmo() {
 
 <template>
   <div class="px-4 md:px-margin-desktop py-8 max-w-[1024px] mx-auto flex flex-col gap-8">
+
+    <!-- Stepper global -->
+    <StepperBar :current-step="3" />
 
     <!-- ─── Header ─── -->
     <header>
@@ -386,7 +391,7 @@ async function ejecutarAlgoritmo() {
       </div>
     </div>
 
-    <!-- ─── Configuración del Solver ─── -->
+    <!-- ─── Configuración del Solver (informativo) ─── -->
     <div class="bg-surface-container rounded-xl border-t-2 border-t-primary border-x border-b border-outline-variant overflow-hidden">
       <div class="p-6 border-b border-outline-variant flex items-center gap-3">
         <span class="material-symbols-outlined text-primary text-[22px]">settings_suggest</span>
@@ -398,41 +403,20 @@ async function ejecutarAlgoritmo() {
         </div>
       </div>
 
-      <div class="p-6 space-y-6">
-        <!-- Tiempo máximo -->
-        <div class="max-w-xs">
-          <label for="tiempo-solver" class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider block mb-2">
-            Tiempo máximo de ejecución
-          </label>
-          <div class="flex items-center gap-3">
-            <input
-              id="tiempo-solver"
-              v-model.number="state.tiempoSegundos"
-              type="number" min="1" max="600"
-              class="w-32 bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3
-                     text-headline-sm font-mono text-on-surface text-center
-                     focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/50 transition-all"
-            />
-            <div class="space-y-1">
-              <p class="text-body-sm text-on-surface-variant">Recomendado: 10–60 segundos</p>
-              <p class="text-label-md font-mono text-outline">Más tiempo = mejor solución</p>
-            </div>
+      <div class="p-6 space-y-5">
+        <!-- Tiempo estimado (fijo) -->
+        <div class="flex items-center gap-4 bg-primary/5 border border-primary/20 rounded-xl px-5 py-4">
+          <span class="material-symbols-outlined text-primary text-[28px] flex-shrink-0">schedule</span>
+          <div>
+            <p class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider">Tiempo estimado de ejecución</p>
+            <p class="text-headline-sm font-sans font-bold text-on-surface mt-0.5">
+              ~{{ Math.floor(TIEMPO_EJECUCION_SEGUNDOS / 60) }} minutos
+              <span class="text-body-sm text-on-surface-variant font-normal ml-1">({{ TIEMPO_EJECUCION_SEGUNDOS.toLocaleString() }} segundos)</span>
+            </p>
+            <p class="text-label-md font-mono text-on-surface-variant mt-1">
+              El solver ejecuta hasta encontrar la solución óptima o agotar el tiempo configurado.
+            </p>
           </div>
-        </div>
-
-        <!-- Presets -->
-        <div class="flex flex-wrap gap-2">
-          <span class="text-label-md font-mono text-on-surface-variant mr-2 self-center">Presets:</span>
-          <button
-            v-for="t in [10, 30, 60, 120, 240]" :key="t"
-            @click="state.tiempoSegundos = t"
-            :class="[
-              'text-label-md font-mono px-3 py-1.5 rounded-lg border transition-colors',
-              state.tiempoSegundos === t
-                ? 'bg-primary/10 text-primary border-primary/30'
-                : 'bg-surface-container-high text-on-surface-variant border-outline-variant hover:border-primary/30 hover:text-on-surface'
-            ]"
-          >{{ t }}s</button>
         </div>
 
         <!-- Validation warning -->

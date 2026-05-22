@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { addMateria, ensureMateriasCount, removeMateria, state } from '../store/state'
+import StepperBar from '../components/StepperBar.vue'
 
 const emit = defineEmits(['toast', 'next'])
 
@@ -153,37 +154,8 @@ function toggleAutoGrupos(m) {
         </div>
       </div>
 
-      <!-- Stepper -->
-      <div class="w-full flex items-center relative py-4">
-        <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-px bg-outline-variant z-0"></div>
-        <div
-          class="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-primary z-0 transition-all duration-500"
-          :style="{ width: materiasValidas ? '50%' : '5%' }"
-        ></div>
-        <div class="flex justify-between w-full z-10 relative">
-          <div class="flex flex-col items-center gap-2 bg-background px-4">
-            <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center border-2 border-background">
-              <span class="text-label-md font-mono text-on-primary font-bold">1</span>
-            </div>
-            <span class="text-label-md font-mono text-primary">Materias</span>
-          </div>
-          <div class="flex flex-col items-center gap-2 bg-background px-4">
-            <div :class="[
-              'w-8 h-8 rounded-full border flex items-center justify-center',
-              materiasValidas ? 'bg-primary-container text-on-primary-container border-primary' : 'bg-surface-container-high border-outline-variant'
-            ]">
-              <span class="text-label-md font-mono text-on-surface-variant">2</span>
-            </div>
-            <span class="text-label-md font-mono text-on-surface-variant">Docentes</span>
-          </div>
-          <div class="flex flex-col items-center gap-2 bg-background px-4">
-            <div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center">
-              <span class="text-label-md font-mono text-on-surface-variant">3</span>
-            </div>
-            <span class="text-label-md font-mono text-on-surface-variant">Parámetros</span>
-          </div>
-        </div>
-      </div>
+      <!-- Stepper global -->
+      <StepperBar :current-step="1" />
     </header>
 
     <!-- ─── Errors Banner ─── -->

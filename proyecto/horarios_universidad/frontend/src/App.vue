@@ -342,7 +342,7 @@ function toggleTema() {
         <MateriasPage   v-if="state.step === 1" @toast="toast" @next="goto(2)" />
         <ProfesoresPage v-if="state.step === 2" @toast="toast" @prev="goto(1)" @next="goto(3)" />
         <ParametrosPage v-if="state.step === 3" @toast="toast" @prev="goto(2)" @next="goto(4)" />
-        <CalendarioPage v-if="state.step === 4" @toast="toast" @prev="goto(3)" />
+        <CalendarioPage v-if="state.step === 4" @toast="toast" @prev="goto(3)" @goto="goto" />
       </div>
     </main>
 

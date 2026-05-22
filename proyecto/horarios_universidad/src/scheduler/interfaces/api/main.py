@@ -71,9 +71,25 @@ class RunRequest(BaseModel):
     num_profes: int = DEFAULT_CONFIG["num_profes"]
     num_salones_comunes: int = DEFAULT_CONFIG["num_salones_comunes"]
     num_salones_pc: int = DEFAULT_CONFIG["num_salones_pc"]
+    max_time_seconds: int = DEFAULT_CONFIG["max_time_seconds"]
     use_ui_data: bool = False
     materias: list[dict[str, Any]] = Field(default_factory=list)
     profesores: list[dict[str, Any]] = Field(default_factory=list)
+    aulas: dict[str, Any] = Field(default_factory=dict)
+
+
+class EventoItem(BaseModel):
+    id: str = ""
+    materiaId: Any = None
+    profesorId: Any = None
+    salon: str = ""
+    grupo: int = 1
+    dayIndex: int = 0
+    hourIndex: int = 0
+
+
+class VerifyRequest(BaseModel):
+    eventos: list[EventoItem] = Field(default_factory=list)
 
 
 DATABASE_URL = os.getenv("DATABASE_URL") or build_database_url()
@@ -114,6 +130,7 @@ def run(payload: RunRequest):
             "num_profes": payload.num_profes,
             "num_salones_comunes": payload.num_salones_comunes,
             "num_salones_pc": payload.num_salones_pc,
+            "max_time_seconds": payload.max_time_seconds,
         }
     )
 
@@ -127,9 +144,11 @@ def run(payload: RunRequest):
                 "num_profes": payload.num_profes,
                 "num_salones_comunes": payload.num_salones_comunes,
                 "num_salones_pc": payload.num_salones_pc,
+                "max_time_seconds": payload.max_time_seconds,
                 "use_ui_data": payload.use_ui_data,
                 "materias": payload.materias,
                 "profesores": payload.profesores,
+                "aulas": payload.aulas,
             }
             try:
                 resp = requests.post(railway_run_url, json=payload_json, timeout=60)
@@ -263,6 +282,65 @@ def clear_data(db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error eliminando datos: {str(e)}") from e
+
+
+@api_router.post("/verify")
+def verify_schedule(payload: VerifyRequest):
+    """Detecta colisiones de salón, profesor y grupo en el horario enviado."""
+    from collections import defaultdict
+
+    DIAS_NOMBRES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+    HORAS_NOMBRES = [
+        "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
+        "12:00", "13:00", "14:00", "15:00", "16:00",
+    ]
+
+    conflicts = []
+    by_slot: dict = defaultdict(list)
+    for e in payload.eventos:
+        by_slot[(e.dayIndex, e.hourIndex)].append(e)
+
+    for (day, hour), slot_events in by_slot.items():
+        dia = DIAS_NOMBRES[day] if day < len(DIAS_NOMBRES) else f"Día {day}"
+        hora = HORAS_NOMBRES[hour] if hour < len(HORAS_NOMBRES) else f"Bloque {hour}"
+
+        salon_map: dict = defaultdict(list)
+        prof_map: dict = defaultdict(list)
+        group_map: dict = defaultdict(list)
+
+        for ev in slot_events:
+            if ev.salon:
+                salon_map[ev.salon].append(ev.id)
+            if ev.profesorId is not None:
+                prof_map[str(ev.profesorId)].append(ev.id)
+            if ev.materiaId is not None:
+                group_map[(str(ev.materiaId), ev.grupo)].append(ev.id)
+
+        for salon, eids in salon_map.items():
+            if len(eids) > 1:
+                conflicts.append({
+                    "type": "salon",
+                    "message": f"{dia} {hora}: Salón '{salon}' asignado a {len(eids)} clases simultáneas.",
+                    "event_ids": eids,
+                })
+
+        for pid, eids in prof_map.items():
+            if len(eids) > 1:
+                conflicts.append({
+                    "type": "profesor",
+                    "message": f"{dia} {hora}: Profesor #{pid} dicta {len(eids)} clases al mismo tiempo.",
+                    "event_ids": eids,
+                })
+
+        for (mid, grp), eids in group_map.items():
+            if len(eids) > 1:
+                conflicts.append({
+                    "type": "grupo",
+                    "message": f"{dia} {hora}: Grupo {grp} de materia #{mid} aparece {len(eids)} veces simultáneamente.",
+                    "event_ids": eids,
+                })
+
+    return {"ok": True, "conflicts": conflicts}
 
 
 # Registrar el router con el prefijo /api

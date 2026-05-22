@@ -15,8 +15,9 @@ import {
 } from '../store/state'
 import { verifySchedule } from '../services/api'
 import { tailwindColorFor } from '../composables/useEventColors'
+import StepperBar from '../components/StepperBar.vue'
 
-const emit = defineEmits(['toast', 'prev'])
+const emit = defineEmits(['toast', 'prev', 'goto'])
 
 const editMode     = ref(false)
 const dragOver     = ref({ dayIndex: -1, hourIndex: -1 })
@@ -119,7 +120,9 @@ function confirmarHorario() {
   lockCalendario()
   editMode.value = false
   confirmLockOpen.value = false
-  emit('toast', 'Horario confirmado y bloqueado.', 'success')
+  emit('toast', 'Horario confirmado y bloqueado. Redirigiendo al Dashboard…', 'success')
+  // Redirect to Dashboard after a short delay so the toast is visible
+  setTimeout(() => emit('goto', 0), 900)
 }
 
 function desbloquearHorario() {
@@ -175,7 +178,7 @@ function delModal() {
 // ─── Color coding ─────────────────────────────────────────────────────────────
 function colorFor(materiaId) {
   const idx = state.materias.findIndex(m => m.id === materiaId)
-  return tailwindColorFor(idx)
+  return tailwindColorFor(idx, state.tema)
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
@@ -186,19 +189,81 @@ const statsLine = computed(() => {
   return { n, pct }
 })
 
-// ─── Verify conflicts ─────────────────────────────────────────────────────────
+// ─── Verify conflicts (client-side, API as optional fallback) ─────────────────
+function detectConflictsLocally(eventos) {
+  const bySlot = new Map()
+  for (const e of eventos) {
+    const key = `${e.dayIndex}:${e.hourIndex}`
+    if (!bySlot.has(key)) bySlot.set(key, [])
+    bySlot.get(key).push(e)
+  }
+  const dias  = state.calendario.dias
+  const horas = state.calendario.horas
+  const found = []
+  for (const [key, slot] of bySlot) {
+    if (slot.length < 2) continue
+    const [di, hi] = key.split(':').map(Number)
+    const dia  = dias[di]  || `Día ${di}`
+    const hora = horas[hi] || `Bloque ${hi}`
+
+    const salonMap = new Map()
+    const profMap  = new Map()
+    const groupMap = new Map()
+    for (const e of slot) {
+      if (e.salon) {
+        if (!salonMap.has(e.salon)) salonMap.set(e.salon, [])
+        salonMap.get(e.salon).push(e.id)
+      }
+      const pid = String(e.profesorId ?? '')
+      if (pid) {
+        if (!profMap.has(pid)) profMap.set(pid, [])
+        profMap.get(pid).push(e.id)
+      }
+      const gk = `${e.materiaId}_${e.grupo}`
+      if (!groupMap.has(gk)) groupMap.set(gk, [])
+      groupMap.get(gk).push(e.id)
+    }
+    for (const [salon, ids] of salonMap) {
+      if (ids.length > 1)
+        found.push({ type: 'salon',   message: `${dia} ${hora}: Salón '${salon}' en ${ids.length} clases simultáneas.` })
+    }
+    for (const [pid, ids] of profMap) {
+      if (ids.length > 1) {
+        const prof = state.profesores.find(p => String(p.id) === pid)
+        const nombre = prof?.nombre || `#${pid}`
+        found.push({ type: 'profesor', message: `${dia} ${hora}: Prof. ${nombre} dicta ${ids.length} clases al mismo tiempo.` })
+      }
+    }
+    for (const [gk, ids] of groupMap) {
+      if (ids.length > 1) {
+        const [mid, grp] = gk.split('_')
+        const mat = state.materias.find(m => String(m.id) === mid)
+        found.push({ type: 'grupo', message: `${dia} ${hora}: Grupo ${grp} de '${mat?.nombre || mid}' tiene ${ids.length} sesiones simultáneas.` })
+      }
+    }
+  }
+  return found
+}
+
 async function verificar() {
   if (!state.calendario.eventos.length) return emit('toast', 'No hay clases para verificar.', 'info')
   verifying.value = true
   conflicts.value = []
   try {
-    const result = await verifySchedule(state.calendario.eventos)
-    conflicts.value = result.conflicts || []
+    // Try API first; fall back to client-side detection
+    let found = []
+    try {
+      const result = await verifySchedule(state.calendario.eventos)
+      found = result.conflicts || []
+    } catch {
+      found = detectConflictsLocally(state.calendario.eventos)
+    }
+    conflicts.value = found
     showConflicts.value = true
-    if (!result.conflicts?.length) {
+    if (!found.length) {
       emit('toast', 'Sin conflictos detectados ✓', 'success')
     } else {
-      emit('toast', `${result.conflicts.length} conflicto(s) detectados`, 'error')
+      emit('toast', `${found.length} conflicto(s) detectados`, 'error')
     }
   } catch (e) {
     emit('toast', 'Error al verificar: ' + (e.message || ''), 'error')
@@ -252,6 +317,11 @@ function eventOpacity(e) {
 
 <template>
   <div class="flex flex-col h-full overflow-hidden">
+
+    <!-- Stepper global (compacto) -->
+    <div class="px-4 md:px-6 border-b border-outline-variant bg-surface-container-lowest flex-shrink-0">
+      <StepperBar :current-step="4" />
+    </div>
 
     <!-- ─── Header bar ─── -->
     <div class="px-4 md:px-6 py-3 border-b border-outline-variant bg-surface-container-lowest
@@ -562,8 +632,16 @@ function eventOpacity(e) {
     </div>
 
     <!-- ─── Calendar Grid ─── -->
-    <div v-else class="flex-1 overflow-auto bg-surface-container-lowest" @click="showProfDrop = false">
-      <div class="cal-grid min-w-[700px]">
+    <div
+      v-else
+      class="flex-1 overflow-auto cal-bg"
+      :class="state.tema === 'light' ? 'bg-surface-container-low' : 'bg-surface-container-lowest'"
+      @click="showProfDrop = false"
+    >
+      <div
+        class="cal-grid"
+        :style="{ gridTemplateColumns: `72px repeat(${state.calendario.dias.length}, 1fr)`, minWidth: `${72 + state.calendario.dias.length * 130}px` }"
+      >
 
         <!-- Corner -->
         <div class="bg-surface-container-high border-b border-r border-outline-variant p-2 sticky top-0 left-0 z-30"></div>
@@ -610,13 +688,12 @@ function eventOpacity(e) {
                 @dragstart="ev => onDragStart(ev, e)"
                 @click="openModal(e)"
                 :class="[
-                  'flex-1 rounded-lg p-1.5 flex flex-col justify-between cursor-pointer border transition-all',
+                  'cal-event-card flex-1 rounded-lg p-1.5 flex flex-col justify-between border transition-all min-h-[2rem]',
                   colorFor(e.materiaId).bg,
                   colorFor(e.materiaId).border,
                   'hover:opacity-80',
                   editMode ? 'cursor-grab' : 'cursor-pointer',
                   eventOpacity(e),
-                  'min-h-[2rem]',
                 ]"
                 :title="editMode ? 'Arrastra para mover · clic para editar' : 'Clic para editar'"
               >

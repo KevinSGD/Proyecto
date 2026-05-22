@@ -8,7 +8,7 @@
  * Raw hex palette (for WeeklyCalendar table cells):
  */
 
-// Tailwind-class palette — used in CalendarioPage.vue
+// Tailwind-class palette — dark mode (default)
 export const EVENT_COLORS = [
   { bg: 'bg-primary/15',           border: 'border-primary/50',           text: 'text-primary' },
   { bg: 'bg-secondary/15',         border: 'border-secondary/50',         text: 'text-secondary' },
@@ -18,6 +18,18 @@ export const EVENT_COLORS = [
   { bg: 'bg-tertiary-fixed/10',    border: 'border-tertiary-fixed/50',    text: 'text-tertiary-fixed' },
   { bg: 'bg-error/10',             border: 'border-error/40',             text: 'text-error' },
   { bg: 'bg-on-primary-container/10', border: 'border-on-primary-container/30', text: 'text-on-primary-container' },
+]
+
+// Light-mode palette — fully opaque containers with accessible text colors
+export const EVENT_COLORS_LIGHT = [
+  { bg: 'bg-primary-container',      border: 'border-primary/50',       text: 'text-on-primary-container' },
+  { bg: 'bg-secondary-container',    border: 'border-secondary/50',     text: 'text-on-secondary-container' },
+  { bg: 'bg-tertiary-container',     border: 'border-tertiary/50',      text: 'text-on-tertiary-container' },
+  { bg: 'bg-primary/25',             border: 'border-primary',          text: 'text-primary' },
+  { bg: 'bg-secondary/25',           border: 'border-secondary',        text: 'text-secondary' },
+  { bg: 'bg-tertiary/25',            border: 'border-tertiary',         text: 'text-tertiary' },
+  { bg: 'bg-error-container',        border: 'border-error/50',         text: 'text-on-error-container' },
+  { bg: 'bg-primary-fixed/60',       border: 'border-primary-fixed',    text: 'text-on-primary-fixed' },
 ]
 
 /**
@@ -45,10 +57,12 @@ export const HEX_PALETTE = [
 
 /**
  * Get Tailwind class set for a materia by its store index.
- * @param {number} idx  Index of the materia in state.materias
+ * @param {number} idx   Index of the materia in state.materias
+ * @param {string} tema  'dark' (default) or 'light'
  */
-export function tailwindColorFor(idx) {
-  return EVENT_COLORS[Math.abs(idx) % EVENT_COLORS.length]
+export function tailwindColorFor(idx, tema = 'dark') {
+  const palette = tema === 'light' ? EVENT_COLORS_LIGHT : EVENT_COLORS
+  return palette[Math.abs(idx) % palette.length]
 }
 
 /**
