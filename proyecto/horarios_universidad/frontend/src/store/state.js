@@ -68,6 +68,11 @@ if (loaded?.calendario?.dias && !loaded.calendario.dias.includes('Sábado')) {
   loaded.calendario.dias = [...loaded.calendario.dias, 'Sábado']
 }
 
+// Ensure loaded.calendario always has all required keys (deep merge with defaults)
+if (loaded?.calendario) {
+  loaded.calendario = { ...defaults.calendario, ...loaded.calendario }
+}
+
 export const state = reactive({
   ...defaults,
   ...(loaded ?? {}),
