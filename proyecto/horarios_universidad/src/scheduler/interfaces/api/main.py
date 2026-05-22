@@ -1,7 +1,7 @@
 # src/scheduler/interfaces/api/main.py
 import os
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional
 from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
@@ -71,9 +71,15 @@ class RunRequest(BaseModel):
     num_profes: int = DEFAULT_CONFIG["num_profes"]
     num_salones_comunes: int = DEFAULT_CONFIG["num_salones_comunes"]
     num_salones_pc: int = DEFAULT_CONFIG["num_salones_pc"]
+    max_time_seconds: int = DEFAULT_CONFIG["max_time_seconds"]
+    aulas: Optional[dict[str, Any]] = None
     use_ui_data: bool = False
     materias: list[dict[str, Any]] = Field(default_factory=list)
     profesores: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class VerifyRequest(BaseModel):
+    eventos: list[dict[str, Any]] = Field(default_factory=list)
 
 
 DATABASE_URL = os.getenv("DATABASE_URL") or build_database_url()
@@ -108,12 +114,21 @@ def run_help():
 @api_router.post("/run")
 def run(payload: RunRequest):
     cfg = DEFAULT_CONFIG.copy()
+    # Resolve aulas config: prefer nested `aulas` dict sent by UI, fall back to top-level fields
+    aulas = payload.aulas or {}
+    num_salones_comunes = int(aulas.get("num_salones_comunes", payload.num_salones_comunes))
+    num_salones_pc      = int(aulas.get("num_salones_pc",      payload.num_salones_pc))
+    capacidad_comun     = int(aulas.get("capacidad_salon_comun", 40))
+    capacidad_pc        = int(aulas.get("capacidad_salon_pc",    30))
     cfg.update(
         {
-            "seed": payload.seed,
-            "num_profes": payload.num_profes,
-            "num_salones_comunes": payload.num_salones_comunes,
-            "num_salones_pc": payload.num_salones_pc,
+            "seed":                payload.seed,
+            "num_profes":          payload.num_profes,
+            "num_salones_comunes": num_salones_comunes,
+            "num_salones_pc":      num_salones_pc,
+            "capacidad_salon_comun": capacidad_comun,
+            "capacidad_salon_pc":    capacidad_pc,
+            "max_time_seconds":    payload.max_time_seconds,
         }
     )
 
@@ -165,6 +180,55 @@ def run(payload: RunRequest):
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Error ejecutando pipeline: {exc}") from exc
+
+
+# =====================
+# ENDPOINT DE VERIFICACIÓN DE INTEGRIDAD
+# =====================
+
+
+@api_router.post("/verify")
+def verify_schedule(payload: VerifyRequest):
+    """Detecta colisiones de profesor y salón en el horario enviado."""
+    conflicts = []
+    prof_slots: dict = {}   # (profesorId, dayIndex, hourIndex) → id evento
+    room_slots: dict = {}   # (salon, dayIndex, hourIndex) → id evento
+
+    dias_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+    horas_nombres = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
+                     "12:00", "13:00", "14:00", "15:00", "16:00"]
+
+    for e in payload.eventos:
+        eid  = e.get("id", "?")
+        pid  = e.get("profesorId")
+        salon = e.get("salon", "").strip()
+        day  = e.get("dayIndex")
+        hour = e.get("hourIndex")
+
+        dia_txt  = dias_nombres[day]  if day  is not None and 0 <= day  < len(dias_nombres)  else str(day)
+        hora_txt = horas_nombres[hour] if hour is not None and 0 <= hour < len(horas_nombres) else str(hour)
+
+        if pid and day is not None and hour is not None:
+            pk = (str(pid), day, hour)
+            if pk in prof_slots:
+                conflicts.append({
+                    "type": "profesor",
+                    "message": f"Profesor en doble asignación el {dia_txt} a las {hora_txt} (eventos {prof_slots[pk]} y {eid})",
+                })
+            else:
+                prof_slots[pk] = eid
+
+        if salon and day is not None and hour is not None:
+            sk = (salon, day, hour)
+            if sk in room_slots:
+                conflicts.append({
+                    "type": "salon",
+                    "message": f"Salón «{salon}» ocupado dos veces el {dia_txt} a las {hora_txt} (eventos {room_slots[sk]} y {eid})",
+                })
+            else:
+                room_slots[sk] = eid
+
+    return {"conflicts": conflicts, "total": len(conflicts), "ok": len(conflicts) == 0}
 
 
 # =====================

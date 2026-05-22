@@ -12,7 +12,7 @@ def extract(solution, cfg):
     salones = meta["salones"]
     bpd = meta["bloques_por_dia"]
 
-    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
+    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
 
     def bh_to_day_hour(b):
         return b // bpd, b % bpd

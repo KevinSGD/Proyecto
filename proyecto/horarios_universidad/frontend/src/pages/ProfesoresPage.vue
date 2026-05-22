@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { addProfesor, ensureProfesoresCount, removeProfesor, state } from '../store/state'
 import TagSelect from '../components/TagSelect.vue'
+import ProgressStepper from '../components/ProgressStepper.vue'
 
 const emit = defineEmits(['toast', 'prev', 'next'])
 
@@ -149,6 +150,9 @@ onUnmounted(() => window.removeEventListener('click', handleOutsideClick))
 <template>
   <div class="px-4 md:px-margin-desktop py-8 max-w-container-max mx-auto flex flex-col h-full">
 
+    <!-- ─── Progress Stepper ─── -->
+    <ProgressStepper :active-step="2" />
+
     <!-- ─── Page Header ─── -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
       <div>
@@ -286,10 +290,8 @@ onUnmounted(() => window.removeEventListener('click', handleOutsideClick))
             <tr
               v-for="(p, i) in profesoresFiltrados"
               :key="p.id"
-              :class="[
-                'hover:bg-surface-container-low transition-colors align-top',
-                p.estado === 'suspendido' && 'opacity-60',
-              ]"
+              class="hover:bg-surface-container-low transition-colors align-top"
+              :style="{ opacity: p.estado === 'suspendido' ? 0.55 : 1, transition: 'opacity 0.25s ease' }"
             >
               <!-- Nombre + avatar -->
               <td class="p-4">

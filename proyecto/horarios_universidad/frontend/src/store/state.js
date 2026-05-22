@@ -8,13 +8,16 @@ function nextId(key) {
   return id
 }
 
+// Tiempo de ejecución del solver — fijo en 6000 s, no configurable desde la UI
+export const SOLVER_TIMEOUT_S = 6000
+
 const defaults = {
   step: 0,
   nextMatId: 1,
   nextProfId: 1,
   materias: [],
   profesores: [],
-  tiempoSegundos: 10,
+  tiempoSegundos: SOLVER_TIMEOUT_S,
   salonFilter: null,
   lastRun: null,
   calendarioLocked: false,
@@ -26,7 +29,7 @@ const defaults = {
     num_salones_pc:        4,
   },
   calendario: {
-    dias:    ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
+    dias:    ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
     horas:   ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'],
     eventos: [],
   },
@@ -61,6 +64,16 @@ if (loaded?.materias) {
 // v2→v3: add aulas block if missing
 if (loaded && !loaded.aulas) {
   loaded.aulas = { ...defaults.aulas }
+}
+
+// v4→v5: add Sábado to calendario.dias if missing
+if (loaded?.calendario?.dias && !loaded.calendario.dias.includes('Sábado')) {
+  loaded.calendario.dias.push('Sábado')
+}
+
+// v5→v6: ensure tiempoSegundos is always SOLVER_TIMEOUT_S
+if (loaded) {
+  loaded.tiempoSegundos = SOLVER_TIMEOUT_S
 }
 
 export const state = reactive({

@@ -8,7 +8,7 @@
  * Raw hex palette (for WeeklyCalendar table cells):
  */
 
-// Tailwind-class palette — used in CalendarioPage.vue
+// Tailwind-class palette — dark mode (low opacity on dark navy surfaces)
 export const EVENT_COLORS = [
   { bg: 'bg-primary/15',           border: 'border-primary/50',           text: 'text-primary' },
   { bg: 'bg-secondary/15',         border: 'border-secondary/50',         text: 'text-secondary' },
@@ -18,6 +18,18 @@ export const EVENT_COLORS = [
   { bg: 'bg-tertiary-fixed/10',    border: 'border-tertiary-fixed/50',    text: 'text-tertiary-fixed' },
   { bg: 'bg-error/10',             border: 'border-error/40',             text: 'text-error' },
   { bg: 'bg-on-primary-container/10', border: 'border-on-primary-container/30', text: 'text-on-primary-container' },
+]
+
+// Light-mode palette — higher opacity/contrast for readability on light backgrounds
+export const EVENT_COLORS_LIGHT = [
+  { bg: 'bg-primary/30',              border: 'border-primary/70',              text: 'text-primary' },
+  { bg: 'bg-secondary/25',            border: 'border-secondary/70',            text: 'text-secondary' },
+  { bg: 'bg-tertiary/25',             border: 'border-tertiary/70',             text: 'text-tertiary' },
+  { bg: 'bg-primary-container/60',    border: 'border-primary/60',              text: 'text-on-primary-container' },
+  { bg: 'bg-secondary-container/60',  border: 'border-secondary/60',            text: 'text-on-secondary-container' },
+  { bg: 'bg-tertiary-container/60',   border: 'border-tertiary/60',             text: 'text-on-tertiary-container' },
+  { bg: 'bg-error/20',                border: 'border-error/60',                text: 'text-error' },
+  { bg: 'bg-primary-fixed/40',        border: 'border-primary-fixed/70',        text: 'text-on-primary-fixed' },
 ]
 
 /**
@@ -45,10 +57,12 @@ export const HEX_PALETTE = [
 
 /**
  * Get Tailwind class set for a materia by its store index.
- * @param {number} idx  Index of the materia in state.materias
+ * @param {number} idx   Index of the materia in state.materias
+ * @param {string} tema  'dark' | 'light' — selects the appropriate palette
  */
-export function tailwindColorFor(idx) {
-  return EVENT_COLORS[Math.abs(idx) % EVENT_COLORS.length]
+export function tailwindColorFor(idx, tema = 'dark') {
+  const palette = tema === 'light' ? EVENT_COLORS_LIGHT : EVENT_COLORS
+  return palette[Math.abs(idx) % palette.length]
 }
 
 /**

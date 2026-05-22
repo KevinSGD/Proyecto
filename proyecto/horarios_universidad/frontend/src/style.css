@@ -179,11 +179,25 @@ html.light {
   background-size: 24px 24px;
 }
 
-/* Calendar grid — columns: time-label + 5 day columns */
+/* Calendar grid — columns: time-label + 6 day columns (Lunes-Sábado) */
 .cal-grid {
   display: grid;
-  grid-template-columns: 72px repeat(5, 1fr);
-  min-width: 700px;
+  grid-template-columns: 72px repeat(6, 1fr);
+  min-width: 800px;
+}
+
+/* ── Modo alto contraste (light) — tarjetas de calendario completamente opacas ── */
+html.light .cal-event-card {
+  --tw-bg-opacity: 1 !important;
+}
+html.light .cal-grid {
+  background-color: rgb(var(--c-surface-container-low));
+}
+html.light .cal-grid > div {
+  background-color: rgb(var(--c-surface-container-low));
+}
+html.light .cal-grid > div.bg-surface-container-lowest {
+  background-color: rgb(var(--c-surface-container));
 }
 
 /* ── Animations ────────────────────────────────────────────────────────── */
