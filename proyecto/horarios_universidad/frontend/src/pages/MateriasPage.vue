@@ -1,11 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { addMateria, ensureMateriasCount, removeMateria, state } from '../store/state'
-<<<<<<< HEAD
-import StepperBar from '../components/StepperBar.vue'
-=======
 import ProgressStepper from '../components/ProgressStepper.vue'
->>>>>>> Arreglo-de-flujo
 
 const emit = defineEmits(['toast', 'next'])
 
@@ -158,13 +154,7 @@ function toggleAutoGrupos(m) {
         </div>
       </div>
 
-<<<<<<< HEAD
-      <!-- Stepper global -->
-      <StepperBar :current-step="1" />
-=======
-      <!-- Stepper global de 4 pasos -->
       <ProgressStepper :active-step="1" />
->>>>>>> Arreglo-de-flujo
     </header>
 
     <!-- ─── Errors Banner ─── -->

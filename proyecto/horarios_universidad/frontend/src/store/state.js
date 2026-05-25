@@ -45,9 +45,7 @@ if (loaded?.profesores) {
     if (!p.materiaIds) {
       p.materiaIds = p.materiaId ? [p.materiaId] : []
     }
-    // v2→v3: add maxHoras if missing
     if (p.maxHoras === undefined) p.maxHoras = 40
-    // v3→v4: add estado (activo | suspendido)
     if (p.estado === undefined) p.estado = 'activo'
   }
 }
@@ -66,25 +64,19 @@ if (loaded && !loaded.aulas) {
   loaded.aulas = { ...defaults.aulas }
 }
 
-<<<<<<< HEAD
 // v3→v5: add Sábado to calendar days if missing
 if (loaded?.calendario?.dias && !loaded.calendario.dias.includes('Sábado')) {
   loaded.calendario.dias = [...loaded.calendario.dias, 'Sábado']
 }
 
-// Ensure loaded.calendario always has all required keys (deep merge with defaults)
-if (loaded?.calendario) {
-  loaded.calendario = { ...defaults.calendario, ...loaded.calendario }
-=======
-// v4→v5: add Sábado to calendario.dias if missing
-if (loaded?.calendario?.dias && !loaded.calendario.dias.includes('Sábado')) {
-  loaded.calendario.dias.push('Sábado')
-}
-
-// v5→v6: ensure tiempoSegundos is always SOLVER_TIMEOUT_S
+// Always enforce fixed solver timeout
 if (loaded) {
   loaded.tiempoSegundos = SOLVER_TIMEOUT_S
->>>>>>> Arreglo-de-flujo
+}
+
+// Deep-merge loaded.calendario with defaults to ensure all required keys exist
+if (loaded?.calendario) {
+  loaded.calendario = { ...defaults.calendario, ...loaded.calendario }
 }
 
 export const state = reactive({
@@ -243,12 +235,10 @@ export function unlockCalendario() {
   state.calendarioLocked = false
 }
 
-// Deep-clone current eventos into the snapshot ref
 export function snapshotCalendario() {
   calendarioSnapshot.value = JSON.parse(JSON.stringify(state.calendario.eventos))
 }
 
-// Restore snapshot; returns false if no snapshot exists
 export function restoreCalendarioSnapshot() {
   if (!calendarioSnapshot.value) return false
   state.calendario.eventos = JSON.parse(JSON.stringify(calendarioSnapshot.value))

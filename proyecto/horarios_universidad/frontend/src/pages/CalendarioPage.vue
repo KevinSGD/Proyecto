@@ -14,7 +14,7 @@ import {
   upsertEvento,
 } from '../store/state'
 import { tailwindColorFor } from '../composables/useEventColors'
-import StepperBar from '../components/StepperBar.vue'
+import ProgressStepper from '../components/ProgressStepper.vue'
 
 const emit = defineEmits(['toast', 'prev', 'goto'])
 
@@ -119,15 +119,8 @@ function confirmarHorario() {
   lockCalendario()
   editMode.value = false
   confirmLockOpen.value = false
-<<<<<<< HEAD
-  emit('toast', 'Horario confirmado y bloqueado. Redirigiendo al Dashboard…', 'success')
-  // Redirect to Dashboard after a short delay so the toast is visible
-  setTimeout(() => emit('goto', 0), 900)
-=======
   emit('toast', 'Horario confirmado y bloqueado.', 'success')
-  // Redirigir al Dashboard para ver el horario consolidado
   setTimeout(() => emit('goto', 0), 400)
->>>>>>> Arreglo-de-flujo
 }
 
 function desbloquearHorario() {
@@ -194,92 +187,16 @@ const statsLine = computed(() => {
   return { n, pct }
 })
 
-<<<<<<< HEAD
-// ─── Verify conflicts (client-side, API as optional fallback) ─────────────────
-function detectConflictsLocally(eventos) {
-  const bySlot = new Map()
-  for (const e of eventos) {
-    const key = `${e.dayIndex}:${e.hourIndex}`
-    if (!bySlot.has(key)) bySlot.set(key, [])
-    bySlot.get(key).push(e)
-  }
-  const dias  = state.calendario.dias
-  const horas = state.calendario.horas
-  const found = []
-  for (const [key, slot] of bySlot) {
-    if (slot.length < 2) continue
-    const [di, hi] = key.split(':').map(Number)
-    const dia  = dias[di]  || `Día ${di}`
-    const hora = horas[hi] || `Bloque ${hi}`
-
-    const salonMap = new Map()
-    const profMap  = new Map()
-    const groupMap = new Map()
-    for (const e of slot) {
-      if (e.salon) {
-        if (!salonMap.has(e.salon)) salonMap.set(e.salon, [])
-        salonMap.get(e.salon).push(e.id)
-      }
-      const pid = String(e.profesorId ?? '')
-      if (pid) {
-        if (!profMap.has(pid)) profMap.set(pid, [])
-        profMap.get(pid).push(e.id)
-      }
-      const gk = `${e.materiaId}_${e.grupo}`
-      if (!groupMap.has(gk)) groupMap.set(gk, [])
-      groupMap.get(gk).push(e.id)
-    }
-    for (const [salon, ids] of salonMap) {
-      if (ids.length > 1)
-        found.push({ type: 'salon',   message: `${dia} ${hora}: Salón '${salon}' en ${ids.length} clases simultáneas.` })
-    }
-    for (const [pid, ids] of profMap) {
-      if (ids.length > 1) {
-        const prof = state.profesores.find(p => String(p.id) === pid)
-        const nombre = prof?.nombre || `#${pid}`
-        found.push({ type: 'profesor', message: `${dia} ${hora}: Prof. ${nombre} dicta ${ids.length} clases al mismo tiempo.` })
-      }
-    }
-    for (const [gk, ids] of groupMap) {
-      if (ids.length > 1) {
-        const [mid, grp] = gk.split('_')
-        const mat = state.materias.find(m => String(m.id) === mid)
-        found.push({ type: 'grupo', message: `${dia} ${hora}: Grupo ${grp} de '${mat?.nombre || mid}' tiene ${ids.length} sesiones simultáneas.` })
-      }
-    }
-  }
-  return found
-}
-
-async function verificar() {
-=======
-// ─── Verify conflicts — implementación local (sin API) ────────────────────────
+// ─── Verify conflicts — implementación local ─────────────────────────────────
 function verificar() {
->>>>>>> Arreglo-de-flujo
   if (!state.calendario.eventos.length) return emit('toast', 'No hay clases para verificar.', 'info')
   verifying.value = true
   conflicts.value = []
 
   try {
-<<<<<<< HEAD
-    // Try API first; fall back to client-side detection
-    let found = []
-    try {
-      const result = await verifySchedule(state.calendario.eventos)
-      found = result.conflicts || []
-    } catch {
-      found = detectConflictsLocally(state.calendario.eventos)
-    }
-    conflicts.value = found
-    showConflicts.value = true
-    if (!found.length) {
-      emit('toast', 'Sin conflictos detectados ✓', 'success')
-    } else {
-      emit('toast', `${found.length} conflicto(s) detectados`, 'error')
-=======
     const found = []
-    const profSlots = new Map()   // `${profesorId}:${dayIndex}:${hourIndex}` → eventId
-    const roomSlots = new Map()   // `${salon}:${dayIndex}:${hourIndex}` → eventId
+    const profSlots = new Map()
+    const roomSlots = new Map()
 
     for (const e of state.calendario.eventos) {
       const dia  = state.calendario.dias[e.dayIndex]  || `Día ${e.dayIndex}`
@@ -309,7 +226,6 @@ function verificar() {
           roomSlots.set(sk, e.id)
         }
       }
->>>>>>> Arreglo-de-flujo
     }
 
     conflicts.value = found
@@ -374,7 +290,7 @@ function eventOpacityStyle(e) {
 
     <!-- Stepper global (compacto) -->
     <div class="px-4 md:px-6 border-b border-outline-variant bg-surface-container-lowest flex-shrink-0">
-      <StepperBar :current-step="4" />
+      <ProgressStepper :active-step="4" />
     </div>
 
     <!-- ─── Header bar ─── -->
@@ -747,10 +663,6 @@ function eventOpacityStyle(e) {
                   colorFor(e.materiaId).border,
                   'hover:brightness-110',
                   editMode ? 'cursor-grab' : 'cursor-pointer',
-<<<<<<< HEAD
-                  eventOpacity(e),
-=======
->>>>>>> Arreglo-de-flujo
                 ]"
                 :style="eventOpacityStyle(e)"
                 :title="editMode ? 'Arrastra para mover · clic para editar' : 'Clic para editar'"

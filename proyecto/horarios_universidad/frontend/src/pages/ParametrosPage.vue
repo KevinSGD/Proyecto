@@ -2,21 +2,11 @@
 import { computed, ref } from 'vue'
 import { state, resetCalendar, setEventos, setLastRun, SOLVER_TIMEOUT_S } from '../store/state'
 import { getDbHealth, runScheduler, saveData } from '../services/api'
-<<<<<<< HEAD
-import StepperBar from '../components/StepperBar.vue'
-=======
 import ProgressStepper from '../components/ProgressStepper.vue'
->>>>>>> Arreglo-de-flujo
 
 const emit = defineEmits(['toast', 'prev', 'next'])
 
 const DAY_MAP = { 'Lunes': 0, 'Martes': 1, 'Miércoles': 2, 'Jueves': 3, 'Viernes': 4, 'Sábado': 5 }
-<<<<<<< HEAD
-
-// Tiempo de ejecución fijo a 6000 s (≈ 100 min)
-const TIEMPO_EJECUCION_SEGUNDOS = 6000
-=======
->>>>>>> Arreglo-de-flujo
 
 function _parseScheduleEvents(records) {
   if (!Array.isArray(records)) return []
@@ -141,21 +131,13 @@ async function ejecutarAlgoritmo() {
       emit('toast', 'DB no disponible: se omite guardado.', 'info')
     }
 
-<<<<<<< HEAD
-    addLog(`Ejecutando solver CP-SAT (timeout: ${TIEMPO_EJECUCION_SEGUNDOS}s)...`, 'info')
-=======
     addLog(`Ejecutando solver CP-SAT (timeout fijo: ${SOLVER_TIMEOUT_S}s ≈ ${Math.round(SOLVER_TIMEOUT_S / 60)} min)...`, 'info')
->>>>>>> Arreglo-de-flujo
     emit('toast', 'Ejecutando algoritmo...', 'info')
 
     const t0  = Date.now()
     const out = await runScheduler({
       seed:             42,
-<<<<<<< HEAD
-      max_time_seconds: TIEMPO_EJECUCION_SEGUNDOS,
-=======
       max_time_seconds: SOLVER_TIMEOUT_S,
->>>>>>> Arreglo-de-flujo
       use_ui_data:      true,
       aulas: {
         capacidad_salon_comun: state.aulas.capacidad_salon_comun,
@@ -231,9 +213,6 @@ async function ejecutarAlgoritmo() {
 <template>
   <div class="px-4 md:px-margin-desktop py-8 max-w-[1024px] mx-auto flex flex-col gap-8">
 
-    <!-- Stepper global -->
-    <StepperBar :current-step="3" />
-
     <!-- ─── Header ─── -->
     <header>
       <h1 class="text-display-lg-mobile md:text-display-lg font-sans font-bold text-on-surface">
@@ -244,7 +223,6 @@ async function ejecutarAlgoritmo() {
       </p>
     </header>
 
-    <!-- ─── Progress Stepper ─── -->
     <ProgressStepper :active-step="3" />
 
     <!-- ─── Resumen de datos ─── -->
@@ -420,21 +398,6 @@ async function ejecutarAlgoritmo() {
         </div>
       </div>
 
-<<<<<<< HEAD
-      <div class="p-6 space-y-5">
-        <!-- Tiempo estimado (fijo) -->
-        <div class="flex items-center gap-4 bg-primary/5 border border-primary/20 rounded-xl px-5 py-4">
-          <span class="material-symbols-outlined text-primary text-[28px] flex-shrink-0">schedule</span>
-          <div>
-            <p class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider">Tiempo estimado de ejecución</p>
-            <p class="text-headline-sm font-sans font-bold text-on-surface mt-0.5">
-              ~{{ Math.floor(TIEMPO_EJECUCION_SEGUNDOS / 60) }} minutos
-              <span class="text-body-sm text-on-surface-variant font-normal ml-1">({{ TIEMPO_EJECUCION_SEGUNDOS.toLocaleString() }} segundos)</span>
-            </p>
-            <p class="text-label-md font-mono text-on-surface-variant mt-1">
-              El solver ejecuta hasta encontrar la solución óptima o agotar el tiempo configurado.
-            </p>
-=======
       <div class="p-6 space-y-4">
         <!-- Tiempo estimado — indicador estático (no editable) -->
         <div class="flex items-center gap-4 bg-surface-container-low border border-outline-variant rounded-xl px-5 py-4">
@@ -453,7 +416,6 @@ async function ejecutarAlgoritmo() {
           <div class="ml-auto flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1">
             <span class="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0"></span>
             <span class="text-label-md font-mono text-primary whitespace-nowrap">Optimización máxima</span>
->>>>>>> Arreglo-de-flujo
           </div>
         </div>
 
