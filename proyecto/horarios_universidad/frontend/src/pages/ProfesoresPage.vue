@@ -544,7 +544,7 @@ onUnmounted(() => window.removeEventListener('click', handleOutsideClick))
                    flex items-center gap-2 transition-colors"
           >
             <span class="material-symbols-outlined text-[16px]">save_all</span>
-            Guardar Todos
+            Guardar Todo
           </button>
         </div>
       </div>

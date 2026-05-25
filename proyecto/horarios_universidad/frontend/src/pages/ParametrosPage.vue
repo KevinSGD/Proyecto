@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { state, resetCalendar, setEventos, setLastRun, SOLVER_TIMEOUT_S } from '../store/state'
 import { getDbHealth, runScheduler, saveData } from '../services/api'
 import ProgressStepper from '../components/ProgressStepper.vue'
@@ -33,9 +33,42 @@ function _parseScheduleEvents(records) {
   return eventos
 }
 
-const loading      = ref(false)
-const logMessages  = ref([])
-const infeasible   = ref(null)   // { status, suggestions[] } when solver fails
+const loading        = ref(false)
+const logMessages    = ref([])
+const infeasible     = ref(null)   // { status, suggestions[] } when solver fails
+const solverElapsed  = ref(0)      // seconds elapsed since solver start
+let   _timerHandle   = null
+
+const solverProgress = computed(() =>
+  loading.value ? Math.min((solverElapsed.value / SOLVER_TIMEOUT_S) * 100, 99) : 0
+)
+
+const solverStage = computed(() => {
+  const pct = solverProgress.value
+  if (pct < 5)  return 'Inicializando y cargando datos...'
+  if (pct < 15) return 'Construyendo modelo CP-SAT...'
+  if (pct < 35) return 'Buscando primera solución factible...'
+  if (pct < 65) return 'Refinando asignaciones y optimizando restricciones...'
+  if (pct < 88) return 'Optimizando calidad del horario...'
+  return 'Finalizando y consolidando resultado...'
+})
+
+function _fmtTime(s) {
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${String(sec).padStart(2, '0')}`
+}
+
+function _startTimer() {
+  solverElapsed.value = 0
+  _timerHandle = setInterval(() => { solverElapsed.value++ }, 1000)
+}
+
+function _stopTimer() {
+  if (_timerHandle !== null) { clearInterval(_timerHandle); _timerHandle = null }
+}
+
+onUnmounted(_stopTimer)
 
 const INFEASIBLE_SUGGESTIONS = {
   INFEASIBLE: [
@@ -97,6 +130,7 @@ async function ejecutarAlgoritmo() {
   loading.value     = true
   logMessages.value = []
   infeasible.value  = null
+  _startTimer()
   addLog('Iniciando proceso de generación de horarios...', 'info')
 
   try {
@@ -205,6 +239,7 @@ async function ejecutarAlgoritmo() {
     addLog(`Error: ${msg}`, 'error')
     emit('toast', `Error: ${msg}`, 'error')
   } finally {
+    _stopTimer()
     loading.value = false
   }
 }
@@ -399,23 +434,82 @@ async function ejecutarAlgoritmo() {
       </div>
 
       <div class="p-6 space-y-4">
-        <!-- Tiempo estimado — indicador estático (no editable) -->
-        <div class="flex items-center gap-4 bg-surface-container-low border border-outline-variant rounded-xl px-5 py-4">
-          <div class="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined text-primary text-[24px]">schedule</span>
+        <!-- Solver timing — static info when idle, live progress bar while running -->
+        <div
+          :class="[
+            'rounded-xl border transition-colors overflow-hidden',
+            loading
+              ? 'bg-primary/5 border-primary/30'
+              : 'bg-surface-container-low border-outline-variant',
+          ]"
+        >
+          <!-- Header row -->
+          <div class="flex items-center gap-4 px-5 py-4">
+            <div
+              :class="[
+                'w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors',
+                loading ? 'bg-primary/20' : 'bg-primary/15',
+              ]"
+            >
+              <span
+                class="material-symbols-outlined text-primary text-[24px]"
+                :class="loading ? 'animate-pulse' : ''"
+              >schedule</span>
+            </div>
+
+            <!-- Idle state -->
+            <div v-if="!loading">
+              <p class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider">Tiempo de ejecución</p>
+              <p class="text-headline-sm font-sans font-bold text-on-surface mt-0.5">
+                ~{{ Math.round(SOLVER_TIMEOUT_S / 60) }} minutos
+              </p>
+              <p class="text-label-md font-mono text-on-surface-variant mt-0.5">
+                CP-SAT utiliza {{ SOLVER_TIMEOUT_S.toLocaleString() }} s para maximizar la calidad del horario.
+              </p>
+            </div>
+
+            <!-- Active state — elapsed + stage -->
+            <div v-else class="min-w-0 flex-1">
+              <p class="text-label-md font-mono text-primary uppercase tracking-wider">Algoritmo en ejecución</p>
+              <p class="text-headline-sm font-sans font-bold text-on-surface mt-0.5 truncate">
+                {{ solverStage }}
+              </p>
+              <div class="flex items-center gap-3 mt-0.5">
+                <span class="text-label-md font-mono text-on-surface-variant">
+                  {{ _fmtTime(solverElapsed) }} transcurridos
+                </span>
+                <span class="text-outline text-[10px]">·</span>
+                <span class="text-label-md font-mono text-on-surface-variant">
+                  ~{{ _fmtTime(Math.max(0, SOLVER_TIMEOUT_S - solverElapsed)) }} restantes (máx.)
+                </span>
+              </div>
+            </div>
+
+            <!-- Badge -->
+            <div
+              :class="[
+                'ml-auto flex items-center gap-1.5 rounded-full px-3 py-1 flex-shrink-0',
+                loading
+                  ? 'bg-primary/20 border border-primary/40'
+                  : 'bg-primary/10 border border-primary/20',
+              ]"
+            >
+              <span class="w-2 h-2 rounded-full bg-primary flex-shrink-0"
+                    :class="loading ? 'animate-ping' : 'animate-pulse'"></span>
+              <span class="text-label-md font-mono text-primary whitespace-nowrap">
+                {{ loading ? `${Math.round(solverProgress)}%` : 'Optimización máxima' }}
+              </span>
+            </div>
           </div>
-          <div>
-            <p class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider">Tiempo estimado de ejecución</p>
-            <p class="text-headline-sm font-sans font-bold text-on-surface mt-0.5">
-              ~{{ Math.round(SOLVER_TIMEOUT_S / 60) }} minutos
-            </p>
-            <p class="text-label-md font-mono text-on-surface-variant mt-0.5">
-              El algoritmo usa {{ SOLVER_TIMEOUT_S.toLocaleString() }} segundos para maximizar la calidad del horario.
-            </p>
-          </div>
-          <div class="ml-auto flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1">
-            <span class="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0"></span>
-            <span class="text-label-md font-mono text-primary whitespace-nowrap">Optimización máxima</span>
+
+          <!-- Live progress bar — only visible while running -->
+          <div v-if="loading" class="px-5 pb-4">
+            <div class="w-full h-2 bg-primary/10 rounded-full overflow-hidden">
+              <div
+                class="h-full bg-primary rounded-full transition-all duration-1000 ease-linear"
+                :style="{ width: solverProgress + '%' }"
+              ></div>
+            </div>
           </div>
         </div>
 

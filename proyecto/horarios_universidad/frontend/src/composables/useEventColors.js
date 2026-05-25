@@ -9,50 +9,52 @@
  */
 
 // Tailwind-class palette — dark mode (low opacity on dark navy surfaces)
+// 8 slots cycle through all MD3 color roles for maximum visual distinction
 export const EVENT_COLORS = [
-  { bg: 'bg-primary/15',           border: 'border-primary/50',           text: 'text-primary' },
-  { bg: 'bg-secondary/15',         border: 'border-secondary/50',         text: 'text-secondary' },
-  { bg: 'bg-tertiary/15',          border: 'border-tertiary/50',          text: 'text-tertiary' },
-  { bg: 'bg-primary-fixed/10',     border: 'border-primary-fixed/50',     text: 'text-primary-fixed' },
-  { bg: 'bg-secondary-fixed/10',   border: 'border-secondary-fixed/50',   text: 'text-secondary-fixed' },
-  { bg: 'bg-tertiary-fixed/10',    border: 'border-tertiary-fixed/50',    text: 'text-tertiary-fixed' },
-  { bg: 'bg-error/10',             border: 'border-error/40',             text: 'text-error' },
+  { bg: 'bg-primary/15',              border: 'border-primary/50',              text: 'text-primary' },
+  { bg: 'bg-tertiary/15',             border: 'border-tertiary/50',             text: 'text-tertiary' },
+  { bg: 'bg-secondary/15',            border: 'border-secondary/50',            text: 'text-secondary' },
+  { bg: 'bg-tertiary-fixed/10',       border: 'border-tertiary-fixed/50',       text: 'text-tertiary-fixed' },
+  { bg: 'bg-primary-fixed/10',        border: 'border-primary-fixed/50',        text: 'text-primary-fixed' },
+  { bg: 'bg-secondary-fixed/10',      border: 'border-secondary-fixed/50',      text: 'text-secondary-fixed' },
+  { bg: 'bg-error/10',                border: 'border-error/40',                text: 'text-error' },
   { bg: 'bg-on-primary-container/10', border: 'border-on-primary-container/30', text: 'text-on-primary-container' },
 ]
 
 // Light-mode palette — higher opacity/contrast for readability on light backgrounds
 export const EVENT_COLORS_LIGHT = [
-  { bg: 'bg-primary/30',              border: 'border-primary/70',              text: 'text-primary' },
-  { bg: 'bg-secondary/25',            border: 'border-secondary/70',            text: 'text-secondary' },
-  { bg: 'bg-tertiary/25',             border: 'border-tertiary/70',             text: 'text-tertiary' },
-  { bg: 'bg-primary-container/60',    border: 'border-primary/60',              text: 'text-on-primary-container' },
-  { bg: 'bg-secondary-container/60',  border: 'border-secondary/60',            text: 'text-on-secondary-container' },
-  { bg: 'bg-tertiary-container/60',   border: 'border-tertiary/60',             text: 'text-on-tertiary-container' },
-  { bg: 'bg-error/20',                border: 'border-error/60',                text: 'text-error' },
-  { bg: 'bg-primary-fixed/40',        border: 'border-primary-fixed/70',        text: 'text-on-primary-fixed' },
+  { bg: 'bg-primary/25',             border: 'border-primary/60',              text: 'text-primary' },
+  { bg: 'bg-tertiary/25',            border: 'border-tertiary/60',             text: 'text-tertiary' },
+  { bg: 'bg-secondary/25',           border: 'border-secondary/60',            text: 'text-secondary' },
+  { bg: 'bg-tertiary-container/55',  border: 'border-tertiary/55',             text: 'text-on-tertiary-container' },
+  { bg: 'bg-primary-container/55',   border: 'border-primary/55',              text: 'text-on-primary-container' },
+  { bg: 'bg-secondary-container/55', border: 'border-secondary/55',            text: 'text-on-secondary-container' },
+  { bg: 'bg-error/20',               border: 'border-error/55',                text: 'text-error' },
+  { bg: 'bg-primary-fixed/35',       border: 'border-primary-fixed/60',        text: 'text-on-primary-fixed' },
 ]
 
 /**
  * Hex palette for WeeklyCalendar (raw DOM style usage).
- * Colors are bright/pastel enough to show on dark (#0f1829) backgrounds
- * and have >4.5:1 contrast for dark-text (#002918 / #0b1326) content on top.
+ * All colors are toned-down analogous/complementary hues of the
+ * institutional periwinkle-blue system. Saturation kept ≤70 % so
+ * they read clearly on dark navy (#0f1829) without visual clashing.
  */
 export const HEX_PALETTE = [
-  '#6382e6', // primary periwinkle blue
-  '#6098c3', // secondary steel blue
-  '#c49c50', // tertiary muted amber
-  '#f5c97a', // tertiary-fixed gold
-  '#8dd6ef', // secondary-fixed sky
-  '#f472b6', // pink
-  '#a78bfa', // violet
-  '#34d399', // emerald
-  '#fb923c', // orange
-  '#60a5fa', // blue-400
-  '#86efac', // light green
-  '#fbbf24', // amber-400
-  '#c4b5fd', // lavender
-  '#6ee7b7', // mint
-  '#f87171', // red-400
+  '#6382e6', // periwinkle (primary)
+  '#8f7cf5', // soft violet
+  '#58a9c5', // cornflower sky
+  '#c99848', // warm amber
+  '#5aac96', // muted teal
+  '#d47a8b', // dusty rose
+  '#78ab6e', // sage green
+  '#c77856', // terracotta
+  '#7497d8', // medium blue
+  '#b08ae6', // medium lavender
+  '#6ab4b4', // steel cyan
+  '#c4a042', // muted gold
+  '#8ab87a', // light sage
+  '#d07f5e', // warm coral
+  '#6882c8', // steel blue
 ]
 
 /**
