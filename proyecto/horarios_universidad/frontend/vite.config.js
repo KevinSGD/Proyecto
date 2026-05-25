@@ -6,14 +6,13 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     proxy: {
-      // Django dev server
       '^/api/': {
-        target: 'https://tesisomuerte-production-6d83.up.railway.app',
+        // Local FastAPI backend — run: uvicorn scheduler.interfaces.api.main:app --port 8000
+        target: 'http://localhost:8000',
         changeOrigin: true,
-        timeout: 300000,
-        proxyTimeout: 300000,
-        timeout: 300000,
-        proxyTimeout: 300000,
+        // Solver can run up to 6000s; give 2 min buffer
+        timeout: 6200000,
+        proxyTimeout: 6200000,
       },
     },
   },

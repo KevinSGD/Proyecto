@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { state, setStep, setTema } from './store/state'
+import { state, setStep, setTema, setSalonFilter } from './store/state'
 import { useHealthCheck } from './composables/useHealthCheck'
 import DashboardPage  from './pages/DashboardPage.vue'
 import MateriasPage   from './pages/MateriasPage.vue'
@@ -31,8 +31,11 @@ const helpOpen         = ref(false)
 const sidebarCollapsed = ref(false)
 
 function goto(n) {
-  // When calendar is confirmed, redirect sidebar links to Calendario → Dashboard
-  const dest = (n === 4 && state.calendarioLocked) ? 0 : n
+  // Redirect sidebar nav to Calendario → Dashboard when locked,
+  // but NOT when a salon filter is active (programmatic call from Dashboard Aulas tab)
+  const dest = (n === 4 && state.calendarioLocked && !state.salonFilter) ? 0 : n
+  // Clear salon filter when leaving calendar
+  if (dest !== 4 && state.salonFilter) setSalonFilter(null)
   setStep(dest)
   mobileMenuOpen.value = false
 }
