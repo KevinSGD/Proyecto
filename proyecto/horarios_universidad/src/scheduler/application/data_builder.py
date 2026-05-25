@@ -240,9 +240,15 @@ def build_data_from_ui(cfg, materias_list, profes_list):
     salones = [f"Salon_{i + 1:02d}" for i in range(num_salones)]
     tipo_salon = {}
     capacidad_salon = {}
+    cap_comun = int(cfg.get("capacidad_salon_comun", 40))
+    cap_pc    = int(cfg.get("capacidad_salon_pc",    30))
     for s in range(num_salones):
-        tipo_salon[s] = "comun" if s < cfg["num_salones_comunes"] else "pc"
-        capacidad_salon[s] = 25
+        if s < cfg["num_salones_comunes"]:
+            tipo_salon[s]     = "comun"
+            capacidad_salon[s] = cap_comun
+        else:
+            tipo_salon[s]     = "pc"
+            capacidad_salon[s] = cap_pc
 
     return {
         "asignaturas": asignaturas,

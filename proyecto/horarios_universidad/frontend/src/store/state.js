@@ -8,13 +8,16 @@ function nextId(key) {
   return id
 }
 
+// Tiempo de ejecución del solver — fijo en 6000 s, no configurable desde la UI
+export const SOLVER_TIMEOUT_S = 6000
+
 const defaults = {
   step: 0,
   nextMatId: 1,
   nextProfId: 1,
   materias: [],
   profesores: [],
-  tiempoSegundos: 10,
+  tiempoSegundos: SOLVER_TIMEOUT_S,
   salonFilter: null,
   lastRun: null,
   calendarioLocked: false,
@@ -63,6 +66,7 @@ if (loaded && !loaded.aulas) {
   loaded.aulas = { ...defaults.aulas }
 }
 
+<<<<<<< HEAD
 // v3→v5: add Sábado to calendar days if missing
 if (loaded?.calendario?.dias && !loaded.calendario.dias.includes('Sábado')) {
   loaded.calendario.dias = [...loaded.calendario.dias, 'Sábado']
@@ -71,6 +75,16 @@ if (loaded?.calendario?.dias && !loaded.calendario.dias.includes('Sábado')) {
 // Ensure loaded.calendario always has all required keys (deep merge with defaults)
 if (loaded?.calendario) {
   loaded.calendario = { ...defaults.calendario, ...loaded.calendario }
+=======
+// v4→v5: add Sábado to calendario.dias if missing
+if (loaded?.calendario?.dias && !loaded.calendario.dias.includes('Sábado')) {
+  loaded.calendario.dias.push('Sábado')
+}
+
+// v5→v6: ensure tiempoSegundos is always SOLVER_TIMEOUT_S
+if (loaded) {
+  loaded.tiempoSegundos = SOLVER_TIMEOUT_S
+>>>>>>> Arreglo-de-flujo
 }
 
 export const state = reactive({

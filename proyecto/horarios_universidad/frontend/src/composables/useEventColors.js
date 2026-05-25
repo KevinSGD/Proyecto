@@ -8,7 +8,11 @@
  * Raw hex palette (for WeeklyCalendar table cells):
  */
 
+<<<<<<< HEAD
 // Tailwind-class palette — dark mode (default)
+=======
+// Tailwind-class palette — dark mode (low opacity on dark navy surfaces)
+>>>>>>> Arreglo-de-flujo
 export const EVENT_COLORS = [
   { bg: 'bg-primary/15',           border: 'border-primary/50',           text: 'text-primary' },
   { bg: 'bg-secondary/15',         border: 'border-secondary/50',         text: 'text-secondary' },
@@ -20,6 +24,7 @@ export const EVENT_COLORS = [
   { bg: 'bg-on-primary-container/10', border: 'border-on-primary-container/30', text: 'text-on-primary-container' },
 ]
 
+<<<<<<< HEAD
 // Light-mode palette — fully opaque containers with accessible text colors
 export const EVENT_COLORS_LIGHT = [
   { bg: 'bg-primary-container',      border: 'border-primary/50',       text: 'text-on-primary-container' },
@@ -30,6 +35,18 @@ export const EVENT_COLORS_LIGHT = [
   { bg: 'bg-tertiary/25',            border: 'border-tertiary',         text: 'text-tertiary' },
   { bg: 'bg-error-container',        border: 'border-error/50',         text: 'text-on-error-container' },
   { bg: 'bg-primary-fixed/60',       border: 'border-primary-fixed',    text: 'text-on-primary-fixed' },
+=======
+// Light-mode palette — higher opacity/contrast for readability on light backgrounds
+export const EVENT_COLORS_LIGHT = [
+  { bg: 'bg-primary/30',              border: 'border-primary/70',              text: 'text-primary' },
+  { bg: 'bg-secondary/25',            border: 'border-secondary/70',            text: 'text-secondary' },
+  { bg: 'bg-tertiary/25',             border: 'border-tertiary/70',             text: 'text-tertiary' },
+  { bg: 'bg-primary-container/60',    border: 'border-primary/60',              text: 'text-on-primary-container' },
+  { bg: 'bg-secondary-container/60',  border: 'border-secondary/60',            text: 'text-on-secondary-container' },
+  { bg: 'bg-tertiary-container/60',   border: 'border-tertiary/60',             text: 'text-on-tertiary-container' },
+  { bg: 'bg-error/20',                border: 'border-error/60',                text: 'text-error' },
+  { bg: 'bg-primary-fixed/40',        border: 'border-primary-fixed/70',        text: 'text-on-primary-fixed' },
+>>>>>>> Arreglo-de-flujo
 ]
 
 /**
@@ -58,7 +75,11 @@ export const HEX_PALETTE = [
 /**
  * Get Tailwind class set for a materia by its store index.
  * @param {number} idx   Index of the materia in state.materias
+<<<<<<< HEAD
  * @param {string} tema  'dark' (default) or 'light'
+=======
+ * @param {string} tema  'dark' | 'light' — selects the appropriate palette
+>>>>>>> Arreglo-de-flujo
  */
 export function tailwindColorFor(idx, tema = 'dark') {
   const palette = tema === 'light' ? EVENT_COLORS_LIGHT : EVENT_COLORS

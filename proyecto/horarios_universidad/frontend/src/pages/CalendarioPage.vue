@@ -13,7 +13,6 @@ import {
   unlockCalendario,
   upsertEvento,
 } from '../store/state'
-import { verifySchedule } from '../services/api'
 import { tailwindColorFor } from '../composables/useEventColors'
 import StepperBar from '../components/StepperBar.vue'
 
@@ -120,9 +119,15 @@ function confirmarHorario() {
   lockCalendario()
   editMode.value = false
   confirmLockOpen.value = false
+<<<<<<< HEAD
   emit('toast', 'Horario confirmado y bloqueado. Redirigiendo al Dashboard…', 'success')
   // Redirect to Dashboard after a short delay so the toast is visible
   setTimeout(() => emit('goto', 0), 900)
+=======
+  emit('toast', 'Horario confirmado y bloqueado.', 'success')
+  // Redirigir al Dashboard para ver el horario consolidado
+  setTimeout(() => emit('goto', 0), 400)
+>>>>>>> Arreglo-de-flujo
 }
 
 function desbloquearHorario() {
@@ -175,7 +180,7 @@ function delModal() {
   closeModal()
 }
 
-// ─── Color coding ─────────────────────────────────────────────────────────────
+// ─── Color coding (tema-aware para modo alto contraste) ───────────────────────
 function colorFor(materiaId) {
   const idx = state.materias.findIndex(m => m.id === materiaId)
   return tailwindColorFor(idx, state.tema)
@@ -189,6 +194,7 @@ const statsLine = computed(() => {
   return { n, pct }
 })
 
+<<<<<<< HEAD
 // ─── Verify conflicts (client-side, API as optional fallback) ─────────────────
 function detectConflictsLocally(eventos) {
   const bySlot = new Map()
@@ -246,10 +252,16 @@ function detectConflictsLocally(eventos) {
 }
 
 async function verificar() {
+=======
+// ─── Verify conflicts — implementación local (sin API) ────────────────────────
+function verificar() {
+>>>>>>> Arreglo-de-flujo
   if (!state.calendario.eventos.length) return emit('toast', 'No hay clases para verificar.', 'info')
   verifying.value = true
   conflicts.value = []
+
   try {
+<<<<<<< HEAD
     // Try API first; fall back to client-side detection
     let found = []
     try {
@@ -264,9 +276,51 @@ async function verificar() {
       emit('toast', 'Sin conflictos detectados ✓', 'success')
     } else {
       emit('toast', `${found.length} conflicto(s) detectados`, 'error')
+=======
+    const found = []
+    const profSlots = new Map()   // `${profesorId}:${dayIndex}:${hourIndex}` → eventId
+    const roomSlots = new Map()   // `${salon}:${dayIndex}:${hourIndex}` → eventId
+
+    for (const e of state.calendario.eventos) {
+      const dia  = state.calendario.dias[e.dayIndex]  || `Día ${e.dayIndex}`
+      const hora = state.calendario.horas[e.hourIndex] || `Hora ${e.hourIndex}`
+      const prof = profesById.value[e.profesorId]?.nombre || e.profesorId || '?'
+
+      if (e.profesorId != null) {
+        const pk = `${e.profesorId}:${e.dayIndex}:${e.hourIndex}`
+        if (profSlots.has(pk)) {
+          found.push({
+            type: 'profesor',
+            message: `Profesor "${prof}" tiene 2 clases el ${dia} a las ${hora}`,
+          })
+        } else {
+          profSlots.set(pk, e.id)
+        }
+      }
+
+      if (e.salon) {
+        const sk = `${e.salon}:${e.dayIndex}:${e.hourIndex}`
+        if (roomSlots.has(sk)) {
+          found.push({
+            type: 'salon',
+            message: `Salón "${e.salon}" ocupado dos veces el ${dia} a las ${hora}`,
+          })
+        } else {
+          roomSlots.set(sk, e.id)
+        }
+      }
+>>>>>>> Arreglo-de-flujo
     }
-  } catch (e) {
-    emit('toast', 'Error al verificar: ' + (e.message || ''), 'error')
+
+    conflicts.value = found
+    showConflicts.value = true
+    if (!found.length) {
+      emit('toast', '✓ Sin conflictos detectados en el horario', 'success')
+    } else {
+      emit('toast', `${found.length} conflicto(s) detectados`, 'error')
+    }
+  } catch (err) {
+    emit('toast', 'Error al verificar: ' + (err.message || ''), 'error')
   } finally {
     verifying.value = false
   }
@@ -308,10 +362,10 @@ function exportarCSV() {
   emit('toast', 'Cronograma exportado como CSV (abre en Excel)', 'success')
 }
 
-// Professor opacity logic: dim events from other profs when filter is active
-function eventOpacity(e) {
-  if (!profFiltro.value) return ''
-  return e.profesorId === profFiltro.value ? '' : 'opacity-20'
+// Professor opacity: usar style para evitar problemas de reactividad con Tailwind JIT
+function eventOpacityStyle(e) {
+  if (!profFiltro.value) return {}
+  return e.profesorId === profFiltro.value ? {} : { opacity: '0.25' }
 }
 </script>
 
@@ -371,7 +425,7 @@ function eventOpacity(e) {
         <div class="flex items-center gap-2 flex-wrap">
           <!-- Verify -->
           <button
-            @click="verificar"
+            @click="verificar()"
             :disabled="verifying"
             :class="[
               'text-label-md font-mono px-3 py-2 rounded-xl border flex items-center gap-1.5 transition-colors',
@@ -691,10 +745,14 @@ function eventOpacity(e) {
                   'cal-event-card flex-1 rounded-lg p-1.5 flex flex-col justify-between border transition-all min-h-[2rem]',
                   colorFor(e.materiaId).bg,
                   colorFor(e.materiaId).border,
-                  'hover:opacity-80',
+                  'hover:brightness-110',
                   editMode ? 'cursor-grab' : 'cursor-pointer',
+<<<<<<< HEAD
                   eventOpacity(e),
+=======
+>>>>>>> Arreglo-de-flujo
                 ]"
+                :style="eventOpacityStyle(e)"
                 :title="editMode ? 'Arrastra para mover · clic para editar' : 'Clic para editar'"
               >
                 <!-- Subject name — more visible at larger zoom -->
