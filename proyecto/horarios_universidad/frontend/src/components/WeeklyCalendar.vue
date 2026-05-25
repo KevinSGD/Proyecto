@@ -116,13 +116,13 @@ function chipBg(hex) {
 .cal-empty {
   text-align: center;
   padding: 40px;
-  color: #86948a;
+  color: #848ea5;
 }
 
 .cal-scroll {
   overflow-x: auto;
   border-radius: 12px;
-  border: 1px solid #3c4a42;
+  border: 1px solid #343e5a;
 }
 
 .cal-table {
@@ -136,10 +136,10 @@ function chipBg(hex) {
   width: 90px;
   padding: 10px 8px;
   text-align: left;
-  color: #86948a;
+  color: #848ea5;
   background: #0f1829;
   font-weight: 600;
-  border-bottom: 1px solid #3c4a42;
+  border-bottom: 1px solid #343e5a;
   white-space: nowrap;
 }
 
@@ -149,8 +149,8 @@ function chipBg(hex) {
   font-weight: 700;
   color: #dae2fd;
   background: #0f1829;
-  border-bottom: 1px solid #3c4a42;
-  border-left: 1px solid #3c4a42;
+  border-bottom: 1px solid #343e5a;
+  border-left: 1px solid #343e5a;
   letter-spacing: 0.3px;
 }
 
@@ -158,7 +158,7 @@ function chipBg(hex) {
   padding: 8px;
   vertical-align: top;
   background: #090f1c;
-  border-bottom: 1px solid #3c4a42;
+  border-bottom: 1px solid #343e5a;
   white-space: nowrap;
   min-width: 90px;
 }
@@ -166,20 +166,20 @@ function chipBg(hex) {
 .hora-num {
   display: block;
   font-weight: 700;
-  color: #35c98a;
+  color: #6382e6;
   font-size: 0.72rem;
 }
 
 .hora-str {
-  color: #86948a;
+  color: #848ea5;
   font-size: 0.68rem;
 }
 
 .td-cell {
   padding: 4px;
   vertical-align: top;
-  border-bottom: 1px solid #3c4a42;
-  border-left: 1px solid #3c4a42;
+  border-bottom: 1px solid #343e5a;
+  border-left: 1px solid #343e5a;
   min-width: 130px;
   background: #171f33;
 }
@@ -189,7 +189,7 @@ function chipBg(hex) {
 }
 
 .cls-chip {
-  border-left: 3px solid #35c98a;
+  border-left: 3px solid #6382e6;
   border-radius: 6px;
   padding: 5px 7px;
   margin-bottom: 3px;
@@ -216,7 +216,7 @@ function chipBg(hex) {
   gap: 10px;
   margin-top: 14px;
   padding: 12px 14px;
-  border: 1px solid #3c4a42;
+  border: 1px solid #343e5a;
   border-radius: 12px;
   background: #171f33;
 }

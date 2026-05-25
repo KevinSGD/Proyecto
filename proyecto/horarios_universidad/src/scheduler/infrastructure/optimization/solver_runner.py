@@ -1,3 +1,4 @@
+import multiprocessing
 import time
 from ortools.sat.python import cp_model
 from scheduler.infrastructure.optimization.model_builder import build_model
@@ -8,7 +9,7 @@ def solve(cfg, data):
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = cfg["max_time_seconds"]
-    solver.parameters.num_search_workers = 1
+    solver.parameters.num_search_workers = max(1, multiprocessing.cpu_count())
 
     t0 = time.time()
     status = solver.Solve(model)

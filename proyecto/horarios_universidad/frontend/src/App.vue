@@ -31,7 +31,9 @@ const helpOpen         = ref(false)
 const sidebarCollapsed = ref(false)
 
 function goto(n) {
-  setStep(n)
+  // When calendar is confirmed, redirect sidebar links to Calendario → Dashboard
+  const dest = (n === 4 && state.calendarioLocked) ? 0 : n
+  setStep(dest)
   mobileMenuOpen.value = false
 }
 

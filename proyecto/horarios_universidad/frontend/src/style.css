@@ -10,119 +10,119 @@
 
 /* ── DARK THEME (default) ─────────────────────────────────────────────── */
 :root {
-  /* Primary — teal-green */
-  --c-primary:                   53 201 138;
-  --c-primary-container:         26 158 107;
-  --c-primary-fixed:             82 224 162;
-  --c-primary-fixed-dim:         53 201 138;
-  --c-on-primary:                0 41 24;
-  --c-on-primary-container:      208 255 228;
-  --c-on-primary-fixed:          0 24 16;
-  --c-on-primary-fixed-variant:  0 64 48;
-  /* Secondary — steel blue */
-  --c-secondary:                 74 184 217;
-  --c-secondary-container:       33 150 181;
-  --c-secondary-fixed:           141 214 239;
-  --c-secondary-fixed-dim:       74 184 217;
-  --c-on-secondary:              0 45 56;
-  --c-on-secondary-container:    200 240 255;
-  --c-on-secondary-fixed:        0 24 32;
-  --c-on-secondary-fixed-variant:0 64 80;
-  /* Tertiary — warm amber */
-  --c-tertiary:                  232 164 74;
-  --c-tertiary-container:        192 127 40;
-  --c-tertiary-fixed:            245 201 122;
-  --c-tertiary-fixed-dim:        232 164 74;
-  --c-on-tertiary:               60 37 0;
-  --c-on-tertiary-container:     255 240 217;
-  --c-on-tertiary-fixed:         36 21 0;
+  /* Primary — institutional periwinkle blue */
+  --c-primary:                   99 130 230;
+  --c-primary-container:         52 82 160;
+  --c-primary-fixed:             140 165 245;
+  --c-primary-fixed-dim:         99 130 230;
+  --c-on-primary:                0 12 64;
+  --c-on-primary-container:      220 230 255;
+  --c-on-primary-fixed:          0 12 64;
+  --c-on-primary-fixed-variant:  20 50 130;
+  /* Secondary — steel slate blue */
+  --c-secondary:                 96 152 195;
+  --c-secondary-container:       42 98 142;
+  --c-secondary-fixed:           150 195 235;
+  --c-secondary-fixed-dim:       96 152 195;
+  --c-on-secondary:              0 28 50;
+  --c-on-secondary-container:    210 238 255;
+  --c-on-secondary-fixed:        0 28 50;
+  --c-on-secondary-fixed-variant:18 65 100;
+  /* Tertiary — muted amber */
+  --c-tertiary:                  196 156 80;
+  --c-tertiary-container:        140 98 30;
+  --c-tertiary-fixed:            230 190 120;
+  --c-tertiary-fixed-dim:        196 156 80;
+  --c-on-tertiary:               50 34 0;
+  --c-on-tertiary-container:     255 236 200;
+  --c-on-tertiary-fixed:         50 34 0;
   --c-on-tertiary-fixed-variant: 90 56 0;
-  /* Background & surfaces */
-  --c-background:                11 19 38;
-  --c-on-background:             218 226 253;
-  --c-surface:                   15 24 41;
-  --c-surface-dim:               9 15 28;
-  --c-surface-bright:            49 57 77;
-  --c-surface-container-lowest:  6 14 32;
-  --c-surface-container-low:     19 27 46;
-  --c-surface-container:         23 31 51;
-  --c-surface-container-high:    34 42 61;
-  --c-surface-container-highest: 45 52 73;
-  --c-surface-variant:           45 52 73;
-  --c-surface-tint:              78 222 163;
-  --c-on-surface:                218 226 253;
-  --c-on-surface-variant:        187 202 191;
-  --c-inverse-surface:           218 226 253;
-  --c-inverse-on-surface:        40 48 68;
-  --c-inverse-primary:           0 108 73;
-  --c-outline:                   134 148 138;
-  --c-outline-variant:           60 74 66;
+  /* Background & surfaces — dark navy blue */
+  --c-background:                10 14 26;
+  --c-on-background:             218 224 255;
+  --c-surface:                   14 18 38;
+  --c-surface-dim:               8 12 24;
+  --c-surface-bright:            46 54 82;
+  --c-surface-container-lowest:  5 10 28;
+  --c-surface-container-low:     17 24 46;
+  --c-surface-container:         21 28 52;
+  --c-surface-container-high:    32 40 64;
+  --c-surface-container-highest: 43 50 76;
+  --c-surface-variant:           43 50 76;
+  --c-surface-tint:              99 130 230;
+  --c-on-surface:                218 224 255;
+  --c-on-surface-variant:        185 196 218;
+  --c-inverse-surface:           218 224 255;
+  --c-inverse-on-surface:        38 46 70;
+  --c-inverse-primary:           26 68 180;
+  --c-outline:                   132 142 165;
+  --c-outline-variant:           52 62 90;
   /* Error */
   --c-error:                     255 180 171;
   --c-error-container:           147 0 10;
   --c-on-error:                  105 0 5;
   --c-on-error-container:        255 218 214;
 
-  /* Glow effects (used by box-shadow inline styles) */
-  --glow-primary:    0 0 16px rgb(53 201 138 / 0.25);
-  --glow-primary-lg: 0 0 28px rgb(53 201 138 / 0.30);
-  --glow-secondary:  0 0 14px rgb(74 184 217 / 0.25);
+  /* Glow effects — subtle, institutional */
+  --glow-primary:    0 0 16px rgb(99 130 230 / 0.20);
+  --glow-primary-lg: 0 0 24px rgb(99 130 230 / 0.25);
+  --glow-secondary:  0 0 12px rgb(96 152 195 / 0.20);
 
   /* Legacy — keep for any remaining rgba() references */
-  --color-outline-variant: #3c4a42;
-  --color-outline:         #86948a;
+  --color-outline-variant: #343e5a;
+  --color-outline:         #848ea5;
 }
 
 /* ── LIGHT THEME ─────────────────────────────────────────────────────── */
 /* Applied when <html class="light"> — toggles via App.vue */
 html.light {
-  /* Primary — deeper teal for contrast on light bg (WCAG AA 4.5:1+) */
-  --c-primary:                   0 108 73;
-  --c-primary-container:         158 246 197;
-  --c-primary-fixed:             158 246 197;
-  --c-primary-fixed-dim:         128 217 169;
+  /* Primary — deep institutional blue (WCAG AA 4.5:1+) */
+  --c-primary:                   26 80 180;
+  --c-primary-container:         210 226 255;
+  --c-primary-fixed:             210 226 255;
+  --c-primary-fixed-dim:         175 205 255;
   --c-on-primary:                255 255 255;
-  --c-on-primary-container:      0 33 20;
-  --c-on-primary-fixed:          0 33 20;
-  --c-on-primary-fixed-variant:  0 64 48;
-  /* Secondary — deeper blue */
-  --c-secondary:                 0 102 136;
-  --c-secondary-container:       189 233 255;
-  --c-secondary-fixed:           189 233 255;
-  --c-secondary-fixed-dim:       141 203 235;
+  --c-on-primary-container:      0 24 80;
+  --c-on-primary-fixed:          0 24 80;
+  --c-on-primary-fixed-variant:  10 56 150;
+  /* Secondary — medium blue */
+  --c-secondary:                 0 90 162;
+  --c-secondary-container:       195 226 255;
+  --c-secondary-fixed:           195 226 255;
+  --c-secondary-fixed-dim:       152 202 245;
   --c-on-secondary:              255 255 255;
-  --c-on-secondary-container:    0 31 42;
-  --c-on-secondary-fixed:        0 31 42;
-  --c-on-secondary-fixed-variant:0 77 103;
-  /* Tertiary — deeper amber */
-  --c-tertiary:                  124 88 0;
-  --c-tertiary-container:        255 222 161;
-  --c-tertiary-fixed:            255 222 161;
-  --c-tertiary-fixed-dim:        240 188 110;
+  --c-on-secondary-container:    0 28 52;
+  --c-on-secondary-fixed:        0 28 52;
+  --c-on-secondary-fixed-variant:0 64 120;
+  /* Tertiary — deep amber */
+  --c-tertiary:                  120 78 0;
+  --c-tertiary-container:        255 222 155;
+  --c-tertiary-fixed:            255 222 155;
+  --c-tertiary-fixed-dim:        240 190 110;
   --c-on-tertiary:               255 255 255;
-  --c-on-tertiary-container:     39 25 0;
-  --c-on-tertiary-fixed:         39 25 0;
+  --c-on-tertiary-container:     39 22 0;
+  --c-on-tertiary-fixed:         39 22 0;
   --c-on-tertiary-fixed-variant: 90 56 0;
-  /* Background & surfaces — light neutral greens */
-  --c-background:                248 250 249;
-  --c-on-background:             0 21 16;
+  /* Background & surfaces — cool white with blue undertone */
+  --c-background:                248 250 255;
+  --c-on-background:             4 12 44;
   --c-surface:                   255 255 255;
-  --c-surface-dim:               215 219 216;
-  --c-surface-bright:            248 250 249;
+  --c-surface-dim:               214 216 226;
+  --c-surface-bright:            248 250 255;
   --c-surface-container-lowest:  255 255 255;
-  --c-surface-container-low:     242 246 243;
-  --c-surface-container:         236 240 237;
-  --c-surface-container-high:    230 234 231;
-  --c-surface-container-highest: 224 228 225;
-  --c-surface-variant:           214 228 217;
-  --c-surface-tint:              0 108 73;
-  --c-on-surface:                0 21 16;
-  --c-on-surface-variant:        62 77 66;
-  --c-inverse-surface:           43 51 40;
-  --c-inverse-on-surface:        237 243 234;
-  --c-inverse-primary:           158 246 197;
-  --c-outline:                   110 126 115;
-  --c-outline-variant:           188 207 194;
+  --c-surface-container-low:     240 243 254;
+  --c-surface-container:         234 237 252;
+  --c-surface-container-high:    228 231 248;
+  --c-surface-container-highest: 222 225 244;
+  --c-surface-variant:           214 222 246;
+  --c-surface-tint:              26 80 180;
+  --c-on-surface:                4 12 44;
+  --c-on-surface-variant:        52 60 88;
+  --c-inverse-surface:           42 48 72;
+  --c-inverse-on-surface:        236 240 255;
+  --c-inverse-primary:           175 205 255;
+  --c-outline:                   102 112 145;
+  --c-outline-variant:           186 196 228;
   /* Error — dark red (WCAG AA on light) */
   --c-error:                     186 26 26;
   --c-error-container:           255 218 214;
@@ -130,13 +130,13 @@ html.light {
   --c-on-error-container:        65 0 2;
 
   /* Glows (lighter on light bg) */
-  --glow-primary:    0 0 12px rgb(0 108 73 / 0.20);
-  --glow-primary-lg: 0 0 20px rgb(0 108 73 / 0.25);
-  --glow-secondary:  0 0 10px rgb(0 102 136 / 0.20);
+  --glow-primary:    0 0 12px rgb(26 80 180 / 0.20);
+  --glow-primary-lg: 0 0 20px rgb(26 80 180 / 0.22);
+  --glow-secondary:  0 0 10px rgb(0 90 162 / 0.18);
 
   /* Legacy */
-  --color-outline-variant: #bccfc2;
-  --color-outline:         #6e7e73;
+  --color-outline-variant: #bac4e4;
+  --color-outline:         #667091;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -179,32 +179,16 @@ html.light {
   background-size: 24px 24px;
 }
 
-<<<<<<< HEAD
-/* Calendar grid — columns: time-label + N day columns (default 6) */
+/* Calendar grid — columns: time-label + 6 day columns (Lunes-Sábado) */
 .cal-grid {
   display: grid;
   grid-template-columns: 72px repeat(6, 1fr);
   min-width: 840px;
 }
 
-/* Light mode: softer off-white background to reduce glare */
-html.light .cal-bg {
-  background-color: rgb(var(--c-surface-container-low));
-}
-
-/* Light mode: event card opacity boost — prevents transparent look */
+/* Light mode: fully opaque event cards + consistent cell backgrounds */
 html.light .cal-event-card {
   opacity: 1 !important;
-=======
-/* Calendar grid — columns: time-label + 6 day columns (Lunes-Sábado) */
-.cal-grid {
-  display: grid;
-  grid-template-columns: 72px repeat(6, 1fr);
-  min-width: 800px;
-}
-
-/* ── Modo alto contraste (light) — tarjetas de calendario completamente opacas ── */
-html.light .cal-event-card {
   --tw-bg-opacity: 1 !important;
 }
 html.light .cal-grid {
@@ -215,7 +199,6 @@ html.light .cal-grid > div {
 }
 html.light .cal-grid > div.bg-surface-container-lowest {
   background-color: rgb(var(--c-surface-container));
->>>>>>> Arreglo-de-flujo
 }
 
 /* ── Animations ────────────────────────────────────────────────────────── */
