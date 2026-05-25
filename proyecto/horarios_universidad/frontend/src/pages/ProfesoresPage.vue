@@ -543,7 +543,7 @@ onUnmounted(() => window.removeEventListener('click', handleOutsideClick))
                    border border-primary/30 hover:bg-primary hover:text-on-primary
                    flex items-center gap-2 transition-colors"
           >
-            <span class="material-symbols-outlined text-[16px]">save_all</span>
+            <span class="material-symbols-outlined text-[16px]">save</span>
             Guardar Todo
           </button>
         </div>

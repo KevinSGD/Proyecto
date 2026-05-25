@@ -39,9 +39,33 @@ const infeasible     = ref(null)   // { status, suggestions[] } when solver fail
 const solverElapsed  = ref(0)      // seconds elapsed since solver start
 let   _timerHandle   = null
 
-const solverProgress = computed(() =>
-  loading.value ? Math.min((solverElapsed.value / SOLVER_TIMEOUT_S) * 100, 99) : 0
-)
+const estimateSeconds = computed(() => {
+  const rooms = Math.max(1, Number(state.aulas.num_salones_comunes) + Number(state.aulas.num_salones_pc))
+  const days = state.calendario?.dias?.length || 6
+  const blocks = state.calendario?.horas?.length || 11
+  const sessions = state.materias.reduce((sum, m) => {
+    const creditos = Number(m.creditos) || 0
+    const grupos = Number(m.grupos) || 0
+    return sum + (creditos * grupos)
+  }, 0)
+  const docentes = state.profesores.filter(p => (p.estado || 'activo') === 'activo').length
+  const slots = Math.max(1, rooms * days * blocks)
+  const density = sessions / slots
+  const sec = 8 + (sessions * 0.45) + (docentes * 0.8) + (Math.min(1.5, density) * 30)
+  return Math.max(12, Math.round(sec))
+})
+
+const estimateRange = computed(() => {
+  const base = estimateSeconds.value
+  const low = Math.max(8, Math.round(base * 0.6))
+  const high = Math.max(low + 5, Math.round(base * 1.6))
+  return { low, high }
+})
+
+const solverProgress = computed(() => {
+  const denom = Math.max(estimateSeconds.value, 10)
+  return loading.value ? Math.min((solverElapsed.value / denom) * 100, 99) : 0
+})
 
 const solverStage = computed(() => {
   const pct = solverProgress.value
@@ -58,6 +82,8 @@ function _fmtTime(s) {
   const sec = s % 60
   return `${m}:${String(sec).padStart(2, '0')}`
 }
+
+const estimateLabel = computed(() => `${_fmtTime(estimateRange.value.low)}–${_fmtTime(estimateRange.value.high)}`)
 
 function _startTimer() {
   solverElapsed.value = 0
@@ -165,7 +191,7 @@ async function ejecutarAlgoritmo() {
       emit('toast', 'DB no disponible: se omite guardado.', 'info')
     }
 
-    addLog(`Ejecutando solver CP-SAT (timeout fijo: ${SOLVER_TIMEOUT_S}s ≈ ${Math.round(SOLVER_TIMEOUT_S / 60)} min)...`, 'info')
+    addLog(`Ejecutando solver CP-SAT (estimado: ${estimateLabel.value})...`, 'info')
     emit('toast', 'Ejecutando algoritmo...', 'info')
 
     const t0  = Date.now()
@@ -459,12 +485,12 @@ async function ejecutarAlgoritmo() {
 
             <!-- Idle state -->
             <div v-if="!loading">
-              <p class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider">Tiempo de ejecución</p>
+              <p class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider">Tiempo estimado</p>
               <p class="text-headline-sm font-sans font-bold text-on-surface mt-0.5">
-                ~{{ Math.round(SOLVER_TIMEOUT_S / 60) }} minutos
+                ~{{ estimateLabel }}
               </p>
               <p class="text-label-md font-mono text-on-surface-variant mt-0.5">
-                CP-SAT utiliza {{ SOLVER_TIMEOUT_S.toLocaleString() }} s para maximizar la calidad del horario.
+                Estimacion basada en materias, grupos, profesores y salones. Puede variar segun restricciones.
               </p>
             </div>
 
@@ -480,7 +506,7 @@ async function ejecutarAlgoritmo() {
                 </span>
                 <span class="text-outline text-[10px]">·</span>
                 <span class="text-label-md font-mono text-on-surface-variant">
-                  ~{{ _fmtTime(Math.max(0, SOLVER_TIMEOUT_S - solverElapsed)) }} restantes (máx.)
+                  ~{{ _fmtTime(Math.max(0, estimateSeconds - solverElapsed)) }} restantes (estimado)
                 </span>
               </div>
             </div>

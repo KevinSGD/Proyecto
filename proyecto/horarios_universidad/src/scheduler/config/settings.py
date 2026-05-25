@@ -8,5 +8,5 @@ DEFAULT_CONFIG = {
     "num_salones_comunes": 8,
     "num_salones_pc": 12,
     "k_candidatos": 6,
-    "max_time_seconds": 6000,  # Fijo: ~100 minutos
+    "max_time_seconds": 6000,  # Tope de tiempo del solver (segundos)
 }

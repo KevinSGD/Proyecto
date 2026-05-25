@@ -28,15 +28,15 @@
   --c-on-secondary-container:    210 238 255;
   --c-on-secondary-fixed:        0 28 50;
   --c-on-secondary-fixed-variant:18 65 100;
-  /* Tertiary — muted amber */
-  --c-tertiary:                  196 156 80;
-  --c-tertiary-container:        140 98 30;
-  --c-tertiary-fixed:            230 190 120;
-  --c-tertiary-fixed-dim:        196 156 80;
-  --c-on-tertiary:               50 34 0;
-  --c-on-tertiary-container:     255 236 200;
-  --c-on-tertiary-fixed:         50 34 0;
-  --c-on-tertiary-fixed-variant: 90 56 0;
+  /* Tertiary — warm golden (cleaner yellow, less brown) */
+  --c-tertiary:                  214 183 96;
+  --c-tertiary-container:        128 96 32;
+  --c-tertiary-fixed:            242 214 144;
+  --c-tertiary-fixed-dim:        214 183 96;
+  --c-on-tertiary:               44 34 0;
+  --c-on-tertiary-container:     255 242 210;
+  --c-on-tertiary-fixed:         44 34 0;
+  --c-on-tertiary-fixed-variant: 88 62 14;
   /* Background & surfaces — dark navy blue */
   --c-background:                10 14 26;
   --c-on-background:             218 224 255;
@@ -94,15 +94,15 @@ html.light {
   --c-on-secondary-container:    0 28 52;
   --c-on-secondary-fixed:        0 28 52;
   --c-on-secondary-fixed-variant:0 64 120;
-  /* Tertiary — deep amber */
-  --c-tertiary:                  120 78 0;
-  --c-tertiary-container:        255 222 155;
-  --c-tertiary-fixed:            255 222 155;
-  --c-tertiary-fixed-dim:        240 190 110;
+  /* Tertiary — clean gold (less brown, more luminous) */
+  --c-tertiary:                  170 120 0;
+  --c-tertiary-container:        255 236 180;
+  --c-tertiary-fixed:            255 236 180;
+  --c-tertiary-fixed-dim:        245 212 140;
   --c-on-tertiary:               255 255 255;
-  --c-on-tertiary-container:     39 22 0;
-  --c-on-tertiary-fixed:         39 22 0;
-  --c-on-tertiary-fixed-variant: 90 56 0;
+  --c-on-tertiary-container:     56 36 0;
+  --c-on-tertiary-fixed:         56 36 0;
+  --c-on-tertiary-fixed-variant: 96 64 0;
   /* Background & surfaces — cool white with blue undertone */
   --c-background:                248 250 255;
   --c-on-background:             4 12 44;
