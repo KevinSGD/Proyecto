@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, ref, watch } from 'vue'
 import { addMateria, ensureMateriasCount, removeMateria, state } from '../store/state'
 import ProgressStepper from '../components/ProgressStepper.vue'
