@@ -294,4 +294,16 @@ def clear_data(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error eliminando datos: {str(e)}") from e
 
 
+
+
+@api_router.delete("/reset-db")
+def reset_db(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("TRUNCATE TABLE profesores, materias RESTART IDENTITY CASCADE"))
+        db.commit()
+        return {"ok": True, "detail": "Base de datos reseteada, IDs reiniciados desde 1"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error reseteando DB: {str(e)}") from e
+
 app.include_router(api_router)
