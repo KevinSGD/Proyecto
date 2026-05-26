@@ -95,6 +95,9 @@ function eliminar(id) {
 function continuar() {
   if (!state.materias.length)  return emit('toast', 'Registra al menos una materia.', 'error')
   if (!materiasValidas.value)  return emit('toast', 'Completa y guarda todas las materias.', 'error')
+  const nombres = state.materias.map(m => (m.nombre || '').trim().toLowerCase())
+  const duplicados = nombres.filter((n, i) => n && nombres.indexOf(n) !== i)
+  if (duplicados.length) return emit('toast', `Hay materias con nombres duplicados: \`, 'error')
   emit('next')
 }
 
