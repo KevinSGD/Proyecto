@@ -16,11 +16,19 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 def build_database_url() -> str:
     host = (os.getenv("DB_HOST") or "").strip()
+    sslmode = (os.getenv("DB_SSLMODE") or "require").strip()
+
+    # Allow DB_HOST to carry a full connection URL.
+    if "://" in host:
+        if sslmode and "sslmode=" not in host:
+            sep = "&" if "?" in host else "?"
+            return f"{host}{sep}sslmode={sslmode}"
+        return host
+
     port = (os.getenv("DB_PORT") or "5432").strip()
     name = (os.getenv("DB_NAME") or "").strip()
     user = (os.getenv("DB_USER") or "").strip()
     password = os.getenv("DB_PASSWORD") or ""
-    sslmode = (os.getenv("DB_SSLMODE") or "require").strip()
 
     if not all([host, name, user, password]):
         return None  # Return None instead of raising
