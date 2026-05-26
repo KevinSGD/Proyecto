@@ -97,7 +97,7 @@ function continuar() {
   if (!materiasValidas.value)  return emit('toast', 'Completa y guarda todas las materias.', 'error')
   const nombres = state.materias.map(m => (m.nombre || '').trim().toLowerCase())
   const duplicados = nombres.filter((n, i) => n && nombres.indexOf(n) !== i)
-  if (duplicados.length) return emit('toast', `Hay materias con nombres duplicados: \`, 'error')
+  if (duplicados.length) return emit('toast', 'Hay materias con el mismo nombre. Corrijelas antes de continuar.', 'error')
   emit('next')
 }
 
