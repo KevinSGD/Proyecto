@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 
 class MateriaCreate(BaseModel):
     nombre: str = Field(..., min_length=1)
-    creditos: int = Field(..., ge=1, le=4)
+    creditos: int = Field(..., ge=1, le=10)
     grupos: int = Field(..., ge=1)
     categoria: str = Field(..., min_length=1)
 
