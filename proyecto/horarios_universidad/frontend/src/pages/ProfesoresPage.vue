@@ -52,6 +52,9 @@ function guardar(p) {
   if (!(p.profesorId || '').trim()) return emit('toast', 'El ID del profesor es requerido.', 'error')
   if (!p.materiaIds?.length)        return emit('toast', 'Asigna al menos una materia.', 'error')
   if (Number(p.maxHoras) < 1)       return emit('toast', 'La intensidad máxima debe ser ≥ 1 hora.', 'error')
+  const idTrim = p.profesorId.trim().toLowerCase()
+  const duplicado = state.profesores.find(x => x.id !== p.id && (x.profesorId || '').trim().toLowerCase() === idTrim)
+  if (duplicado) return emit('toast', 'Ya existe un profesor con el ID "' + p.profesorId.trim() + '".', 'error')
   p.editing = false
   erroresBanner.value = []
 }
@@ -68,8 +71,13 @@ function guardarTodos() {
     if (!p.materiaIds?.length)        filaErrors.push('sin materia asignada')
     if (Number(p.maxHoras) < 1)       filaErrors.push('intensidad < 1')
 
+    if (!filaErrors.length) {
+      const idTrim = (p.profesorId || '').trim().toLowerCase()
+      const dup = state.profesores.find(x => x.id !== p.id && (x.profesorId || '').trim().toLowerCase() === idTrim)
+      if (dup) filaErrors.push('ID duplicado: "' + (p.profesorId || '').trim() + '"')
+    }
     if (filaErrors.length) {
-      erroresBanner.value.push(`"${p.nombre || '(sin nombre)'}": ${filaErrors.join(', ')}`)
+      erroresBanner.value.push('"' + (p.nombre || '(sin nombre)') + '": ' + filaErrors.join(', '))
     } else {
       p.editing = false
       savedCount++
@@ -91,6 +99,9 @@ function eliminar(id) {
 function continuar() {
   if (!state.profesores.length)  return emit('toast', 'Configura al menos un profesor.', 'error')
   if (!profesoresValidos.value)  return emit('toast', 'Completa y guarda todos los profesores.', 'error')
+  const ids = state.profesores.map(p => (p.profesorId || '').trim().toLowerCase())
+  const duplicados = ids.filter((id, i) => id && ids.indexOf(id) !== i)
+  if (duplicados.length) return emit('toast', 'Hay profesores con el mismo ID. Corrijelos antes de continuar.', 'error')
   emit('next')
 }
 
