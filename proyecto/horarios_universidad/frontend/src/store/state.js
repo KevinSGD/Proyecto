@@ -8,8 +8,8 @@ function nextId(key) {
   return id
 }
 
-// Tiempo de ejecución del solver — fijo en 6000 s, no configurable desde la UI
-export const SOLVER_TIMEOUT_S = 6000
+// Tiempo de ejecución del solver ajustado para despliegues hospedados.
+export const SOLVER_TIMEOUT_S = 30
 
 const defaults = {
   step: 0,

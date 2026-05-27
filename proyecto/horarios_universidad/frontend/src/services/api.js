@@ -1,4 +1,6 @@
-const API_BASE_URL = '/api'
+const API_BASE_URL = import.meta.env.DEV
+  ? '/api'
+  : (import.meta.env.VITE_API_BASE_URL || 'https://tesisomuerte-production-6d83.up.railway.app/api')
 
 async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}`
@@ -56,6 +58,10 @@ export function runScheduler(payload) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
+}
+
+export function getRunSchedulerStatus(jobId) {
+  return request(`/run/${jobId}`)
 }
 
 export function verifySchedule(eventos) {

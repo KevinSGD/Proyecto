@@ -1,5 +1,5 @@
 # src/scheduler/infrastructure/models.py
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, create_engine
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -46,3 +46,15 @@ class Profesor(Base):
             "codigo": self.codigo,
             "materia_id": self.materia_id,
         }
+
+
+class RunJob(Base):
+    __tablename__ = "run_jobs"
+
+    job_id = Column(String, primary_key=True, index=True)
+    state = Column(String, nullable=False, default="queued")
+    created_at = Column(String, nullable=True)
+    started_at = Column(String, nullable=True)
+    finished_at = Column(String, nullable=True)
+    result_json = Column(Text, nullable=True)
+    detail = Column(Text, nullable=True)

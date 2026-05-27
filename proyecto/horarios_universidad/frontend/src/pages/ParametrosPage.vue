@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onUnmounted, ref } from 'vue'
 import { state, resetCalendar, setEventos, setLastRun, SOLVER_TIMEOUT_S } from '../store/state'
-import { getDbHealth, runScheduler, saveData } from '../services/api'
+import { getDbHealth, getRunSchedulerStatus, runScheduler, saveData } from '../services/api'
 import ProgressStepper from '../components/ProgressStepper.vue'
 
 const emit = defineEmits(['toast', 'prev', 'next'])
@@ -81,6 +81,10 @@ function _fmtTime(s) {
   const m = Math.floor(s / 60)
   const sec = s % 60
   return `${m}:${String(sec).padStart(2, '0')}`
+}
+
+function _sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 const estimateLabel = computed(() => `${_fmtTime(estimateRange.value.low)}–${_fmtTime(estimateRange.value.high)}`)
@@ -195,7 +199,7 @@ async function ejecutarAlgoritmo() {
     emit('toast', 'Ejecutando algoritmo...', 'info')
 
     const t0  = Date.now()
-    const out = await runScheduler({
+    const initial = await runScheduler({
       seed:             42,
       max_time_seconds: SOLVER_TIMEOUT_S,
       use_ui_data:      true,
@@ -225,9 +229,41 @@ async function ejecutarAlgoritmo() {
       })),
     })
 
+    let out = initial
+    if (initial?.job_id) {
+      if (!out.state) out = { ...initial, state: 'queued' }
+      addLog(`Solver en proceso en segundo plano (job ${initial.job_id.slice(0, 8)}).`, 'info')
+      emit('toast', 'Solver en proceso...', 'info')
+
+      const deadline = Date.now() + 360000  // 6 min — backend stale-kill fires at 5 min
+      while (out?.state === 'queued' || out?.state === 'running') {
+        if (Date.now() > deadline) {
+          throw new Error('El solver tardó demasiado. Intenta reducir el número de materias o grupos.')
+        }
+        await _sleep(3000)
+        out = await getRunSchedulerStatus(initial.job_id)
+      }
+    }
+
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1)
 
-    if (!out) { addLog('Respuesta inválida del backend.', 'error'); return emit('toast', 'Respuesta inválida.', 'error') }
+    if (!out) {
+      addLog('Respuesta invalida del backend.', 'error')
+      return emit('toast', 'Respuesta invalida.', 'error')
+    }
+    if (out?.state === 'error') {
+      const detail = out?.detail || 'Error desconocido en el solver.'
+      addLog(`Error: ${detail}`, 'error')
+      return emit('toast', `Error: ${detail}`, 'error')
+    }
+    if (out?.state && out.state !== 'done' && !out.status) {
+      addLog(`Estado inesperado del solver: ${out.state}`, 'error')
+      return emit('toast', `Estado inesperado del solver: ${out.state}`, 'error')
+    }
+    if (!out.status) {
+      addLog('Respuesta incompleta del solver.', 'error')
+      return emit('toast', 'Respuesta incompleta del solver.', 'error')
+    }
     if (!['OPTIMAL', 'FEASIBLE'].includes(out.status)) {
       addLog(`Estado: ${out.status} — ${out.message || ''}`, 'error')
       const category = out.status === 'INFEASIBLE' ? 'INFEASIBLE'

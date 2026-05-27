@@ -1,11 +1,28 @@
 # src/scheduler/interfaces/api/main.py
+import json
 import os
+import threading
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List
+from uuid import uuid4
+
+try:
+    import numpy as np
+    class _JsonEncoder(json.JSONEncoder):
+        def default(self, o):
+            if isinstance(o, np.integer):
+                return int(o)
+            if isinstance(o, np.floating):
+                return float(o)
+            if isinstance(o, np.ndarray):
+                return o.tolist()
+            return super().default(o)
+except ImportError:
+    _JsonEncoder = json.JSONEncoder
 
 from dotenv import load_dotenv
-import requests
 from fastapi import FastAPI, APIRouter, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -19,8 +36,8 @@ load_dotenv(PROJECT_ROOT / ".env")
 from scheduler.application.data_builder import build_data_from_ui
 from scheduler.application.services.run_pipeline import run_pipeline
 from scheduler.config.settings import DEFAULT_CONFIG
-from scheduler.infrastructure.database import engine, get_db, init_db
-from scheduler.infrastructure.models import Materia, Profesor
+from scheduler.infrastructure.database import engine, get_db, init_db, SessionLocal
+from scheduler.infrastructure.models import Materia, Profesor, RunJob
 from scheduler.interfaces.api.schemas import (
     MateriaCreate,
     MateriaResponse,
@@ -45,6 +62,111 @@ try:
     init_db()
 except Exception as e:
     print(f"Warning: Could not initialize database: {e}")
+
+
+def _serialize_run_response(result: dict[str, Any]) -> dict[str, Any]:
+    response = {
+        "ok": result.get("status") in {"OPTIMAL", "FEASIBLE"},
+        **result,
+    }
+    df_asig = response.pop("df_asig", None)
+    if df_asig is not None:
+        response["df_asig_rows"] = int(len(df_asig))
+        response["df_asig_preview"] = df_asig.fillna("").to_dict(orient="records")
+    return response
+
+
+def _ensure_status_fields(result: dict[str, Any]) -> dict[str, Any]:
+    if "status" not in result:
+        detail = result.get("detail") or result.get("message") or "Resultado sin estado."
+        result["status"] = "UNKNOWN"
+        result["message"] = detail
+    if "ok" not in result:
+        result["ok"] = result.get("status") in {"OPTIMAL", "FEASIBLE"}
+    return result
+
+
+def _build_run_response(payload: "RunRequest") -> dict[str, Any]:
+    aulas = payload.aulas or {}
+    cfg = DEFAULT_CONFIG.copy()
+    cfg.update({
+        "seed": payload.seed,
+        "max_time_seconds": payload.max_time_seconds,
+        "num_profes": payload.num_profes,
+        "num_salones_comunes": int(aulas.get("num_salones_comunes", payload.num_salones_comunes)),
+        "num_salones_pc":      int(aulas.get("num_salones_pc",      payload.num_salones_pc)),
+    })
+
+    data = None
+    if payload.use_ui_data:
+        data = build_data_from_ui(cfg, payload.materias, payload.profesores)
+
+    result = run_pipeline(cfg, data=data)
+    return _ensure_status_fields(_serialize_run_response(result))
+
+
+def _db_session():
+    if not SessionLocal:
+        return None
+    return SessionLocal()
+
+
+def _update_job_db(job_id: str, fields: dict) -> None:
+    db = _db_session()
+    if not db:
+        return
+    try:
+        job = db.query(RunJob).filter_by(job_id=job_id).first()
+        if job:
+            for k, v in fields.items():
+                setattr(job, k, v)
+            db.commit()
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+    finally:
+        db.close()
+
+
+def _run_job(job_id: str, payload: "RunRequest") -> None:
+    _update_job_db(job_id, {"state": "running", "started_at": datetime.now(timezone.utc).isoformat()})
+
+    try:
+        result = _build_run_response(payload)
+        result_json = json.dumps(result, cls=_JsonEncoder)
+        _update_job_db(job_id, {
+            "state": "done",
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "result_json": result_json,
+        })
+    except Exception as exc:
+        _update_job_db(job_id, {
+            "state": "error",
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "detail": str(exc),
+        })
+
+
+def _get_job(job_id: str, db: Session) -> dict[str, Any] | None:
+    row = db.query(RunJob).filter_by(job_id=job_id).first()
+    if row is None:
+        return None
+    result = {
+        "job_id": row.job_id,
+        "state": row.state,
+        "created_at": row.created_at,
+        "started_at": row.started_at,
+        "finished_at": row.finished_at,
+        "detail": row.detail,
+    }
+    if row.result_json:
+        try:
+            result["result"] = json.loads(row.result_json)
+        except ValueError:
+            pass
+    return result
 
 
 # ─── Request / Response models ───────────────────────────────────────────────
@@ -104,64 +226,51 @@ def run_help():
     }
 
 
-@api_router.post("/run")
-def run(payload: RunRequest):
-    aulas = payload.aulas or {}
-    cfg = DEFAULT_CONFIG.copy()
-    cfg.update({
-        "seed": payload.seed,
-        "max_time_seconds": payload.max_time_seconds,
-        "num_profes": payload.num_profes,
-        "num_salones_comunes": int(aulas.get("num_salones_comunes", payload.num_salones_comunes)),
-        "num_salones_pc":      int(aulas.get("num_salones_pc",      payload.num_salones_pc)),
-    })
+@api_router.post("/run", status_code=202)
+def run(payload: RunRequest, db: Session = Depends(get_db)):
+    job_id = uuid4().hex
+    now = datetime.now(timezone.utc).isoformat()
+    db.add(RunJob(job_id=job_id, state="queued", created_at=now))
+    db.commit()
 
-    try:
-        railway_run_url = (os.getenv("RAILWAY_RUN_URL") or "").strip()
-        if railway_run_url:
-            payload_json = {
-                "seed":               payload.seed,
-                "max_time_seconds":   payload.max_time_seconds,
-                "num_profes":         payload.num_profes,
-                "num_salones_comunes": payload.num_salones_comunes,
-                "num_salones_pc":     payload.num_salones_pc,
-                "use_ui_data":        payload.use_ui_data,
-                "materias":           payload.materias,
-                "profesores":         payload.profesores,
-                "aulas":              payload.aulas,
-            }
+    worker = threading.Thread(target=_run_job, args=(job_id, payload), daemon=True)
+    worker.start()
+    return {"ok": True, "job_id": job_id, "state": "queued"}
+
+
+_JOB_STALE_SECONDS = 300  # mark running jobs as error after 5 min
+
+@api_router.get("/run/{job_id}")
+def run_status(job_id: str, db: Session = Depends(get_db)):
+    job = _get_job(job_id, db)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job no encontrado")
+
+    state = job.get("state")
+
+    if state in {"queued", "running"}:
+        started = job.get("started_at") or job.get("created_at")
+        if started:
             try:
-                resp = requests.post(railway_run_url, json=payload_json, timeout=max(60, payload.max_time_seconds + 30))
-                resp.raise_for_status()
-                try:
-                    return resp.json()
-                except ValueError:
-                    return {"ok": True, "detail": "Delegated run completed, no JSON returned."}
-            except requests.RequestException as e:
-                raise HTTPException(status_code=502, detail=f"Error delegando a Railway: {e}") from e
+                started_dt = datetime.fromisoformat(started.replace("Z", "+00:00"))
+                age = (datetime.now(timezone.utc) - started_dt).total_seconds()
+                if age > _JOB_STALE_SECONDS:
+                    _update_job_db(job_id, {
+                        "state": "error",
+                        "finished_at": datetime.now(timezone.utc).isoformat(),
+                        "detail": f"El solver no respondió en {_JOB_STALE_SECONDS}s. Intenta de nuevo.",
+                    })
+                    return {"ok": False, "job_id": job_id, "state": "error",
+                            "detail": f"El solver no respondió en {_JOB_STALE_SECONDS}s. Intenta de nuevo."}
+            except (ValueError, TypeError):
+                pass
+        return {"ok": True, "job_id": job_id, "state": state}
 
-        data = None
-        if payload.use_ui_data:
-            data = build_data_from_ui(cfg, payload.materias, payload.profesores)
+    if state == "error":
+        return {"ok": False, "job_id": job_id, "state": state, "detail": job.get("detail", "Error desconocido")}
 
-        result = run_pipeline(cfg, data=data)
-        df_asig = result.pop("df_asig", None)
-
-        response = {
-            "ok": result.get("status") in {"OPTIMAL", "FEASIBLE"},
-            **result,
-        }
-        if df_asig is not None:
-            response["df_asig_rows"] = int(len(df_asig))
-            response["df_asig_preview"] = df_asig.fillna("").to_dict(orient="records")
-
-        return response
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Error ejecutando pipeline: {exc}") from exc
+    result = _ensure_status_fields(job.get("result") or {})
+    return {"job_id": job_id, "state": state, **result}
 
 
 # ─── Verificación de integridad ──────────────────────────────────────────────

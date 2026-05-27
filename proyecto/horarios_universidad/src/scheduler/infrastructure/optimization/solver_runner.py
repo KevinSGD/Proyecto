@@ -9,7 +9,7 @@ def solve(cfg, data):
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = cfg["max_time_seconds"]
-    solver.parameters.num_search_workers = max(1, multiprocessing.cpu_count())
+    solver.parameters.num_search_workers = min(max(1, multiprocessing.cpu_count()), 2)
 
     t0 = time.time()
     status = solver.Solve(model)
