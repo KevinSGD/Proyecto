@@ -341,10 +341,10 @@ async function ejecutarAlgoritmo() {
     <!-- ─── Suspended professors notice ─── -->
     <div
       v-if="state.profesores.some(p => p.estado === 'suspendido')"
-      class="flex items-start gap-3 bg-tertiary/10 border border-tertiary/30 rounded-xl px-4 py-3"
+      class="flex items-start gap-3 bg-surface-container-high border border-outline rounded-xl px-4 py-3"
       role="status"
     >
-      <span class="material-symbols-outlined text-tertiary text-[20px] flex-shrink-0 mt-0.5">info</span>
+      <span class="material-symbols-outlined text-on-surface-variant text-[20px] flex-shrink-0 mt-0.5">info</span>
       <p class="text-body-sm text-on-surface">
         <span class="font-bold">{{ state.profesores.filter(p => p.estado === 'suspendido').length }} profesor(es) suspendido(s)</span>
         serán excluidos automáticamente del algoritmo.
@@ -378,7 +378,7 @@ async function ejecutarAlgoritmo() {
             :key="i"
             class="flex items-start gap-3 text-body-sm text-on-surface"
           >
-            <span class="w-5 h-5 rounded-full bg-tertiary/15 text-tertiary flex items-center justify-center
+            <span class="w-5 h-5 rounded-full bg-surface-container-high text-on-surface-variant border border-outline-variant flex items-center justify-center
                          text-[11px] font-mono font-bold flex-shrink-0 mt-0.5">{{ i + 1 }}</span>
             {{ sug }}
           </li>
