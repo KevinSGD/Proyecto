@@ -21,7 +21,7 @@ const defaults = {
   salonFilter: null,
   lastRun: null,
   calendarioLocked: false,
-  tema: 'dark',
+  tema: 'light',
   aulas: {
     capacidad_salon_comun: 40,
     capacidad_salon_pc:    30,

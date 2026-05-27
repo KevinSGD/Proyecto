@@ -10,25 +10,25 @@
 
 /* ── DARK THEME (default) ─────────────────────────────────────────────── */
 :root {
-  /* Primary — institutional periwinkle blue */
-  --c-primary:                   99 130 230;
-  --c-primary-container:         52 82 160;
-  --c-primary-fixed:             140 165 245;
-  --c-primary-fixed-dim:         99 130 230;
-  --c-on-primary:                0 12 64;
-  --c-on-primary-container:      220 230 255;
-  --c-on-primary-fixed:          0 12 64;
-  --c-on-primary-fixed-variant:  20 50 130;
-  /* Secondary — steel slate blue */
-  --c-secondary:                 96 152 195;
-  --c-secondary-container:       42 98 142;
-  --c-secondary-fixed:           150 195 235;
-  --c-secondary-fixed-dim:       96 152 195;
-  --c-on-secondary:              0 28 50;
-  --c-on-secondary-container:    210 238 255;
-  --c-on-secondary-fixed:        0 28 50;
-  --c-on-secondary-fixed-variant:18 65 100;
-  /* Tertiary — warm golden (cleaner yellow, less brown) */
+  /* Primary — UMB red (dark variant) */
+  --c-primary:                   255 180 170;
+  --c-primary-container:         108 16 16;
+  --c-primary-fixed:             230 150 140;
+  --c-primary-fixed-dim:         255 180 170;
+  --c-on-primary:                80 0 0;
+  --c-on-primary-container:      255 218 212;
+  --c-on-primary-fixed:          80 0 0;
+  --c-on-primary-fixed-variant:  200 100 100;
+  /* Secondary — rose red */
+  --c-secondary:                 240 155 155;
+  --c-secondary-container:       86 28 28;
+  --c-secondary-fixed:           215 135 135;
+  --c-secondary-fixed-dim:       240 155 155;
+  --c-on-secondary:              64 10 10;
+  --c-on-secondary-container:    255 218 218;
+  --c-on-secondary-fixed:        64 10 10;
+  --c-on-secondary-fixed-variant:186 104 104;
+  /* Tertiary — warm golden */
   --c-tertiary:                  214 183 96;
   --c-tertiary-container:        128 96 32;
   --c-tertiary-fixed:            242 214 144;
@@ -37,106 +37,106 @@
   --c-on-tertiary-container:     255 242 210;
   --c-on-tertiary-fixed:         44 34 0;
   --c-on-tertiary-fixed-variant: 88 62 14;
-  /* Background & surfaces — dark navy blue */
-  --c-background:                10 14 26;
-  --c-on-background:             218 224 255;
-  --c-surface:                   14 18 38;
-  --c-surface-dim:               8 12 24;
-  --c-surface-bright:            46 54 82;
-  --c-surface-container-lowest:  5 10 28;
-  --c-surface-container-low:     17 24 46;
-  --c-surface-container:         21 28 52;
-  --c-surface-container-high:    32 40 64;
-  --c-surface-container-highest: 43 50 76;
-  --c-surface-variant:           43 50 76;
-  --c-surface-tint:              99 130 230;
-  --c-on-surface:                218 224 255;
-  --c-on-surface-variant:        185 196 218;
-  --c-inverse-surface:           218 224 255;
-  --c-inverse-on-surface:        38 46 70;
-  --c-inverse-primary:           26 68 180;
-  --c-outline:                   132 142 165;
-  --c-outline-variant:           52 62 90;
+  /* Background & surfaces — dark red-tinted */
+  --c-background:                20 6 6;
+  --c-on-background:             255 218 214;
+  --c-surface:                   26 8 8;
+  --c-surface-dim:               14 4 4;
+  --c-surface-bright:            50 20 20;
+  --c-surface-container-lowest:  14 4 4;
+  --c-surface-container-low:     30 10 10;
+  --c-surface-container:         36 14 14;
+  --c-surface-container-high:    48 20 20;
+  --c-surface-container-highest: 60 26 26;
+  --c-surface-variant:           60 26 26;
+  --c-surface-tint:              255 180 170;
+  --c-on-surface:                255 218 214;
+  --c-on-surface-variant:        218 185 185;
+  --c-inverse-surface:           255 218 214;
+  --c-inverse-on-surface:        50 14 14;
+  --c-inverse-primary:           140 21 21;
+  --c-outline:                   165 115 115;
+  --c-outline-variant:           68 36 36;
   /* Error */
   --c-error:                     255 180 171;
   --c-error-container:           147 0 10;
   --c-on-error:                  105 0 5;
   --c-on-error-container:        255 218 214;
 
-  /* Glow effects — subtle, institutional */
-  --glow-primary:    0 0 16px rgb(99 130 230 / 0.20);
-  --glow-primary-lg: 0 0 24px rgb(99 130 230 / 0.25);
-  --glow-secondary:  0 0 12px rgb(96 152 195 / 0.20);
+  /* Glow effects */
+  --glow-primary:    0 0 16px rgb(255 180 170 / 0.20);
+  --glow-primary-lg: 0 0 24px rgb(255 180 170 / 0.25);
+  --glow-secondary:  0 0 12px rgb(240 155 155 / 0.20);
 
-  /* Legacy — keep for any remaining rgba() references */
-  --color-outline-variant: #343e5a;
-  --color-outline:         #848ea5;
+  /* Legacy */
+  --color-outline-variant: #441e1e;
+  --color-outline:         #a57373;
 }
 
-/* ── LIGHT THEME ─────────────────────────────────────────────────────── */
+/* ── LIGHT THEME — UMB Institucional (Canvas) ──────────────────────────── */
 /* Applied when <html class="light"> — toggles via App.vue */
 html.light {
-  /* Primary — deep institutional blue (WCAG AA 4.5:1+) */
-  --c-primary:                   26 80 180;
-  --c-primary-container:         210 226 255;
-  --c-primary-fixed:             210 226 255;
-  --c-primary-fixed-dim:         175 205 255;
+  /* Primary — UMB rojo institucional #8C1515 (WCAG AA 4.5:1+ sobre blanco) */
+  --c-primary:                   140 21 21;
+  --c-primary-container:         255 218 212;
+  --c-primary-fixed:             164 36 36;
+  --c-primary-fixed-dim:         120 14 14;
   --c-on-primary:                255 255 255;
-  --c-on-primary-container:      0 24 80;
-  --c-on-primary-fixed:          0 24 80;
-  --c-on-primary-fixed-variant:  10 56 150;
-  /* Secondary — medium blue */
-  --c-secondary:                 0 90 162;
-  --c-secondary-container:       195 226 255;
-  --c-secondary-fixed:           195 226 255;
-  --c-secondary-fixed-dim:       152 202 245;
+  --c-on-primary-container:      56 0 0;
+  --c-on-primary-fixed:          255 255 255;
+  --c-on-primary-fixed-variant:  255 220 215;
+  /* Secondary — rojo medio */
+  --c-secondary:                 157 65 65;
+  --c-secondary-container:       255 218 218;
+  --c-secondary-fixed:           180 80 80;
+  --c-secondary-fixed-dim:       140 55 55;
   --c-on-secondary:              255 255 255;
-  --c-on-secondary-container:    0 28 52;
-  --c-on-secondary-fixed:        0 28 52;
-  --c-on-secondary-fixed-variant:0 64 120;
-  /* Tertiary — clean gold (less brown, more luminous) */
-  --c-tertiary:                  170 120 0;
-  --c-tertiary-container:        255 236 180;
-  --c-tertiary-fixed:            255 236 180;
-  --c-tertiary-fixed-dim:        245 212 140;
+  --c-on-secondary-container:    64 10 10;
+  --c-on-secondary-fixed:        255 255 255;
+  --c-on-secondary-fixed-variant:255 220 220;
+  /* Tertiary — dorado/ámbar UMB */
+  --c-tertiary:                  150 108 0;
+  --c-tertiary-container:        255 223 160;
+  --c-tertiary-fixed:            255 223 160;
+  --c-tertiary-fixed-dim:        240 200 130;
   --c-on-tertiary:               255 255 255;
   --c-on-tertiary-container:     56 36 0;
-  --c-on-tertiary-fixed:         56 36 0;
-  --c-on-tertiary-fixed-variant: 96 64 0;
-  /* Background & surfaces — cool white with blue undertone */
-  --c-background:                248 250 255;
-  --c-on-background:             4 12 44;
+  --c-on-tertiary-fixed:         255 255 255;
+  --c-on-tertiary-fixed-variant: 255 215 140;
+  /* Background & surfaces — blanco cálido */
+  --c-background:                252 248 248;
+  --c-on-background:             28 4 4;
   --c-surface:                   255 255 255;
-  --c-surface-dim:               214 216 226;
-  --c-surface-bright:            248 250 255;
+  --c-surface-dim:               220 215 215;
+  --c-surface-bright:            252 248 248;
   --c-surface-container-lowest:  255 255 255;
-  --c-surface-container-low:     240 243 254;
-  --c-surface-container:         234 237 252;
-  --c-surface-container-high:    228 231 248;
-  --c-surface-container-highest: 222 225 244;
-  --c-surface-variant:           214 222 246;
-  --c-surface-tint:              26 80 180;
-  --c-on-surface:                4 12 44;
-  --c-on-surface-variant:        52 60 88;
-  --c-inverse-surface:           42 48 72;
-  --c-inverse-on-surface:        236 240 255;
-  --c-inverse-primary:           175 205 255;
-  --c-outline:                   102 112 145;
-  --c-outline-variant:           186 196 228;
-  /* Error — dark red (WCAG AA on light) */
+  --c-surface-container-low:     248 244 244;
+  --c-surface-container:         242 238 238;
+  --c-surface-container-high:    236 232 232;
+  --c-surface-container-highest: 230 225 225;
+  --c-surface-variant:           250 224 222;
+  --c-surface-tint:              140 21 21;
+  --c-on-surface:                28 4 4;
+  --c-on-surface-variant:        80 44 44;
+  --c-inverse-surface:           50 14 14;
+  --c-inverse-on-surface:        255 235 232;
+  --c-inverse-primary:           255 180 170;
+  --c-outline:                   122 86 86;
+  --c-outline-variant:           218 196 196;
+  /* Error */
   --c-error:                     186 26 26;
   --c-error-container:           255 218 214;
   --c-on-error:                  255 255 255;
   --c-on-error-container:        65 0 2;
 
-  /* Glows (lighter on light bg) */
-  --glow-primary:    0 0 12px rgb(26 80 180 / 0.20);
-  --glow-primary-lg: 0 0 20px rgb(26 80 180 / 0.22);
-  --glow-secondary:  0 0 10px rgb(0 90 162 / 0.18);
+  /* Glows */
+  --glow-primary:    0 0 12px rgb(140 21 21 / 0.22);
+  --glow-primary-lg: 0 0 20px rgb(140 21 21 / 0.26);
+  --glow-secondary:  0 0 10px rgb(157 65 65 / 0.18);
 
   /* Legacy */
-  --color-outline-variant: #bac4e4;
-  --color-outline:         #667091;
+  --color-outline-variant: #dac4c4;
+  --color-outline:         #7a5656;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
