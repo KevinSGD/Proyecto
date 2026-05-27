@@ -7,7 +7,11 @@ import MateriasPage   from './pages/MateriasPage.vue'
 import ProfesoresPage from './pages/ProfesoresPage.vue'
 import ParametrosPage from './pages/ParametrosPage.vue'
 import CalendarioPage from './pages/CalendarioPage.vue'
+import LoginPage      from './pages/LoginPage.vue'
 import UiToast        from './components/UiToast.vue'
+
+// ── Auth ─────────────────────────────────────────────────────────────────
+const isAuthenticated = ref(false)
 
 // ── Shared health state ──────────────────────────────────────────────────
 const { backendOk, dbOk } = useHealthCheck()
@@ -31,10 +35,7 @@ const helpOpen         = ref(false)
 const sidebarCollapsed = ref(false)
 
 function goto(n) {
-  // Redirect sidebar nav to Calendario → Dashboard when locked,
-  // but NOT when a salon filter is active (programmatic call from Dashboard Aulas tab)
   const dest = (n === 4 && state.calendarioLocked && !state.salonFilter) ? 0 : n
-  // Clear salon filter when leaving calendar
   if (dest !== 4 && state.salonFilter) setSalonFilter(null)
   setStep(dest)
   mobileMenuOpen.value = false
@@ -69,7 +70,6 @@ function applyTema(t) {
   document.documentElement.classList.toggle('light', t === 'light')
 }
 
-// Initialize theme from persisted state
 applyTema(state.tema)
 
 function toggleTema() {
@@ -80,46 +80,56 @@ function toggleTema() {
 </script>
 
 <template>
-  <!-- ── Skip link (a11y) ── -->
-  <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+  <!-- Login -->
+  <LoginPage v-if="!isAuthenticated" @login="isAuthenticated = true" />
 
-  <div class="flex h-screen overflow-hidden bg-background text-on-background font-sans antialiased">
+  <!-- App principal -->
+  <div v-else class="flex h-screen overflow-hidden bg-background text-on-background font-sans antialiased">
+
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
 
     <!-- ─── Sidebar Desktop ─── -->
     <nav
       aria-label="Navegación principal"
       :class="[
         'hidden md:flex fixed left-0 top-0 h-full flex-col z-40 sidebar-transition',
-        'bg-surface-container border-r border-outline-variant',
         sidebarCollapsed ? 'w-16' : 'w-64',
       ]"
+      style="background: #8C1515; border-right: 1px solid rgba(0,0,0,0.15)"
     >
       <!-- Logo + collapse toggle -->
       <div
         :class="[
-          'py-5 flex flex-col border-b border-outline-variant/50',
+          'py-5 flex flex-col',
           sidebarCollapsed ? 'px-2 items-center gap-3' : 'px-5 gap-4',
         ]"
+        style="border-bottom: 1px solid rgba(255,255,255,0.12)"
       >
         <!-- Logo row -->
         <div :class="['flex items-center gap-3', sidebarCollapsed && 'justify-center']">
-          <div class="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined filled text-on-primary-container text-[20px]">school</span>
+          <div
+            class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style="background: rgba(255,255,255,0.18)"
+          >
+            <span class="material-symbols-outlined filled text-white text-[20px]">school</span>
           </div>
           <div v-if="!sidebarCollapsed" class="min-w-0">
-            <h1 class="text-headline-sm font-sans font-black text-primary leading-none">GestorAulas</h1>
-            <p class="text-label-md font-mono text-on-surface-variant uppercase tracking-wider mt-0.5 truncate">Sistema de Horarios</p>
+            <h1 class="text-headline-sm font-sans font-black text-white leading-none">GestorAulas</h1>
+            <p class="text-label-md font-mono uppercase tracking-wider mt-0.5 truncate" style="color: rgba(255,255,255,0.55)">
+              Sistema de Horarios
+            </p>
           </div>
         </div>
 
-        <!-- CTA button — hidden when collapsed -->
+        <!-- CTA button -->
         <button
           v-if="!sidebarCollapsed"
           @click="goto(1)"
-          class="w-full bg-primary hover:bg-primary-fixed text-on-primary
-                 text-label-md font-mono py-2.5 px-4 rounded-xl transition-colors
+          class="w-full text-white text-label-md font-mono py-2.5 px-4 rounded-xl transition-colors
                  flex justify-center items-center gap-2"
-          style="box-shadow: var(--glow-primary)"
+          style="background: rgba(255,255,255,0.18)"
+          @mouseenter="e => e.currentTarget.style.background = 'rgba(255,255,255,0.26)'"
+          @mouseleave="e => e.currentTarget.style.background = 'rgba(255,255,255,0.18)'"
         >
           <span class="material-symbols-outlined text-[18px]">add</span>
           Nuevo Horario
@@ -139,41 +149,46 @@ function toggleTema() {
                 ? 'mx-2 my-0.5 p-2.5 justify-center'
                 : 'mx-2 my-0.5 px-4 py-3',
               state.step === item.step
-                ? 'bg-primary-container text-on-primary-container'
-                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+                ? 'text-white'
+                : 'text-white/65 hover:text-white',
             ]"
+            :style="state.step === item.step
+              ? 'background: rgba(255,255,255,0.20)'
+              : ''"
+            @mouseenter="e => state.step !== item.step && (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')"
+            @mouseleave="e => state.step !== item.step && (e.currentTarget.style.background = '')"
           >
             <!-- Active indicator -->
             <div
               v-if="state.step === item.step"
-              class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
+              class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+              style="background: rgba(255,255,255,0.80)"
             ></div>
             <span
               class="material-symbols-outlined text-[20px] flex-shrink-0"
               :class="state.step === item.step ? 'filled' : ''"
             >{{ item.icon }}</span>
             <span v-if="!sidebarCollapsed" class="text-label-md font-mono flex-1 truncate">{{ item.label }}</span>
-            <!-- Badge — only when expanded -->
+            <!-- Badge -->
             <span
               v-if="!sidebarCollapsed && badgeFor(item.step)"
-              :class="[
-                'text-label-md font-mono px-1.5 py-0.5 rounded-full border min-w-[20px] text-center flex-shrink-0',
-                state.step === item.step
-                  ? 'bg-primary/20 text-primary border-primary/30'
-                  : 'bg-surface-container-highest text-on-surface-variant border-outline-variant',
-              ]"
+              class="text-label-md font-mono px-1.5 py-0.5 rounded-full border min-w-[20px] text-center flex-shrink-0"
+              :style="state.step === item.step
+                ? 'background:rgba(255,255,255,0.20);color:white;border-color:rgba(255,255,255,0.35)'
+                : 'background:rgba(0,0,0,0.15);color:rgba(255,255,255,0.70);border-color:rgba(255,255,255,0.15)'"
             >{{ badgeFor(item.step) }}</span>
-            <!-- Lock — only when expanded -->
+            <!-- Lock -->
             <span
               v-if="!sidebarCollapsed && item.step === 4 && !badges.eventos"
-              class="material-symbols-outlined text-[14px] opacity-40 flex-shrink-0"
+              class="material-symbols-outlined text-[14px] flex-shrink-0"
+              style="opacity:0.40; color:white"
               title="Genera un horario primero en el paso de Parámetros"
               aria-label="Bloqueado: genera un horario primero"
             >lock</span>
-            <!-- Confirmed badge for calendar — only when expanded -->
+            <!-- Confirmed badge -->
             <span
               v-if="!sidebarCollapsed && item.step === 4 && state.calendarioLocked"
-              class="material-symbols-outlined text-[14px] text-primary flex-shrink-0"
+              class="material-symbols-outlined text-[14px] text-white flex-shrink-0"
               title="Horario confirmado y bloqueado"
             >verified</span>
           </button>
@@ -181,16 +196,18 @@ function toggleTema() {
       </div>
 
       <!-- Footer: status + theme + help + collapse -->
-      <div class="p-3 border-t border-outline-variant/50 space-y-1.5">
+      <div class="p-3 space-y-1.5" style="border-top: 1px solid rgba(255,255,255,0.12)">
 
         <!-- Theme toggle -->
         <button
           @click="toggleTema"
           :class="[
-            'w-full rounded-xl transition-colors flex items-center gap-3',
+            'w-full rounded-xl transition-colors flex items-center gap-3 text-white/65 hover:text-white',
             sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2',
-            'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
           ]"
+          style=""
+          @mouseenter="e => e.currentTarget.style.background = 'rgba(255,255,255,0.10)'"
+          @mouseleave="e => e.currentTarget.style.background = ''"
           :title="state.tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
           :aria-label="state.tema === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'"
         >
@@ -202,30 +219,30 @@ function toggleTema() {
           </span>
         </button>
 
-        <!-- Backend + DB status — only when expanded -->
+        <!-- Backend + DB status -->
         <div
           v-if="!sidebarCollapsed"
           role="status"
           :aria-label="backendOk ? 'API conectada' : backendOk === false ? 'API inaccesible' : 'Verificando API'"
-          class="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant"
+          class="flex items-center gap-2 px-3 py-2 rounded-xl"
+          style="background:rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.12)"
         >
           <span
             :class="[
               'material-symbols-outlined text-[14px] flex-shrink-0',
-              backendOk === true  ? 'text-primary'  :
-              backendOk === false ? 'text-error'     : 'text-outline',
+              backendOk === true  ? 'text-white'       :
+              backendOk === false ? 'text-red-300'      : 'text-white/40',
             ]"
           >{{ backendOk === true ? 'check_circle' : backendOk === false ? 'cancel' : 'pending' }}</span>
-          <span class="text-label-md font-mono text-on-surface-variant truncate flex-1">
+          <span class="text-label-md font-mono truncate flex-1" style="color:rgba(255,255,255,0.65)">
             {{ backendOk === true ? 'API OK' : backendOk === false ? 'Sin API' : 'verificando...' }}
           </span>
           <span
             v-if="dbOk !== null"
-            :class="['text-label-md font-mono px-1.5 py-0.5 rounded-full border flex-shrink-0',
-              dbOk
-                ? 'text-primary border-primary/30 bg-primary/10'
-                : 'text-on-surface-variant border-outline-variant bg-surface-container',
-            ]"
+            class="text-label-md font-mono px-1.5 py-0.5 rounded-full border flex-shrink-0"
+            :style="dbOk
+              ? 'color:white;border-color:rgba(255,255,255,0.35);background:rgba(255,255,255,0.15)'
+              : 'color:rgba(255,255,255,0.50);border-color:rgba(255,255,255,0.15);background:rgba(0,0,0,0.15)'"
             :title="dbOk ? 'Base de datos conectada' : 'Base de datos no disponible'"
           >DB</span>
         </div>
@@ -234,10 +251,11 @@ function toggleTema() {
         <button
           @click="helpOpen = true"
           :class="[
-            'w-full rounded-xl transition-colors flex items-center gap-3',
+            'w-full rounded-xl transition-colors flex items-center gap-3 text-white/65 hover:text-white',
             sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2',
-            'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
           ]"
+          @mouseenter="e => e.currentTarget.style.background = 'rgba(255,255,255,0.10)'"
+          @mouseleave="e => e.currentTarget.style.background = ''"
           :title="sidebarCollapsed ? 'Ayuda' : undefined"
           aria-label="Abrir ayuda"
         >
@@ -249,10 +267,11 @@ function toggleTema() {
         <button
           @click="sidebarCollapsed = !sidebarCollapsed"
           :class="[
-            'w-full rounded-xl transition-colors flex items-center gap-3',
+            'w-full rounded-xl transition-colors flex items-center gap-3 text-white/65 hover:text-white',
             sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2',
-            'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
           ]"
+          @mouseenter="e => e.currentTarget.style.background = 'rgba(255,255,255,0.10)'"
+          @mouseleave="e => e.currentTarget.style.background = ''"
           :title="sidebarCollapsed ? 'Expandir sidebar' : 'Contraer sidebar'"
           :aria-label="sidebarCollapsed ? 'Expandir barra de navegación' : 'Contraer barra de navegación'"
           :aria-expanded="!sidebarCollapsed"
@@ -267,17 +286,18 @@ function toggleTema() {
     </nav>
 
     <!-- ─── Mobile TopBar ─── -->
-    <header class="md:hidden fixed top-0 w-full z-30 bg-surface-container-lowest border-b border-outline-variant
-                   px-4 py-3 flex justify-between items-center">
+    <header
+      class="md:hidden fixed top-0 w-full z-30 px-4 py-3 flex justify-between items-center"
+      style="background: #8C1515; border-bottom: 1px solid rgba(0,0,0,0.15)"
+    >
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined filled text-primary">school</span>
-        <span class="font-sans font-black text-primary text-headline-sm">GestorAulas</span>
+        <span class="material-symbols-outlined filled text-white">school</span>
+        <span class="font-sans font-black text-white text-headline-sm">GestorAulas</span>
       </div>
       <div class="flex items-center gap-2">
-        <!-- Mobile theme toggle -->
         <button
           @click="toggleTema"
-          class="text-on-surface-variant p-1.5 rounded-lg hover:bg-surface-container-high transition-colors"
+          class="text-white/70 p-1.5 rounded-lg transition-colors hover:bg-white/10"
           :aria-label="state.tema === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'"
         >
           <span class="material-symbols-outlined text-[20px]">
@@ -286,7 +306,7 @@ function toggleTema() {
         </button>
         <button
           @click="mobileMenuOpen = !mobileMenuOpen"
-          class="text-on-surface p-1 rounded-lg hover:bg-surface-container-high transition-colors"
+          class="text-white p-1 rounded-lg transition-colors hover:bg-white/10"
           :aria-label="mobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'"
           :aria-expanded="mobileMenuOpen"
         >
@@ -306,7 +326,8 @@ function toggleTema() {
     >
       <nav
         aria-label="Menú móvil"
-        class="bg-surface-container border-r border-outline-variant h-full w-64 flex flex-col py-4 gap-0.5"
+        class="h-full w-64 flex flex-col py-4 gap-0.5"
+        style="background: #8C1515; border-right: 1px solid rgba(0,0,0,0.15)"
       >
         <template v-for="item in navItems" :key="item.step">
           <button
@@ -314,10 +335,11 @@ function toggleTema() {
             :aria-current="state.step === item.step ? 'page' : undefined"
             :class="[
               'mx-2 rounded-xl px-4 py-3 flex items-center gap-3 transition-colors text-left',
-              state.step === item.step
-                ? 'bg-primary-container text-on-primary-container'
-                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+              state.step === item.step ? 'text-white' : 'text-white/65 hover:text-white',
             ]"
+            :style="state.step === item.step ? 'background:rgba(255,255,255,0.20)' : ''"
+            @mouseenter="e => state.step !== item.step && (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')"
+            @mouseleave="e => state.step !== item.step && (e.currentTarget.style.background = '')"
           >
             <span
               class="material-symbols-outlined text-[20px]"
@@ -326,8 +348,8 @@ function toggleTema() {
             <span class="text-label-md font-mono flex-1">{{ item.label }}</span>
             <span
               v-if="badgeFor(item.step)"
-              class="ml-auto text-label-md font-mono px-1.5 py-0.5 rounded-full border
-                     bg-surface-container-highest text-on-surface-variant border-outline-variant"
+              class="ml-auto text-label-md font-mono px-1.5 py-0.5 rounded-full border"
+              style="background:rgba(0,0,0,0.15);color:rgba(255,255,255,0.70);border-color:rgba(255,255,255,0.15)"
             >{{ badgeFor(item.step) }}</span>
           </button>
         </template>
@@ -377,10 +399,10 @@ function toggleTema() {
         </div>
         <ol class="space-y-3">
           <li v-for="(item, idx) in [
-            { title: 'Configurar Materias', desc: 'Nombre, créditos, grupos y categoría de cada materia.', color: 'primary' },
-            { title: 'Registrar Profesores', desc: 'Asigna una o varias materias a cada docente.', color: 'primary' },
-            { title: 'Ejecutar el Solver', desc: 'Configura el tiempo y ejecuta el algoritmo CP-SAT.', color: 'primary' },
-            { title: 'Revisar el Calendario', desc: 'Visualiza, edita y confirma el horario definitivo.', color: 'secondary' },
+            { title: 'Configurar Materias', desc: 'Nombre, créditos, grupos y categoría de cada materia.' },
+            { title: 'Registrar Profesores', desc: 'Asigna una o varias materias a cada docente.' },
+            { title: 'Ejecutar el Solver', desc: 'Configura el tiempo y ejecuta el algoritmo CP-SAT.' },
+            { title: 'Revisar el Calendario', desc: 'Visualiza, edita y confirma el horario definitivo.' },
           ]" :key="idx" class="flex items-start gap-3">
             <span :class="[
               'w-6 h-6 rounded-full text-label-md font-mono flex items-center justify-center flex-shrink-0 mt-0.5',

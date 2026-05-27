@@ -1,10 +1,19 @@
 <!doctype html>
-<html lang="es" class="dark">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GestorAulas — Sistema de Horarios</title>
+    <!-- Apply saved theme before Vue loads to prevent flash -->
+    <script>
+      (function() {
+        try {
+          var s = JSON.parse(localStorage.getItem('skedopt.ui.v1') || '{}');
+          if ((s.tema || 'light') === 'light') document.documentElement.classList.add('light');
+        } catch(e) { document.documentElement.classList.add('light'); }
+      })();
+    </script>
     <!-- Google Fonts: Inter + JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
