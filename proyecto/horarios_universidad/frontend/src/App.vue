@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { state, setStep, setTema, setSalonFilter } from './store/state'
+import { state, setStep, setSalonFilter } from './store/state'
 import { useHealthCheck } from './composables/useHealthCheck'
 import DashboardPage  from './pages/DashboardPage.vue'
 import MateriasPage   from './pages/MateriasPage.vue'
@@ -65,18 +65,8 @@ function badgeFor(step) {
   return null
 }
 
-// ── Dark / Light mode ────────────────────────────────────────────────────
-function applyTema(t) {
-  document.documentElement.classList.toggle('light', t === 'light')
-}
-
-applyTema(state.tema)
-
-function toggleTema() {
-  const next = state.tema === 'dark' ? 'light' : 'dark'
-  setTema(next)
-  applyTema(next)
-}
+// Siempre modo claro — modo oscuro deshabilitado por ahora
+document.documentElement.classList.add('light')
 </script>
 
 <template>
@@ -195,29 +185,8 @@ function toggleTema() {
         </template>
       </div>
 
-      <!-- Footer: status + theme + help + collapse -->
+      <!-- Footer: status + logout + help + collapse -->
       <div class="p-3 space-y-1.5" style="border-top: 1px solid rgba(255,255,255,0.12)">
-
-        <!-- Theme toggle -->
-        <button
-          @click="toggleTema"
-          :class="[
-            'w-full rounded-xl transition-colors flex items-center gap-3 text-white/65 hover:text-white',
-            sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2',
-          ]"
-          style=""
-          @mouseenter="e => e.currentTarget.style.background = 'rgba(255,255,255,0.10)'"
-          @mouseleave="e => e.currentTarget.style.background = ''"
-          :title="state.tema === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
-          :aria-label="state.tema === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'"
-        >
-          <span class="material-symbols-outlined text-[20px] flex-shrink-0">
-            {{ state.tema === 'dark' ? 'light_mode' : 'dark_mode' }}
-          </span>
-          <span v-if="!sidebarCollapsed" class="text-label-md font-mono">
-            {{ state.tema === 'dark' ? 'Modo Claro' : 'Modo Oscuro' }}
-          </span>
-        </button>
 
         <!-- Backend + DB status -->
         <div
@@ -246,6 +215,22 @@ function toggleTema() {
             :title="dbOk ? 'Base de datos conectada' : 'Base de datos no disponible'"
           >DB</span>
         </div>
+
+        <!-- Cerrar Sesión -->
+        <button
+          @click="isAuthenticated = false"
+          :class="[
+            'w-full rounded-xl transition-colors flex items-center gap-3 text-white/65 hover:text-white',
+            sidebarCollapsed ? 'justify-center p-2.5' : 'px-3 py-2',
+          ]"
+          @mouseenter="e => e.currentTarget.style.background = 'rgba(255,255,255,0.10)'"
+          @mouseleave="e => e.currentTarget.style.background = ''"
+          :title="sidebarCollapsed ? 'Cerrar Sesión' : undefined"
+          aria-label="Cerrar sesión"
+        >
+          <span class="material-symbols-outlined text-[20px] flex-shrink-0">logout</span>
+          <span v-if="!sidebarCollapsed" class="text-label-md font-mono">Cerrar Sesión</span>
+        </button>
 
         <!-- Help -->
         <button
@@ -287,31 +272,22 @@ function toggleTema() {
 
     <!-- ─── Mobile TopBar ─── -->
     <header
-      class="md:hidden fixed top-0 w-full z-30 px-4 py-3 flex justify-between items-center"
+      class="md:hidden fixed top-0 w-full z-30 px-4 py-3 flex items-center gap-3"
       style="background: #8C1515; border-bottom: 1px solid rgba(0,0,0,0.15)"
     >
-      <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined filled text-white">school</span>
-        <span class="font-sans font-black text-white text-headline-sm">GestorAulas</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <button
-          @click="toggleTema"
-          class="text-white/70 p-1.5 rounded-lg transition-colors hover:bg-white/10"
-          :aria-label="state.tema === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'"
-        >
-          <span class="material-symbols-outlined text-[20px]">
-            {{ state.tema === 'dark' ? 'light_mode' : 'dark_mode' }}
-          </span>
-        </button>
-        <button
-          @click="mobileMenuOpen = !mobileMenuOpen"
-          class="text-white p-1 rounded-lg transition-colors hover:bg-white/10"
-          :aria-label="mobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'"
-          :aria-expanded="mobileMenuOpen"
-        >
-          <span class="material-symbols-outlined">{{ mobileMenuOpen ? 'close' : 'menu' }}</span>
-        </button>
+      <!-- Hamburger a la IZQUIERDA -->
+      <button
+        @click="mobileMenuOpen = !mobileMenuOpen"
+        class="text-white p-1.5 rounded-lg transition-colors hover:bg-white/10 flex-shrink-0"
+        :aria-label="mobileMenuOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'"
+        :aria-expanded="mobileMenuOpen"
+      >
+        <span class="material-symbols-outlined text-[24px]">{{ mobileMenuOpen ? 'close' : 'menu' }}</span>
+      </button>
+      <!-- Logo -->
+      <div class="flex items-center gap-2 flex-1 min-w-0">
+        <span class="material-symbols-outlined filled text-white flex-shrink-0">school</span>
+        <span class="font-sans font-black text-white text-headline-sm truncate">GestorAulas</span>
       </div>
     </header>
 
