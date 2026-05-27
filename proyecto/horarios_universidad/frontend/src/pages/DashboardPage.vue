@@ -246,8 +246,8 @@ const reportData = computed(() => {
     <!-- Top stats: 3 cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <div class="bg-surface-container border border-outline-variant rounded-xl p-5 flex items-center gap-4">
-        <div class="w-14 h-14 rounded-xl bg-secondary/15 flex items-center justify-center flex-shrink-0">
-          <span class="text-secondary text-[28px] font-bold font-sans leading-none">{{ labs.length }}</span>
+        <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+          <span class="text-slate-600 text-[28px] font-bold font-sans leading-none">{{ labs.length }}</span>
         </div>
         <div>
           <p class="text-body-sm text-on-surface-variant">Laboratorios de Sistemas</p>
@@ -255,8 +255,8 @@ const reportData = computed(() => {
         </div>
       </div>
       <div class="bg-surface-container border border-outline-variant rounded-xl p-5 flex items-center gap-4">
-        <div class="w-14 h-14 rounded-xl bg-tertiary/15 flex items-center justify-center flex-shrink-0">
-          <span class="text-tertiary text-[28px] font-bold font-sans leading-none">{{ normales.length }}</span>
+        <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+          <span class="text-slate-600 text-[28px] font-bold font-sans leading-none">{{ normales.length }}</span>
         </div>
         <div>
           <p class="text-body-sm text-on-surface-variant">Salones Normales</p>
@@ -264,8 +264,8 @@ const reportData = computed(() => {
         </div>
       </div>
       <div class="bg-surface-container border border-outline-variant rounded-xl p-5 flex items-center gap-4">
-        <div class="w-14 h-14 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
-          <span class="text-primary text-[28px] font-bold font-sans leading-none">{{ state.calendario.eventos.length }}</span>
+        <div class="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+          <span class="text-slate-700 text-[28px] font-bold font-sans leading-none">{{ state.calendario.eventos.length }}</span>
         </div>
         <div>
           <p class="text-body-sm text-on-surface-variant">Clases Asignadas</p>
@@ -281,7 +281,7 @@ const reportData = computed(() => {
     >
       <div class="flex items-center gap-3">
         <span :class="['w-2 h-2 rounded-full flex-shrink-0',
-          ['OPTIMAL','FEASIBLE'].includes(state.lastRun.status) ? 'bg-primary' : 'bg-error']"></span>
+          ['OPTIMAL','FEASIBLE'].includes(state.lastRun.status) ? 'bg-emerald-500' : 'bg-error']"></span>
         <span class="text-label-md font-mono text-on-surface-variant">
           Última ejecución — {{ formatTS(state.lastRun.timestamp) }}
           · {{ state.lastRun.status }}
@@ -432,16 +432,16 @@ const reportData = computed(() => {
             v-for="s in labsFiltrados" :key="s.nombre"
             @click="openRoom(s.nombre)"
             class="group bg-surface-container border border-outline-variant rounded-xl p-4 text-left
-                   hover:border-secondary/50 hover:bg-surface-container-high transition-all duration-200
-                   focus:outline-none focus:ring-2 focus:ring-secondary/30"
+                   hover:border-slate-400 hover:bg-surface-container-high transition-all duration-200
+                   focus:outline-none focus:ring-2 focus:ring-slate-300"
           >
             <div class="flex justify-between items-start mb-4">
-              <div class="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
-                <span class="material-symbols-outlined text-secondary text-[20px]">computer</span>
+              <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-500 text-[20px]">computer</span>
               </div>
-              <span class="text-[10px] font-mono bg-secondary/20 text-secondary px-2 py-0.5 rounded-full border border-secondary/30">Lab</span>
+              <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-300">Lab</span>
             </div>
-            <p class="text-body-md font-sans font-bold text-on-surface mb-1 group-hover:text-secondary transition-colors">{{ s.nombre }}</p>
+            <p class="text-body-md font-sans font-bold text-on-surface mb-1 group-hover:text-slate-700 transition-colors">{{ s.nombre }}</p>
             <div class="flex items-center gap-2 text-[11px] font-mono text-on-surface-variant mb-3">
               <span class="material-symbols-outlined text-[14px]">group</span>
               <span>{{ getRoomCapacity(s.nombre) }}</span>
@@ -449,7 +449,7 @@ const reportData = computed(() => {
               <span>{{ getRoomLocation(s.nombre) }}</span>
             </div>
             <div class="w-full bg-surface-container-highest rounded-full h-1 overflow-hidden">
-              <div class="bg-secondary h-1 rounded-full transition-all duration-500" :style="{ width: getRoomPct(s.count) + '%' }"></div>
+              <div class="bg-slate-400 h-1 rounded-full transition-all duration-500" :style="{ width: getRoomPct(s.count) + '%' }"></div>
             </div>
             <p class="text-[10px] font-mono text-on-surface-variant mt-1.5">{{ s.count }} clases</p>
           </button>
@@ -468,16 +468,16 @@ const reportData = computed(() => {
             v-for="s in normalesFiltrados" :key="s.nombre"
             @click="openRoom(s.nombre)"
             class="group bg-surface-container border border-outline-variant rounded-xl p-4 text-left
-                   hover:border-tertiary/50 hover:bg-surface-container-high transition-all duration-200
-                   focus:outline-none focus:ring-2 focus:ring-tertiary/30"
+                   hover:border-slate-400 hover:bg-surface-container-high transition-all duration-200
+                   focus:outline-none focus:ring-2 focus:ring-slate-300"
           >
             <div class="flex justify-between items-start mb-4">
-              <div class="w-10 h-10 rounded-lg bg-tertiary/20 flex items-center justify-center">
-                <span class="material-symbols-outlined text-tertiary text-[20px]">meeting_room</span>
+              <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-500 text-[20px]">meeting_room</span>
               </div>
-              <span class="text-[10px] font-mono bg-tertiary/20 text-tertiary px-2 py-0.5 rounded-full border border-tertiary/30">Salón</span>
+              <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-300">Salón</span>
             </div>
-            <p class="text-body-md font-sans font-bold text-on-surface mb-1 group-hover:text-tertiary transition-colors">{{ s.nombre }}</p>
+            <p class="text-body-md font-sans font-bold text-on-surface mb-1 group-hover:text-slate-700 transition-colors">{{ s.nombre }}</p>
             <div class="flex items-center gap-2 text-[11px] font-mono text-on-surface-variant mb-3">
               <span class="material-symbols-outlined text-[14px]">group</span>
               <span>{{ getRoomCapacity(s.nombre) }}</span>
@@ -485,7 +485,7 @@ const reportData = computed(() => {
               <span>{{ getRoomLocation(s.nombre) }}</span>
             </div>
             <div class="w-full bg-surface-container-highest rounded-full h-1 overflow-hidden">
-              <div class="bg-tertiary h-1 rounded-full transition-all duration-500" :style="{ width: getRoomPct(s.count) + '%' }"></div>
+              <div class="bg-slate-400 h-1 rounded-full transition-all duration-500" :style="{ width: getRoomPct(s.count) + '%' }"></div>
             </div>
             <p class="text-[10px] font-mono text-on-surface-variant mt-1.5">{{ s.count }} clases</p>
           </button>

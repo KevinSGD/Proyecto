@@ -21,18 +21,16 @@ export const EVENT_COLORS = [
   { bg: 'bg-on-primary-container/10', border: 'border-on-primary-container/30', text: 'text-on-primary-container' },
 ]
 
-// Light-mode palette — neutral white cards for reduced visual fatigue
-// All slots share the same neutral style; distinction between subjects is
-// done via the subject name text rather than color-coding.
+// Light-mode palette — soft neutral grays, subtle distinction between materias
 export const EVENT_COLORS_LIGHT = [
-  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
-  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
-  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
-  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
-  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
-  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
-  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
-  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
+  { bg: 'bg-slate-100',   border: 'border-slate-300',   text: 'text-slate-700' },
+  { bg: 'bg-zinc-100',    border: 'border-zinc-300',    text: 'text-zinc-700' },
+  { bg: 'bg-stone-100',   border: 'border-stone-300',   text: 'text-stone-700' },
+  { bg: 'bg-neutral-100', border: 'border-neutral-300', text: 'text-neutral-700' },
+  { bg: 'bg-gray-100',    border: 'border-gray-300',    text: 'text-gray-700' },
+  { bg: 'bg-slate-200',   border: 'border-slate-400',   text: 'text-slate-800' },
+  { bg: 'bg-zinc-200',    border: 'border-zinc-400',    text: 'text-zinc-800' },
+  { bg: 'bg-stone-200',   border: 'border-stone-400',   text: 'text-stone-800' },
 ]
 
 /**

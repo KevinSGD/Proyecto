@@ -386,7 +386,7 @@ function eventOpacityStyle(e) {
               :class="[
                 'text-label-md font-mono px-2.5 py-1 rounded border flex items-center gap-1.5',
                 ['OPTIMAL','FEASIBLE'].includes(state.lastRun.status)
-                  ? 'bg-primary/10 text-primary border-primary/20'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : 'bg-surface-container-high text-on-surface-variant border-outline-variant',
               ]"
             >
@@ -423,8 +423,8 @@ function eventOpacityStyle(e) {
             :class="[
               'text-label-md font-mono px-3 py-2 rounded-xl border flex items-center gap-1.5 transition-colors',
               conflicts.length && showConflicts
-                ? 'bg-surface-container-high border-outline text-on-surface'
-                : 'bg-surface-container-high border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary',
+                ? 'bg-sky-50 border-sky-400 text-sky-700'
+                : 'bg-white border-slate-300 text-slate-600 hover:border-sky-400 hover:text-sky-600',
             ]"
             title="Verificar conflictos de horario"
           >
@@ -465,8 +465,8 @@ function eventOpacityStyle(e) {
           <button
             v-if="!state.calendarioLocked && state.calendario.eventos.length"
             @click="confirmLockOpen = true"
-            class="text-label-md font-mono px-3 py-2 rounded-xl border border-secondary/30 text-secondary
-                   hover:bg-secondary/10 flex items-center gap-1.5 transition-colors"
+            class="text-label-md font-mono px-3 py-2 rounded-xl border border-slate-300 text-slate-600
+                   hover:bg-slate-50 hover:border-slate-400 flex items-center gap-1.5 transition-colors"
             title="Confirmar y bloquear el horario definitivamente"
           >
             <span class="material-symbols-outlined text-[18px]">lock</span>
@@ -683,7 +683,7 @@ function eventOpacityStyle(e) {
     <div
       v-else
       class="flex-1 overflow-auto cal-bg"
-      :class="state.tema === 'light' ? 'bg-surface-container-low' : 'bg-surface-container-lowest'"
+      :class="state.tema === 'light' ? 'bg-white' : 'bg-surface-container-lowest'"
       @click="showProfDrop = false"
     >
       <div
@@ -754,10 +754,12 @@ function eventOpacityStyle(e) {
                   {{ materiasById[e.materiaId]?.nombre || 'Materia' }}
                   <span class="opacity-60">G{{ e.grupo }}</span>
                 </span>
-                <!-- Professor — visible at zoom 2+ -->
+                <!-- Professor — always visible, size adapts to zoom -->
                 <span
-                  v-if="zoomLevel >= 2"
-                  class="text-[10px] font-mono text-on-surface-variant/90 leading-tight"
+                  :class="[
+                    'font-mono text-on-surface-variant/90 leading-tight truncate',
+                    zoomLevel === 1 ? 'text-[7px]' : 'text-[10px]',
+                  ]"
                   :title="profesById[e.profesorId]?.nombre"
                 >
                   {{ profesById[e.profesorId]?.nombre || '—' }}

@@ -186,19 +186,19 @@ html.light {
   min-width: 840px;
 }
 
-/* Light mode: fully opaque event cards + consistent cell backgrounds */
+/* Light mode: fully opaque event cards + white/neutral cell backgrounds */
 html.light .cal-event-card {
   opacity: 1 !important;
   --tw-bg-opacity: 1 !important;
 }
 html.light .cal-grid {
-  background-color: rgb(var(--c-surface-container-low));
+  background-color: #ffffff;
 }
 html.light .cal-grid > div {
-  background-color: rgb(var(--c-surface-container-low));
+  background-color: #ffffff;
 }
 html.light .cal-grid > div.bg-surface-container-lowest {
-  background-color: rgb(var(--c-surface-container));
+  background-color: #f5f5f5;
 }
 
 /* ── Animations ────────────────────────────────────────────────────────── */
