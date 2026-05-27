@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import * as XLSX from 'xlsx'
 import {
   calendarioSnapshot,
   lockCalendario,
@@ -242,40 +243,116 @@ function verificar() {
   }
 }
 
-// ─── Export to CSV (UTF-8 BOM — opens cleanly in Excel) ──────────────────────
-function exportarCSV() {
+// ─── Export to XLSX — multi-hoja con horario, profesores, materias y estadísticas ──
+function exportarExcel() {
   if (!state.calendario.eventos.length) return emit('toast', 'No hay clases para exportar.', 'info')
 
-  const headers = ['Día', 'Hora Inicio', 'Materia', 'Grupo', 'Profesor', 'Salón', 'Créditos', 'Categoría']
-
-  const rows = [...state.calendario.eventos]
+  const wb = XLSX.utils.book_new()
+  const sorted = [...state.calendario.eventos]
     .sort((a, b) => a.dayIndex - b.dayIndex || a.hourIndex - b.hourIndex)
-    .map(e => {
-      const dia      = state.calendario.dias[e.dayIndex]  || ''
-      const hora     = state.calendario.horas[e.hourIndex] || ''
-      const mat      = materiasById.value[e.materiaId]
-      const prof     = profesById.value[e.profesorId]
-      const materia  = mat?.nombre  || ''
-      const creditos = mat?.creditos || ''
-      const categoria = mat?.categoria || ''
-      const grupo    = e.grupo || 1
-      const profesor = prof?.nombre || ''
-      const salon    = e.salon || ''
-      return [dia, hora, materia, grupo, profesor, salon, creditos, categoria]
-    })
 
-  const esc = v => `"${String(v).replace(/"/g, '""')}"`
-  const csv = [headers, ...rows].map(r => r.map(esc).join(',')).join('\r\n')
+  // ── Hoja 1: Horario ──────────────────────────────────────────────────────
+  const horarioRows = [
+    ['Día', 'Hora Inicio', 'Materia', 'Grupo', 'Profesor', 'Código Docente', 'Salón', 'Créditos', 'Categoría'],
+  ]
+  for (const e of sorted) {
+    const mat  = materiasById.value[e.materiaId]
+    const prof = profesById.value[e.profesorId]
+    horarioRows.push([
+      state.calendario.dias[e.dayIndex]   || '',
+      state.calendario.horas[e.hourIndex] || '',
+      mat?.nombre    || '',
+      e.grupo        || 1,
+      prof?.nombre   || '',
+      prof?.profesorId || '',
+      e.salon        || '',
+      mat?.creditos  ?? '',
+      mat?.categoria || '',
+    ])
+  }
+  const wsHorario = XLSX.utils.aoa_to_sheet(horarioRows)
+  wsHorario['!cols'] = [
+    {wch:12},{wch:12},{wch:32},{wch:8},{wch:32},{wch:16},{wch:10},{wch:10},{wch:16},
+  ]
+  XLSX.utils.book_append_sheet(wb, wsHorario, 'Horario')
 
-  const bom  = '﻿'  // UTF-8 BOM for Excel compatibility with Spanish chars
-  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
-  a.download = `cronograma_${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-  emit('toast', 'Cronograma exportado como CSV (abre en Excel)', 'success')
+  // ── Hoja 2: Profesores ────────────────────────────────────────────────────
+  const profRows = [
+    ['Código', 'Nombre', 'Materias Asignadas', 'Clases / Semana', 'Horas / Semana', 'Estado'],
+  ]
+  for (const p of state.profesores) {
+    const materias = (p.materiaIds || [])
+      .map(id => materiasById.value[id]?.nombre).filter(Boolean).join(', ')
+    const clases = state.calendario.eventos.filter(e => e.profesorId === p.id).length
+    profRows.push([
+      p.profesorId || '',
+      p.nombre     || '',
+      materias,
+      clases,
+      clases,   // 1 evento = 1 hora de clase
+      p.estado   || 'activo',
+    ])
+  }
+  const wsProfs = XLSX.utils.aoa_to_sheet(profRows)
+  wsProfs['!cols'] = [{wch:16},{wch:32},{wch:44},{wch:16},{wch:16},{wch:12}]
+  XLSX.utils.book_append_sheet(wb, wsProfs, 'Profesores')
+
+  // ── Hoja 3: Materias ──────────────────────────────────────────────────────
+  const matRows = [
+    ['Nombre', 'Créditos', 'Grupos', 'Sesiones Programadas', 'Categoría', 'Demanda'],
+  ]
+  for (const m of state.materias) {
+    const sesiones = state.calendario.eventos.filter(e => e.materiaId === m.id).length
+    matRows.push([
+      m.nombre    || '',
+      m.creditos  ?? 0,
+      m.grupos    ?? 1,
+      sesiones,
+      m.categoria || '',
+      m.demanda   ?? 0,
+    ])
+  }
+  const wsMats = XLSX.utils.aoa_to_sheet(matRows)
+  wsMats['!cols'] = [{wch:32},{wch:10},{wch:8},{wch:22},{wch:16},{wch:10}]
+  XLSX.utils.book_append_sheet(wb, wsMats, 'Materias')
+
+  // ── Hoja 4: Estadísticas ──────────────────────────────────────────────────
+  const totalClases = state.calendario.eventos.length
+  const totalHoras  = totalClases   // 1 evento = 1 hora
+  const clasesPorDia = state.calendario.dias.map((dia, dIdx) => [
+    dia, state.calendario.eventos.filter(e => e.dayIndex === dIdx).length,
+  ])
+  const salonMap = {}
+  for (const e of state.calendario.eventos) {
+    const s = e.salon || 'Sin salón'
+    salonMap[s] = (salonMap[s] || 0) + 1
+  }
+  const statsRows = [
+    ['Indicador', 'Valor'],
+    ['Total clases programadas',    totalClases],
+    ['Total horas semanales',       totalHoras],
+    ['Total materias',              state.materias.length],
+    ['Total profesores activos',    state.profesores.filter(p => p.estado !== 'suspendido').length],
+    ['Total grupos programados',    state.materias.reduce((s, m) => s + (m.grupos || 1), 0)],
+    ['Salones utilizados',          Object.keys(salonMap).length],
+    ['Fecha de exportación',        new Date().toLocaleDateString('es-CO')],
+    ['', ''],
+    ['DISTRIBUCIÓN POR DÍA', 'Clases'],
+    ...clasesPorDia,
+    ['', ''],
+    ['DISTRIBUCIÓN POR SALÓN', 'Clases'],
+    ...Object.entries(salonMap)
+      .sort((a, b) => a[0].localeCompare(b[0], 'es', { numeric: true }))
+      .map(([sal, cnt]) => [sal, cnt]),
+  ]
+  const wsStats = XLSX.utils.aoa_to_sheet(statsRows)
+  wsStats['!cols'] = [{wch:36},{wch:22}]
+  XLSX.utils.book_append_sheet(wb, wsStats, 'Estadísticas')
+
+  // ── Descarga ──────────────────────────────────────────────────────────────
+  const filename = `cronograma_UMB_${new Date().toISOString().slice(0, 10)}.xlsx`
+  XLSX.writeFile(wb, filename)
+  emit('toast', `Excel exportado: ${filename} (4 hojas)`, 'success')
 }
 
 // Professor opacity: usar style para evitar problemas de reactividad con Tailwind JIT
@@ -406,13 +483,13 @@ function eventOpacityStyle(e) {
             Desbloquear
           </button>
 
-          <!-- Export CSV -->
+          <!-- Export Excel -->
           <button
             v-if="state.calendario.eventos.length"
-            @click="exportarCSV"
+            @click="exportarExcel"
             class="text-label-md font-mono px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant
                    hover:bg-surface-container-high flex items-center gap-1.5 transition-colors"
-            title="Exportar cronograma a Excel (CSV)"
+            title="Exportar cronograma a Excel (.xlsx) con estadísticas"
           >
             <span class="material-symbols-outlined text-[18px]">table_view</span>
             Exportar Excel

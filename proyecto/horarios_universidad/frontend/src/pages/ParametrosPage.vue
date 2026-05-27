@@ -63,8 +63,12 @@ const estimateRange = computed(() => {
 })
 
 const solverProgress = computed(() => {
-  const denom = Math.max(estimateSeconds.value, 10)
-  return loading.value ? Math.min((solverElapsed.value / denom) * 100, 99) : 0
+  if (!loading.value) return 0
+  // Usa SOLVER_TIMEOUT_S como techo real; ease-out cuadrático para que avance
+  // rápido al inicio y desacelere al final — nunca se congela en 99%.
+  const norm = Math.min(solverElapsed.value / SOLVER_TIMEOUT_S, 1.0)
+  const eased = 1 - Math.pow(1 - norm, 2)  // f(x)=1-(1-x)²
+  return Math.round(eased * 95)             // tope visual: 95 %
 })
 
 const solverStage = computed(() => {
@@ -542,7 +546,7 @@ async function ejecutarAlgoritmo() {
                 </span>
                 <span class="text-outline text-[10px]">·</span>
                 <span class="text-label-md font-mono text-on-surface-variant">
-                  ~{{ _fmtTime(Math.max(0, estimateSeconds - solverElapsed)) }} restantes (estimado)
+                  ~{{ _fmtTime(Math.max(0, SOLVER_TIMEOUT_S - solverElapsed)) }} restantes (máx.)
                 </span>
               </div>
             </div>
