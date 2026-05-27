@@ -423,7 +423,7 @@ function eventOpacityStyle(e) {
             :class="[
               'text-label-md font-mono px-3 py-2 rounded-xl border flex items-center gap-1.5 transition-colors',
               conflicts.length && showConflicts
-                ? 'bg-error/10 border-error/30 text-error'
+                ? 'bg-surface-container-high border-outline text-on-surface'
                 : 'bg-surface-container-high border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary',
             ]"
             title="Verificar conflictos de horario"
@@ -453,8 +453,8 @@ function eventOpacityStyle(e) {
           <button
             v-if="editMode && calendarioSnapshot"
             @click="deshacerCambios"
-            class="text-label-md font-mono px-3 py-2 rounded-xl border border-tertiary/30 text-tertiary
-                   hover:bg-tertiary/10 flex items-center gap-1.5 transition-colors"
+            class="text-label-md font-mono px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant
+                   hover:bg-surface-container-high flex items-center gap-1.5 transition-colors"
             title="Revertir al último punto guardado"
           >
             <span class="material-symbols-outlined text-[18px]">undo</span>
@@ -635,24 +635,25 @@ function eventOpacityStyle(e) {
       <!-- ─── Conflicts panel ─── -->
       <div
         v-if="showConflicts && conflicts.length"
-        class="bg-error/10 border border-error/30 rounded-xl p-3 space-y-1"
+        class="bg-surface-container-high border border-outline rounded-xl p-3 space-y-1"
       >
         <div class="flex justify-between items-center mb-1">
-          <span class="text-label-md font-mono text-error font-bold">
+          <span class="text-label-md font-mono text-on-surface font-bold flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px]">warning</span>
             {{ conflicts.length }} conflicto(s) detectado(s)
           </span>
-          <button @click="showConflicts = false" class="text-error/60 hover:text-error">
+          <button @click="showConflicts = false" class="text-on-surface-variant hover:text-on-surface">
             <span class="material-symbols-outlined text-[16px]">close</span>
           </button>
         </div>
         <div v-for="(c, i) in conflicts.slice(0, 5)" :key="i"
-             class="flex items-start gap-2 text-[11px] font-mono text-error/80">
+             class="flex items-start gap-2 text-[11px] font-mono text-on-surface-variant">
           <span class="material-symbols-outlined text-[14px] flex-shrink-0 mt-0.5">
             {{ c.type === 'salon' ? 'meeting_room' : 'person' }}
           </span>
           {{ c.message }}
         </div>
-        <p v-if="conflicts.length > 5" class="text-[10px] font-mono text-error/60">
+        <p v-if="conflicts.length > 5" class="text-[10px] font-mono text-on-surface-variant/70">
           ... y {{ conflicts.length - 5 }} más
         </p>
       </div>
@@ -826,7 +827,7 @@ function eventOpacityStyle(e) {
               <div class="text-label-md font-mono text-on-surface-variant">Materias</div>
             </div>
             <div class="bg-surface-container-low border border-outline-variant rounded-xl p-3">
-              <div class="text-headline-sm font-bold text-tertiary">{{ state.profesores.length }}</div>
+              <div class="text-headline-sm font-bold text-on-surface">{{ state.profesores.length }}</div>
               <div class="text-label-md font-mono text-on-surface-variant">Profesores</div>
             </div>
           </div>

@@ -104,7 +104,7 @@ function continuar() {
 function categoriaBadgeClass(cat) {
   if (cat === 'Software')       return 'bg-primary/10 text-primary border-primary/20'
   if (cat === 'Humanidades')    return 'bg-secondary/10 text-secondary border-secondary/20'
-  return 'bg-tertiary/10 text-tertiary border-tertiary/20'
+  return 'bg-surface-container-high text-on-surface-variant border-outline-variant'
 }
 
 function toggleAutoGrupos(m) {
@@ -116,7 +116,7 @@ function toggleAutoGrupos(m) {
 </script>
 
 <template>
-  <div class="px-4 md:px-margin-desktop py-8 max-w-[1024px] mx-auto flex flex-col gap-8">
+  <div class="px-4 md:px-margin-desktop py-8 max-w-[1400px] mx-auto flex flex-col gap-8">
 
     <!-- ─── Page Header ─── -->
     <header class="flex flex-col gap-6">
@@ -217,7 +217,7 @@ function toggleAutoGrupos(m) {
 
       <!-- Table -->
       <div class="w-full overflow-x-auto">
-        <table class="w-full text-left border-collapse min-w-[820px]">
+        <table class="w-full text-left border-collapse min-w-[960px]">
           <thead>
             <tr class="bg-surface-container-low border-b border-outline-variant">
               <th scope="col" class="text-label-md font-mono text-on-surface-variant px-4 py-4 w-8">#</th>

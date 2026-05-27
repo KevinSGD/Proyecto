@@ -21,16 +21,18 @@ export const EVENT_COLORS = [
   { bg: 'bg-on-primary-container/10', border: 'border-on-primary-container/30', text: 'text-on-primary-container' },
 ]
 
-// Light-mode palette — higher opacity/contrast for readability on light backgrounds
+// Light-mode palette — neutral white cards for reduced visual fatigue
+// All slots share the same neutral style; distinction between subjects is
+// done via the subject name text rather than color-coding.
 export const EVENT_COLORS_LIGHT = [
-  { bg: 'bg-primary/25',             border: 'border-primary/60',              text: 'text-primary' },
-  { bg: 'bg-tertiary/25',            border: 'border-tertiary/60',             text: 'text-tertiary' },
-  { bg: 'bg-secondary/25',           border: 'border-secondary/60',            text: 'text-secondary' },
-  { bg: 'bg-tertiary-container/55',  border: 'border-tertiary/55',             text: 'text-on-tertiary-container' },
-  { bg: 'bg-primary-container/55',   border: 'border-primary/55',              text: 'text-on-primary-container' },
-  { bg: 'bg-secondary-container/55', border: 'border-secondary/55',            text: 'text-on-secondary-container' },
-  { bg: 'bg-error/20',               border: 'border-error/55',                text: 'text-error' },
-  { bg: 'bg-primary-fixed/35',       border: 'border-primary-fixed/60',        text: 'text-on-primary-fixed' },
+  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
+  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
+  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
+  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
+  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
+  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
+  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
+  { bg: 'bg-surface', border: 'border-outline-variant', text: 'text-on-surface' },
 ]
 
 /**
@@ -40,21 +42,21 @@ export const EVENT_COLORS_LIGHT = [
  * they read clearly on dark navy (#0f1829) without visual clashing.
  */
 export const HEX_PALETTE = [
-  '#6382e6', // periwinkle (primary)
-  '#8f7cf5', // soft violet
-  '#58a9c5', // cornflower sky
-  '#c99848', // warm amber
-  '#5aac96', // muted teal
-  '#d47a8b', // dusty rose
-  '#78ab6e', // sage green
-  '#c77856', // terracotta
-  '#7497d8', // medium blue
-  '#b08ae6', // medium lavender
-  '#6ab4b4', // steel cyan
-  '#c4a042', // muted gold
-  '#8ab87a', // light sage
-  '#d07f5e', // warm coral
-  '#6882c8', // steel blue
+  '#f5f5f5', // neutral white-gray
+  '#eeeeee',
+  '#e8e8e8',
+  '#e0e0e0',
+  '#d9d9d9',
+  '#f5f5f5',
+  '#eeeeee',
+  '#e8e8e8',
+  '#e0e0e0',
+  '#d9d9d9',
+  '#f5f5f5',
+  '#eeeeee',
+  '#e8e8e8',
+  '#e0e0e0',
+  '#d9d9d9',
 ]
 
 /**
