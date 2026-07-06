@@ -15,6 +15,7 @@ const INITIAL: FormData = {
   nombre: '',
   creditos: 3,
   horas: 3,
+  grupos: 1,
   tipo: 'Teórica',
   semestre: 1,
   estado: 'Activa',
@@ -62,6 +63,7 @@ export function MateriaForm({ initial = {}, materiaId, title, subtitle, onSave }
     if (!form.codigo.trim()) e.codigo = 'El código es requerido'
     if (!form.nombre.trim()) e.nombre = 'El nombre es requerido'
     if (form.creditos < 1 || form.creditos > 10) e.creditos = 'Ingresa entre 1 y 10 créditos'
+    if (form.grupos < 1 || form.grupos > 20) e.grupos = 'Ingresa entre 1 y 20 grupos'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -141,6 +143,17 @@ export function MateriaForm({ initial = {}, materiaId, title, subtitle, onSave }
                     <option key={s} value={s}>Semestre {s}</option>
                   ))}
                 </select>
+              </Field>
+              <Field label="Cantidad de grupos" required hint="Número de grupos que se abrirán de esta materia en el período.">
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={form.grupos}
+                  onChange={(e) => update('grupos', Math.max(1, Number(e.target.value)))}
+                  className={cn(inputCls, errors.grupos && 'border-red-400')}
+                />
+                {errors.grupos && <p className="text-xs text-red-500 mt-1">{errors.grupos}</p>}
               </Field>
             </div>
           </section>

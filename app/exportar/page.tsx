@@ -63,13 +63,13 @@ export default function ExportarPage() {
       secciones.push('ASIGNACIONES DOCENTE-MATERIA\n' + rows.join('\n'))
     }
     if (ids.includes('horario') || ids.includes('oferta')) {
-      const rows = [csvRow(['Día', 'Inicio', 'Fin', 'Materia', 'Docente', 'Salón'])]
+      const rows = [csvRow(['Día', 'Inicio', 'Fin', 'Materia', 'Docente', 'Tipo de aula'])]
       horario
         .slice()
         .sort((a, b) => DIAS.indexOf(a.dia) - DIAS.indexOf(b.dia) || a.horaInicio.localeCompare(b.horaInicio))
         .forEach((h) => {
           const m = materias.find((x) => x.id === h.materiaId)
-          rows.push(csvRow([h.dia, h.horaInicio, h.horaFin, m?.nombre ?? '', nombreDocente(h.docenteId), h.salon]))
+          rows.push(csvRow([h.dia, h.horaInicio, h.horaFin, m?.nombre ?? '', nombreDocente(h.docenteId), m?.tipoAula ?? '']))
         })
       secciones.push('HORARIO DEL ÁREA\n' + rows.join('\n'))
     }

@@ -5,6 +5,7 @@ import {
   MATERIAS_MOCK,
   DOCENTES_MOCK,
   HORARIO_MOCK,
+  PROFESORES_UNIVERSIDAD,
   type Materia,
   type Docente,
   type HorarioBloque,
@@ -84,10 +85,10 @@ function loadState(): DataState {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return SEED
     const parsed = JSON.parse(raw) as Partial<DataState>
-    // Merge defensivo por si el esquema crece en el futuro.
+    // Merge defensivo + migración de campos nuevos (p. ej. `grupos`).
     return {
-      materias: parsed.materias ?? SEED.materias,
-      docentes: parsed.docentes ?? SEED.docentes,
+      materias: (parsed.materias ?? SEED.materias).map((m) => ({ ...m, grupos: m.grupos ?? 1 })),
+      docentes: (parsed.docentes ?? SEED.docentes).map((d) => ({ ...d, area: d.area ?? 'Matemáticas Básicas' })),
       horario: parsed.horario ?? SEED.horario,
       exportaciones: parsed.exportaciones ?? SEED.exportaciones,
       actividad: parsed.actividad ?? SEED.actividad,
@@ -122,6 +123,9 @@ interface DataContextValue extends DataState {
   addDocente: (data: Partial<Docente>) => Docente
   updateDocente: (id: string, data: Partial<Docente>) => void
   deleteDocente: (id: string) => void
+  // Incorporar un profesor desde la base de datos global de la universidad
+  agregarDocente: (globalId: string) => void
+  profesoresDisponibles: Docente[]
   // Asignaciones
   asignarDocente: (materiaId: string, docenteId: string) => void
   removerAsignacion: (materiaId: string) => void
@@ -213,6 +217,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       nombre: data.nombre ?? '',
       email: data.email ?? '',
       especialidad: data.especialidad ?? '',
+      area: data.area ?? 'Matemáticas Básicas',
       contrato: data.contrato ?? 'Cátedra',
       horasMax: data.horasMax ?? 8,
       horasAsignadas: 0,
@@ -249,10 +254,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         materias: prev.materias.map((m) => (m.docenteId === id ? { ...m, docenteId: undefined } : m)),
         horario: prev.horario.filter((h) => h.docenteId !== id),
       }
-      logActividad(`Docente "${docente.nombre}" eliminado`, 'eliminacion', draft)
+      logActividad(`Docente "${docente.nombre}" retirado del área`, 'eliminacion', draft)
       return draft
     })
   }, [logActividad])
+
+  // Incorpora a la planta del área un profesor de la base de datos global.
+  const agregarDocente = useCallback<DataContextValue['agregarDocente']>((globalId) => {
+    setState((prev) => {
+      if (prev.docentes.some((d) => d.id === globalId)) return prev
+      const prof = PROFESORES_UNIVERSIDAD.find((p) => p.id === globalId)
+      if (!prof) return prev
+      // Se incorpora "limpio": sin carga ni materias asignadas dentro de esta área.
+      const nuevo: Docente = { ...prof, horasAsignadas: 0, materiasIds: [] }
+      const draft: DataState = { ...prev, docentes: [...prev.docentes, nuevo] }
+      logActividad(`Docente "${prof.nombre}" agregado al área`, 'creacion', draft)
+      return draft
+    })
+  }, [logActividad])
+
+  const profesoresDisponibles = useMemo(
+    () => PROFESORES_UNIVERSIDAD.filter((p) => !state.docentes.some((d) => d.id === p.id)),
+    [state.docentes],
+  )
 
   // ── Asignaciones ──
   const asignarDocente = useCallback<DataContextValue['asignarDocente']>((materiaId, docenteId) => {
@@ -329,11 +353,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     addDocente,
     updateDocente,
     deleteDocente,
+    agregarDocente,
+    profesoresDisponibles,
     asignarDocente,
     removerAsignacion,
     addExportacion,
     confirmarOferta,
-  }), [state, hydrated, addMateria, updateMateria, deleteMateria, getMateria, addDocente, updateDocente, deleteDocente, asignarDocente, removerAsignacion, addExportacion, confirmarOferta])
+  }), [state, hydrated, addMateria, updateMateria, deleteMateria, getMateria, addDocente, updateDocente, deleteDocente, agregarDocente, profesoresDisponibles, asignarDocente, removerAsignacion, addExportacion, confirmarOferta])
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }

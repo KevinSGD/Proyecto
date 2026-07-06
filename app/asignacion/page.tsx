@@ -1,36 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle2, User, Clock, BookOpen, ChevronRight, X, Star } from 'lucide-react'
+import { CheckCircle2, User, Clock, BookOpen, ChevronRight, X } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { BadgeStatus, tipoBadge } from '@/components/ui/badge-status'
 import { ToastContainer, useToast } from '@/components/ui/toast-notification'
-import { type Materia, type Docente } from '@/lib/data'
 import { useData } from '@/lib/store'
 import { cn } from '@/lib/utils'
-
-function CompatibilidadBar({ value }: { value: number }) {
-  const color = value >= 80 ? 'bg-green-500' : value >= 60 ? 'bg-amber-500' : 'bg-red-400'
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-        <div className={cn('h-full rounded-full', color)} style={{ width: `${value}%` }} />
-      </div>
-      <span className="text-xs font-semibold text-foreground w-8 text-right">{value}%</span>
-    </div>
-  )
-}
-
-function getCompatibilidad(materia: Materia, docente: Docente): number {
-  let score = 50
-  if (docente.especialidad.toLowerCase().includes('cálculo') && materia.nombre.toLowerCase().includes('cálculo')) score += 30
-  if (docente.especialidad.toLowerCase().includes('álgebra') && materia.nombre.toLowerCase().includes('álgebra')) score += 30
-  if (docente.especialidad.toLowerCase().includes('estadística') && materia.nombre.toLowerCase().includes('estadística')) score += 30
-  if (docente.especialidad.toLowerCase().includes('probabilidad') && materia.nombre.toLowerCase().includes('probabilidad')) score += 25
-  if (docente.horasAsignadas + materia.horas <= docente.horasMax) score += 15
-  if (docente.estado === 'Activo') score += 5
-  return Math.min(score, 100)
-}
 
 export default function AsignacionPage() {
   const { materias, docentes, asignarDocente, removerAsignacion } = useData()
@@ -138,9 +114,7 @@ export default function AsignacionPage() {
           ) : (
             <div className="flex-1 overflow-y-auto divide-y divide-border">
               {docentesActivos
-                .map((d) => ({ docente: d, compatibilidad: getCompatibilidad(selectedMateria, d) }))
-                .sort((a, b) => b.compatibilidad - a.compatibilidad)
-                .map(({ docente: d, compatibilidad }) => {
+                .map((d) => {
                   const isAssigned = selectedMateria.docenteId === d.id
                   const cargaActual = d.horasAsignadas
                   const puedeTomar = cargaActual + selectedMateria.horas <= d.horasMax
@@ -156,7 +130,6 @@ export default function AsignacionPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-semibold text-foreground truncate">{d.nombre}</p>
-                            {compatibilidad >= 80 && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />}
                           </div>
                           <p className="text-xs text-muted-foreground">{d.especialidad}</p>
                           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -169,13 +142,6 @@ export default function AsignacionPage() {
                             <CheckCircle2 className="w-4 h-4" /> Asignado
                           </div>
                         )}
-                      </div>
-
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">Compatibilidad</span>
-                        </div>
-                        <CompatibilidadBar value={compatibilidad} />
                       </div>
 
                       <div className="flex flex-wrap gap-1.5 mb-3">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Filter, Download, Printer, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { Download, Printer, ChevronLeft, ChevronRight, Calendar, Clock3 } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DIAS, HORAS, type HorarioBloque } from '@/lib/data'
 import { useData } from '@/lib/store'
@@ -51,7 +51,7 @@ function BloqueCard({ bloque }: { bloque: HorarioBloque }) {
             {bloque.horaInicio}–{bloque.horaFin}
           </p>
           <p className={cn('text-xs leading-tight mt-0.5 opacity-70 truncate', colors.text)}>{docente?.nombre ?? ''}</p>
-          <p className={cn('text-xs leading-tight opacity-60 truncate', colors.text)}>{bloque.salon}</p>
+          <p className={cn('text-xs leading-tight opacity-60 truncate', colors.text)}>{materia?.tipoAula ?? ''}</p>
         </>
       )}
     </div>
@@ -79,6 +79,23 @@ export default function HorarioAreaPage() {
 
   return (
     <AppLayout>
+      {/* Estado: en revisión */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <div className="p-2 rounded-lg bg-amber-100 flex-shrink-0">
+          <Clock3 className="w-4 h-4 text-amber-600" />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-amber-900">Horario en revisión</p>
+            <span className="text-xs font-semibold text-amber-800 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">Pendiente de aceptación</span>
+          </div>
+          <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+            Esta es una propuesta preliminar. El horario queda en revisión hasta que el sistema de asignación de aulas lo acepte.
+            Se muestra el <span className="font-medium">tipo de aula requerido</span> por cada materia; la asignación del salón definitivo la realiza el otro sistema.
+          </p>
+        </div>
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Search, Bell, ChevronRight } from 'lucide-react'
+import { Search, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const BREADCRUMB_MAP: Record<string, string[]> = {
@@ -15,7 +15,6 @@ const BREADCRUMB_MAP: Record<string, string[]> = {
   '/confirmar': ['Inicio', 'Confirmar Oferta Académica'],
   '/exportar': ['Inicio', 'Exportar Información'],
   '/horario-area': ['Inicio', 'Horario del Área'],
-  '/horario-global': ['Inicio', 'Horario Global'],
 }
 
 export function Header() {
@@ -56,23 +55,6 @@ export function Header() {
           placeholder="Buscar en el sistema..."
           className="pl-9 pr-4 py-2 text-sm bg-muted rounded-lg border border-transparent focus:border-primary focus:bg-white outline-none transition-all w-64"
         />
-      </div>
-
-      {/* Notifications */}
-      <button className="relative p-2 rounded-lg hover:bg-muted transition-colors" aria-label="Notificaciones">
-        <Bell className="w-5 h-5 text-muted-foreground" />
-        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
-      </button>
-
-      {/* Avatar */}
-      <div className="flex items-center gap-2 pl-2 border-l border-border">
-        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-          <span className="text-white text-xs font-bold">AR</span>
-        </div>
-        <div className="hidden lg:block">
-          <p className="text-sm font-semibold text-foreground leading-tight">Dr. Andrés R.</p>
-          <p className="text-xs text-muted-foreground leading-tight">Coordinador</p>
-        </div>
       </div>
     </header>
   )

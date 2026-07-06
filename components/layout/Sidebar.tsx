@@ -10,11 +10,9 @@ import {
   CheckSquare,
   Download,
   Calendar,
-  Globe,
   ChevronRight,
   GraduationCap,
   LogOut,
-  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,7 +24,6 @@ const NAV_ITEMS = [
   { label: 'Confirmar Oferta', icon: CheckSquare, href: '/confirmar' },
   { label: 'Exportar', icon: Download, href: '/exportar' },
   { label: 'Horario del Área', icon: Calendar, href: '/horario-area' },
-  { label: 'Horario Global', icon: Globe, href: '/horario-global' },
 ]
 
 export function Sidebar() {
@@ -74,25 +71,11 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* User area */}
+      {/* Footer */}
       <div className="border-t border-border p-3">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted cursor-pointer transition-colors">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-bold">AR</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">Dr. Andrés Ramírez</p>
-            <p className="text-xs text-muted-foreground truncate">Coordinador</p>
-          </div>
-        </div>
-        <div className="flex gap-1 mt-1">
-          <button className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            <Settings className="w-3.5 h-3.5" /> Ajustes
-          </button>
-          <Link href="/" className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            <LogOut className="w-3.5 h-3.5" /> Salir
-          </Link>
-        </div>
+        <Link href="/" className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+          <LogOut className="w-4 h-4" /> Cerrar sesión
+        </Link>
       </div>
     </aside>
   )

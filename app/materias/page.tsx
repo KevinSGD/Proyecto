@@ -5,20 +5,22 @@ import Link from 'next/link'
 import { Plus, Search, Filter, Pencil, Trash2, Eye, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { BadgeStatus, estadoMateriaBadge, tipoBadge } from '@/components/ui/badge-status'
-import { ConfirmModal } from '@/components/ui/modal'
+import { ConfirmModal, Modal } from '@/components/ui/modal'
 import { ToastContainer, useToast } from '@/components/ui/toast-notification'
 import { useData } from '@/lib/store'
+import { type Materia } from '@/lib/data'
 
 const PAGE_SIZE = 6
 
 export default function MateriasPage() {
-  const { materias, deleteMateria } = useData()
+  const { materias, docentes, deleteMateria } = useData()
   const [search, setSearch] = useState('')
   const [filterCreditos, setFilterCreditos] = useState('')
   const [filterSemestre, setFilterSemestre] = useState('')
   const [filterEstado, setFilterEstado] = useState('')
   const [page, setPage] = useState(1)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [viewMateria, setViewMateria] = useState<Materia | null>(null)
   const { toasts, addToast, removeToast } = useToast()
 
   const filtered = useMemo(() => {
@@ -121,6 +123,7 @@ export default function MateriasPage() {
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Materia</th>
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Créditos</th>
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Horas sem.</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Grupos</th>
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipo</th>
                   <th className="text-left px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Estado</th>
                   <th className="text-right px-5 py-3.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Acciones</th>
@@ -138,11 +141,12 @@ export default function MateriasPage() {
                     </td>
                     <td className="px-5 py-4 text-foreground font-semibold">{m.creditos}</td>
                     <td className="px-5 py-4 text-foreground">{m.horas}h</td>
+                    <td className="px-5 py-4 text-foreground">{m.grupos}</td>
                     <td className="px-5 py-4">{tipoBadge(m.tipo)}</td>
                     <td className="px-5 py-4">{estadoMateriaBadge(m.estado)}</td>
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 rounded-lg hover:bg-muted transition-colors" title="Ver detalle" aria-label="Ver detalle">
+                        <button onClick={() => setViewMateria(m)} className="p-2 rounded-lg hover:bg-muted transition-colors" title="Ver detalle" aria-label="Ver detalle">
                           <Eye className="w-4 h-4 text-muted-foreground" />
                         </button>
                         <Link href={`/materias/${m.id}/editar`} className="p-2 rounded-lg hover:bg-muted transition-colors" title="Editar" aria-label="Editar materia">
@@ -196,6 +200,58 @@ export default function MateriasPage() {
           </div>
         )}
       </div>
+
+      {/* Detalle de materia */}
+      <Modal
+        open={!!viewMateria}
+        onClose={() => setViewMateria(null)}
+        title={viewMateria?.nombre ?? 'Detalle de materia'}
+        description={viewMateria ? `${viewMateria.codigo} · Semestre ${viewMateria.semestre}` : undefined}
+        size="lg"
+      >
+        {viewMateria && (
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-2">
+              {estadoMateriaBadge(viewMateria.estado)}
+              {tipoBadge(viewMateria.tipo)}
+            </div>
+            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {[
+                { label: 'Código', value: viewMateria.codigo },
+                { label: 'Créditos', value: viewMateria.creditos },
+                { label: 'Horas semanales', value: `${viewMateria.horas}h` },
+                { label: 'Grupos', value: viewMateria.grupos },
+                { label: 'Semestre', value: viewMateria.semestre },
+                { label: 'Tipo de aula requerida', value: viewMateria.tipoAula },
+                { label: 'Docente asignado', value: docentes.find((d) => d.id === viewMateria.docenteId)?.nombre ?? 'Sin asignar' },
+              ].map((item) => (
+                <div key={item.label} className="bg-muted/40 rounded-xl px-4 py-3">
+                  <dt className="text-xs text-muted-foreground">{item.label}</dt>
+                  <dd className="text-sm font-semibold text-foreground mt-0.5 break-words">{item.value}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Requerimientos especiales</p>
+                <p className="text-sm text-foreground">{viewMateria.requerimientos || 'Ninguno'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Observaciones</p>
+                <p className="text-sm text-foreground">{viewMateria.observaciones || 'Sin observaciones'}</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <button onClick={() => setViewMateria(null)} className="px-5 py-2.5 text-sm font-medium text-foreground bg-muted rounded-xl hover:bg-border transition-colors">
+                Cerrar
+              </button>
+              <Link href={`/materias/${viewMateria.id}/editar`} className="px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-xl hover:bg-red-700 transition-colors">
+                Editar materia
+              </Link>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Confirm delete modal */}
       <ConfirmModal

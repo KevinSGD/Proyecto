@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Search, Pencil, Trash2, Users, Clock, CheckCircle } from 'lucide-react'
+import { Search, Users, Clock, Database, UserPlus, Building2, Plus, X } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { BadgeStatus, estadoDocenteBadge } from '@/components/ui/badge-status'
-import { ConfirmModal, Modal } from '@/components/ui/modal'
+import { Modal, ConfirmModal } from '@/components/ui/modal'
 import { ToastContainer, useToast } from '@/components/ui/toast-notification'
-import { type Docente } from '@/lib/data'
 import { useData } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
@@ -16,74 +15,18 @@ function ContratoBadge({ tipo }: { tipo: string }) {
   return <BadgeStatus variant="neutral" label="Cátedra" dot={false} />
 }
 
-function DocenteFormModal({ open, onClose, initial, onSave }: {
-  open: boolean
-  onClose: () => void
-  initial?: Partial<Docente>
-  onSave: (d: Partial<Docente>) => void
-}) {
-  const [form, setForm] = useState<Partial<Docente>>(initial ?? {
-    nombre: '', email: '', especialidad: '', contrato: 'Tiempo Completo', horasMax: 20, estado: 'Activo',
-  })
-
-  const inputCls = 'w-full px-3.5 py-2.5 text-sm bg-white border border-border rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all'
-
-  return (
-    <Modal open={open} onClose={onClose} title={initial?.id ? 'Editar Docente' : 'Nuevo Docente'} size="lg">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="sm:col-span-2 flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">Nombre completo <span className="text-primary">*</span></label>
-          <input type="text" value={form.nombre ?? ''} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Dr. Nombre Apellido" className={inputCls} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">Correo institucional</label>
-          <input type="email" value={form.email ?? ''} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} placeholder="nombre@universidad.edu" className={inputCls} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">Especialidad</label>
-          <input type="text" value={form.especialidad ?? ''} onChange={(e) => setForm((p) => ({ ...p, especialidad: e.target.value }))} placeholder="Ej. Cálculo y Análisis" className={inputCls} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">Tipo de contrato</label>
-          <select value={form.contrato ?? 'Tiempo Completo'} onChange={(e) => setForm((p) => ({ ...p, contrato: e.target.value as Docente['contrato'] }))} className={inputCls}>
-            <option value="Tiempo Completo">Tiempo Completo</option>
-            <option value="Medio Tiempo">Medio Tiempo</option>
-            <option value="Cátedra">Cátedra</option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">Horas máximas contratadas</label>
-          <input type="number" min={1} max={40} value={form.horasMax ?? 20} onChange={(e) => setForm((p) => ({ ...p, horasMax: Number(e.target.value) }))} className={inputCls} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-foreground">Estado</label>
-          <select value={form.estado ?? 'Activo'} onChange={(e) => setForm((p) => ({ ...p, estado: e.target.value as Docente['estado'] }))} className={inputCls}>
-            <option value="Activo">Activo</option>
-            <option value="Inactivo">Inactivo</option>
-          </select>
-        </div>
-      </div>
-      <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-border">
-        <button onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-foreground bg-muted rounded-xl hover:bg-border transition-colors">Cancelar</button>
-        <button
-          onClick={() => { onSave(form); onClose() }}
-          className="px-6 py-2.5 text-sm font-semibold text-white bg-primary rounded-xl hover:bg-red-700 transition-colors"
-        >
-          Guardar docente
-        </button>
-      </div>
-    </Modal>
-  )
+function iniciales(nombre: string) {
+  return nombre.split(' ').filter((_, i) => [1, 2].includes(i)).map((n) => n[0]).join('').toUpperCase()
 }
 
 export default function DocentesPage() {
-  const { docentes, materias, addDocente, updateDocente, deleteDocente } = useData()
+  const { docentes, materias, profesoresDisponibles, agregarDocente, deleteDocente } = useData()
   const [search, setSearch] = useState('')
   const [filterContrato, setFilterContrato] = useState('')
   const [filterEstado, setFilterEstado] = useState('')
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [editDocente, setEditDocente] = useState<Docente | null>(null)
-  const [showNew, setShowNew] = useState(false)
+  const [showAgregar, setShowAgregar] = useState(false)
+  const [buscarGlobal, setBuscarGlobal] = useState('')
+  const [quitarId, setQuitarId] = useState<string | null>(null)
   const { toasts, addToast, removeToast } = useToast()
 
   const filtered = useMemo(() => {
@@ -95,33 +38,48 @@ export default function DocentesPage() {
     })
   }, [docentes, search, filterContrato, filterEstado])
 
-  function handleDelete(id: string) {
-    deleteDocente(id)
-    addToast('success', 'Docente eliminado', 'El docente fue removido del sistema.')
-    setDeleteId(null)
+  const disponiblesFiltrados = useMemo(() => {
+    const q = buscarGlobal.toLowerCase()
+    return profesoresDisponibles.filter((p) =>
+      !q || p.nombre.toLowerCase().includes(q) || p.especialidad.toLowerCase().includes(q) || p.area.toLowerCase().includes(q),
+    )
+  }, [profesoresDisponibles, buscarGlobal])
+
+  function handleAgregar(id: string, nombre: string) {
+    agregarDocente(id)
+    addToast('success', 'Profesor agregado', `${nombre} fue incorporado al área.`)
   }
 
-  function handleSave(data: Partial<Docente>) {
-    if (editDocente) {
-      updateDocente(editDocente.id, data)
-      addToast('success', 'Docente actualizado', 'Los datos han sido guardados correctamente.')
-    } else {
-      addDocente(data)
-      addToast('success', 'Docente creado', 'El nuevo docente fue registrado exitosamente.')
-    }
-    setEditDocente(null)
-    setShowNew(false)
+  function handleQuitar(id: string) {
+    const nombre = docentes.find((d) => d.id === id)?.nombre ?? ''
+    deleteDocente(id)
+    addToast('info', 'Profesor retirado', `${nombre} fue retirado del área (sigue en la base de datos institucional).`)
+    setQuitarId(null)
   }
 
   return (
     <AppLayout>
+      {/* Aviso: fuente de datos institucional */}
+      <div className="bg-accent border border-primary/10 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+          <Database className="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">Docentes de la base de datos institucional</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+            Agrega profesores a tu área seleccionándolos de la base de datos global de la universidad, donde están todos los profesores de todas las áreas.
+            Los datos del profesor no se editan aquí; solo defines quiénes participan en tu área.
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <p className="text-muted-foreground text-sm">{filtered.length} docentes encontrados</p>
+        <p className="text-muted-foreground text-sm">{filtered.length} docentes en el área</p>
         <button
-          onClick={() => setShowNew(true)}
+          onClick={() => { setShowAgregar(true); setBuscarGlobal('') }}
           className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors shadow-sm"
         >
-          <Plus className="w-4 h-4" /> Nuevo Docente
+          <UserPlus className="w-4 h-4" /> Agregar profesor
         </button>
       </div>
 
@@ -148,7 +106,8 @@ export default function DocentesPage() {
       {filtered.length === 0 ? (
         <div className="py-16 text-center bg-white rounded-xl border border-border">
           <Users className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-sm font-medium text-muted-foreground">No se encontraron docentes</p>
+          <p className="text-sm font-medium text-muted-foreground">No hay docentes en el área</p>
+          <p className="text-xs text-muted-foreground mt-1">Usa “Agregar profesor” para incorporarlos desde la base de datos institucional.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -161,9 +120,7 @@ export default function DocentesPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-primary font-bold text-sm">
-                        {d.nombre.split(' ').filter((_, i) => [1, 2].includes(i)).map((n) => n[0]).join('').toUpperCase()}
-                      </span>
+                      <span className="text-primary font-bold text-sm">{iniciales(d.nombre)}</span>
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-foreground truncate text-sm">{d.nombre}</p>
@@ -207,13 +164,10 @@ export default function DocentesPage() {
                   </div>
                 )}
 
-                {/* Actions */}
-                <div className="flex gap-2 mt-auto pt-2 border-t border-border">
-                  <button onClick={() => { setEditDocente(d); setShowNew(false) }} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
-                    <Pencil className="w-3.5 h-3.5" /> Editar
-                  </button>
-                  <button onClick={() => setDeleteId(d.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                {/* Action */}
+                <div className="mt-auto pt-2 border-t border-border">
+                  <button onClick={() => setQuitarId(d.id)} className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <X className="w-3.5 h-3.5" /> Quitar del área
                   </button>
                 </div>
               </div>
@@ -222,8 +176,74 @@ export default function DocentesPage() {
         </div>
       )}
 
-      <DocenteFormModal key={editDocente?.id ?? 'nuevo'} open={showNew || !!editDocente} onClose={() => { setShowNew(false); setEditDocente(null) }} initial={editDocente ?? undefined} onSave={handleSave} />
-      <ConfirmModal open={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteId && handleDelete(deleteId)} title="Eliminar docente" description="¿Estás seguro de que deseas eliminar este docente?" confirmLabel="Sí, eliminar" danger />
+      {/* Modal: agregar profesor desde la BD global */}
+      <Modal
+        open={showAgregar}
+        onClose={() => setShowAgregar(false)}
+        title="Agregar profesor"
+        description="Selecciona un profesor de la base de datos global de la universidad (todas las áreas)."
+        size="lg"
+      >
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <input
+            type="search"
+            value={buscarGlobal}
+            onChange={(e) => setBuscarGlobal(e.target.value)}
+            placeholder="Buscar por nombre, especialidad o área..."
+            className="w-full pl-9 pr-4 py-2.5 text-sm bg-muted rounded-lg border border-transparent focus:border-primary focus:bg-white outline-none transition-all"
+          />
+        </div>
+
+        {disponiblesFiltrados.length === 0 ? (
+          <div className="py-12 text-center">
+            <Users className="w-9 h-9 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-sm font-medium text-muted-foreground">
+              {profesoresDisponibles.length === 0 ? 'Todos los profesores ya están en tu área' : 'Ningún profesor coincide con la búsqueda'}
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-2 max-h-[50vh] overflow-y-auto -mx-1 px-1">
+            {disponiblesFiltrados.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-primary/30 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-primary text-xs font-bold">{iniciales(p.nombre)}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{p.nombre}</p>
+                  <p className="text-xs text-muted-foreground truncate">{p.especialidad}</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                    <Building2 className="w-3 h-3" /> {p.area} · {p.contrato}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleAgregar(p.id, p.nombre)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-primary rounded-lg hover:bg-red-700 transition-colors flex-shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Agregar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="flex justify-end mt-5 pt-4 border-t border-border">
+          <button onClick={() => setShowAgregar(false)} className="px-5 py-2.5 text-sm font-medium text-foreground bg-muted rounded-xl hover:bg-border transition-colors">
+            Listo
+          </button>
+        </div>
+      </Modal>
+
+      <ConfirmModal
+        open={!!quitarId}
+        onClose={() => setQuitarId(null)}
+        onConfirm={() => quitarId && handleQuitar(quitarId)}
+        title="Quitar profesor del área"
+        description="El profesor dejará de participar en esta área y sus materias quedarán sin asignar. Seguirá disponible en la base de datos institucional para volver a agregarlo."
+        confirmLabel="Sí, quitar"
+        danger
+      />
+
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </AppLayout>
   )
