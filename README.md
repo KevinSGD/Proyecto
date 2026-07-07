@@ -103,7 +103,7 @@ $env:RAILWAY_RUN_URL = "https://tu-servicio-railway.com/run"
 ```powershell
 # Desde la raíz del repositorio con el venv activado
 cd proyecto/horarios_universidad
-.\start-api.ps1
+python -m uvicorn scheduler.interfaces.api.main:app --reload --host 127.0.0.1 --port 8000 --app-dir src
 ```
 
 Deberías ver:
@@ -116,7 +116,8 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 ```powershell
 # Desde la raíz del repositorio (puedes estar en otra terminal)
 cd proyecto/horarios_universidad
-.\start-front.ps1
+cd frontend
+npm run dev -- --host 127.0.0.1
 ```
 
 Deberías ver:
@@ -129,9 +130,10 @@ Deberías ver:
 ```powershell
 # Backend primero
 cd proyecto/horarios_universidad
-.\start-api.ps1
+python -m uvicorn scheduler.interfaces.api.main:app --reload --host 127.0.0.1 --port 8000 --app-dir src
 # Espera a que inicie, luego abre otra terminal y ejecuta:
-.\start-front.ps1
+cd frontend
+npm run dev -- --host 127.0.0.1
 ```
 
 ---
@@ -194,16 +196,13 @@ deactivate
 
 ## 🔧 Solución de Problemas
 
-### Error: "El archivo de script no se encontró"
+### Error: "No se pueden ejecutar scripts en PowerShell"
 
-Si obtienes error al ejecutar `.\start-api.ps1`:
+Si obtienes error de permisos al activar el entorno virtual:
 
 ```powershell
 # Soluciona permisos de ejecución
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-
-# Intenta nuevamente
-.\start-api.ps1
 ```
 
 ### Error: "No module named 'scheduler'"
@@ -232,8 +231,12 @@ Los servidores tienen hot reload. Si no funciona:
 ```powershell
 # Detén los servidores con CTRL+C
 # Y reinicialos
-.\start-api.ps1
-.\start-front.ps1
+cd proyecto/horarios_universidad
+python -m uvicorn scheduler.interfaces.api.main:app --reload --host 127.0.0.1 --port 8000 --app-dir src
+
+# En otra terminal
+cd proyecto/horarios_universidad/frontend
+npm run dev -- --host 127.0.0.1
 ```
 
 ---
@@ -254,19 +257,18 @@ TesisOMuerte/
 │   │   └── vite.config.js
 │   ├── requirements.txt        # Dependencias Python
 │   ├── pyproject.toml          # Configuración del paquete
-│   ├── start-api.ps1           # Script para iniciar backend
-│   └── start-front.ps1         # Script para iniciar frontend
+│   └── README.md               # Guía de uso del módulo
 └── README.md                   # Este archivo
 ```
 
 ---
 
-## 📚 Scripts Disponibles
+## 📚 Comandos de Arranque
 
-| Script | Ubicación | Función |
-|---|---|---|
-| `start-api.ps1` | `proyecto/horarios_universidad/` | Inicia el backend FastAPI |
-| `start-front.ps1` | `proyecto/horarios_universidad/` | Inicia el frontend Vite |
+| Componente | Comando |
+|---|---|
+| Backend FastAPI | `python -m uvicorn scheduler.interfaces.api.main:app --reload --host 127.0.0.1 --port 8000 --app-dir src` |
+| Frontend Vite | `cd frontend && npm run dev -- --host 127.0.0.1` |
 
 ---
 
@@ -301,11 +303,11 @@ cd ../..
 
 # 5. Terminal 1 - Backend
 cd proyecto/horarios_universidad
-.\start-api.ps1
+python -m uvicorn scheduler.interfaces.api.main:app --reload --host 127.0.0.1 --port 8000 --app-dir src
 
 # 6. Terminal 2 - Frontend
-cd proyecto/horarios_universidad
-.\start-front.ps1
+cd proyecto/horarios_universidad/frontend
+npm run dev -- --host 127.0.0.1
 
 # 7. Abrir navegador
 # http://127.0.0.1:5173/

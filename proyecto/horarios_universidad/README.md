@@ -32,8 +32,6 @@ horarios_universidad/
 │   └── vite.config.js
 ├── requirements.txt            # Dependencias Python
 ├── pyproject.toml              # Configuración del paquete
-├── start-api.ps1               # Script para iniciar backend
-├── start-front.ps1             # Script para iniciar frontend
 └── README.md                   # Este archivo
 ```
 
@@ -90,7 +88,7 @@ cd ..
 ```powershell
 # Asegúrate de estar en proyecto/horarios_universidad
 # Con el venv activado
-.\start-api.ps1
+python -m uvicorn scheduler.interfaces.api.main:app --reload --host 127.0.0.1 --port 8000 --app-dir src
 ```
 
 Deberías ver:
@@ -102,7 +100,8 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 
 ```powershell
 # Abre otra terminal en el mismo directorio
-.\start-front.ps1
+cd frontend
+npm run dev -- --host 127.0.0.1
 ```
 
 Deberías ver:
@@ -220,7 +219,7 @@ netstat -ano | findstr :8000
 # Mata el proceso (reemplaza PID con el número)
 taskkill /PID <PID> /F
 
-# O cambia el puerto en start-api.ps1
+# O cambia el puerto en el comando uvicorn
 ```
 
 ### "npm install falla"
@@ -265,10 +264,11 @@ npm install
 cd ..
 
 # 4. Terminal 1 - Backend
-.\start-api.ps1
+python -m uvicorn scheduler.interfaces.api.main:app --reload --host 127.0.0.1 --port 8000 --app-dir src
 
 # 5. Terminal 2 - Frontend (otra terminal)
-.\start-front.ps1
+cd frontend
+npm run dev -- --host 127.0.0.1
 
 # 6. Abrir navegador
 # http://127.0.0.1:5173/
@@ -340,7 +340,8 @@ $env:DB_SSLMODE = "require"
 Desde `proyecto/horarios_universidad` en otro terminal PowerShell:
 
 ```powershell
-.\start-front.ps1
+cd frontend
+npm run dev -- --host 127.0.0.1
 ```
 
 Esto inicia Vite y abre la interfaz en un puerto local, normalmente:
@@ -349,8 +350,8 @@ Esto inicia Vite y abre la interfaz en un puerto local, normalmente:
 
 ## Flujo de uso
 
-1. Inicia el backend con `start-api.ps1`.
-2. Inicia el frontend con `start-front.ps1`.
+1. Inicia el backend con el comando `python -m uvicorn ... --app-dir src`.
+2. Inicia el frontend con `npm run dev -- --host 127.0.0.1` desde `frontend/`.
 3. Abre la URL local que indique Vite y usa la aplicación.
 
 ## Notas
