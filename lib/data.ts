@@ -1,5 +1,5 @@
 export type MateriaEstado = 'Activa' | 'Inactiva' | 'Pendiente'
-export type MateriaTipo = 'Teórica' | 'Práctica'
+export type MateriaTipo = 'Teórica' | 'Práctica' | 'Teórico-Práctica'
 
 export interface Materia {
   id: string
@@ -14,7 +14,7 @@ export interface Materia {
   tipoAula: string
   requerimientos: string
   observaciones: string
-  docenteId?: string
+  docenteIds: string[]
 }
 
 export type DocenteEstado = 'Activo' | 'Inactivo'
@@ -50,14 +50,14 @@ export interface HorarioBloque {
 }
 
 export const MATERIAS_MOCK: Materia[] = [
-  { id: 'm1', codigo: 'MAT101', nombre: 'Cálculo Diferencial', creditos: 4, horas: 4, grupos: 3, tipo: 'Teórica', semestre: 1, estado: 'Activa', tipoAula: 'Aula Regular', requerimientos: 'Tablero', observaciones: '', docenteId: 'd1' },
-  { id: 'm2', codigo: 'MAT102', nombre: 'Cálculo Integral', creditos: 4, horas: 4, grupos: 2, tipo: 'Teórica', semestre: 2, estado: 'Activa', tipoAula: 'Aula Regular', requerimientos: '', observaciones: '', docenteId: 'd2' },
-  { id: 'm3', codigo: 'MAT103', nombre: 'Álgebra Lineal', creditos: 3, horas: 3, grupos: 2, tipo: 'Teórica', semestre: 2, estado: 'Activa', tipoAula: 'Aula Regular', requerimientos: 'Video beam', observaciones: '', docenteId: 'd1' },
-  { id: 'm4', codigo: 'MAT104', nombre: 'Estadística I', creditos: 3, horas: 3, grupos: 1, tipo: 'Práctica', semestre: 3, estado: 'Activa', tipoAula: 'Laboratorio', requerimientos: 'PC por estudiante', observaciones: 'Requiere software R', docenteId: 'd3' },
-  { id: 'm5', codigo: 'MAT105', nombre: 'Ecuaciones Diferenciales', creditos: 4, horas: 4, grupos: 2, tipo: 'Teórica', semestre: 3, estado: 'Activa', tipoAula: 'Aula Regular', requerimientos: '', observaciones: '' },
-  { id: 'm6', codigo: 'MAT106', nombre: 'Cálculo Multivariable', creditos: 4, horas: 4, grupos: 1, tipo: 'Teórica', semestre: 4, estado: 'Pendiente', tipoAula: 'Aula Regular', requerimientos: 'Tablero', observaciones: '' },
-  { id: 'm7', codigo: 'MAT107', nombre: 'Probabilidad', creditos: 3, horas: 3, grupos: 2, tipo: 'Teórica', semestre: 4, estado: 'Activa', tipoAula: 'Aula Regular', requerimientos: '', observaciones: '', docenteId: 'd2' },
-  { id: 'm8', codigo: 'MAT108', nombre: 'Matemáticas Discretas', creditos: 3, horas: 3, grupos: 1, tipo: 'Teórica', semestre: 1, estado: 'Inactiva', tipoAula: 'Aula Regular', requerimientos: '', observaciones: '' },
+  { id: 'm1', codigo: 'MAT101', nombre: 'Cálculo Diferencial', creditos: 4, horas: 4, grupos: 3, tipo: 'Teórica', semestre: 1, estado: 'Activa', tipoAula: 'Aula Regular', requerimientos: 'Tablero', observaciones: '', docenteIds: ['d1'] },
+  { id: 'm2', codigo: 'MAT102', nombre: 'Cálculo Integral', creditos: 4, horas: 4, grupos: 2, tipo: 'Teórica', semestre: 2, estado: 'Activa', tipoAula: 'Aula Regular', requerimientos: '', observaciones: '', docenteIds: ['d2'] },
+  { id: 'm3', codigo: 'MAT103', nombre: 'Álgebra Lineal', creditos: 3, horas: 3, grupos: 2, tipo: 'Teórica', semestre: 2, estado: 'Activa', tipoAula: 'Aula Regular', requerimientos: 'Video beam', observaciones: '', docenteIds: ['d1'] },
+  { id: 'm4', codigo: 'MAT104', nombre: 'Estadística I', creditos: 3, horas: 3, grupos: 1, tipo: 'Práctica', semestre: 3, estado: 'Activa', tipoAula: 'Laboratorio', requerimientos: 'PC por estudiante', observaciones: 'Requiere software R', docenteIds: ['d3'] },
+  { id: 'm5', codigo: 'MAT105', nombre: 'Ecuaciones Diferenciales', creditos: 4, horas: 4, grupos: 2, tipo: 'Teórica', semestre: 3, estado: 'Activa', tipoAula: 'Aula Regular', requerimientos: '', observaciones: '', docenteIds: [] },
+  { id: 'm6', codigo: 'MAT106', nombre: 'Cálculo Multivariable', creditos: 4, horas: 4, grupos: 1, tipo: 'Teórica', semestre: 4, estado: 'Pendiente', tipoAula: 'Aula Regular', requerimientos: 'Tablero', observaciones: '', docenteIds: [] },
+  { id: 'm7', codigo: 'MAT107', nombre: 'Probabilidad', creditos: 3, horas: 3, grupos: 2, tipo: 'Teórica', semestre: 4, estado: 'Activa', tipoAula: 'Aula Regular', requerimientos: '', observaciones: '', docenteIds: ['d2'] },
+  { id: 'm8', codigo: 'MAT108', nombre: 'Matemáticas Discretas', creditos: 3, horas: 3, grupos: 1, tipo: 'Teórica', semestre: 1, estado: 'Inactiva', tipoAula: 'Aula Regular', requerimientos: '', observaciones: '', docenteIds: [] },
 ]
 
 const AREA_ACTUAL = 'Matemáticas Básicas'

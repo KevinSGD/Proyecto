@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const materiasActivas = materias.filter((m) => m.estado === 'Activa').length
   const materiasPendientes = materias.filter((m) => m.estado === 'Pendiente').length
   const docentesActivos = docentes.filter((d) => d.estado === 'Activo').length
-  const asignaciones = materias.filter((m) => m.docenteId).length
+  const asignaciones = materias.filter((m) => m.docenteIds.length > 0).length
 
   return (
     <AppLayout>
@@ -97,7 +97,7 @@ export default function DashboardPage() {
             </Link>
           </div>
           <ul className="space-y-3">
-            {materias.filter((m) => !m.docenteId).map((m) => (
+            {materias.filter((m) => m.docenteIds.length === 0).map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-3 py-2.5 border-b border-border last:border-0">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
@@ -114,7 +114,7 @@ export default function DashboardPage() {
                 </div>
               </li>
             ))}
-            {materias.filter((m) => !m.docenteId).length === 0 && (
+            {materias.filter((m) => m.docenteIds.length === 0).length === 0 && (
               <li className="text-center py-6 text-sm text-muted-foreground">
                 Todas las materias tienen docente asignado.
               </li>

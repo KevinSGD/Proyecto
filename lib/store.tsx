@@ -87,7 +87,14 @@ function loadState(): DataState {
     const parsed = JSON.parse(raw) as Partial<DataState>
     // Merge defensivo + migración de campos nuevos (p. ej. `grupos`).
     return {
-      materias: (parsed.materias ?? SEED.materias).map((m) => ({ ...m, grupos: m.grupos ?? 1 })),
+      materias: (parsed.materias ?? SEED.materias).map((m) => {
+        const legacy = m as Materia & { docenteId?: string }
+        return {
+          ...m,
+          grupos: m.grupos ?? 1,
+          docenteIds: m.docenteIds ?? (legacy.docenteId ? [legacy.docenteId] : []),
+        }
+      }),
       docentes: (parsed.docentes ?? SEED.docentes).map((d) => ({ ...d, area: d.area ?? 'Matemáticas Básicas' })),
       horario: parsed.horario ?? SEED.horario,
       exportaciones: parsed.exportaciones ?? SEED.exportaciones,
@@ -115,7 +122,7 @@ export function relativeTime(ts: number): string {
 interface DataContextValue extends DataState {
   hydrated: boolean
   // Materias
-  addMateria: (data: Omit<Materia, 'id' | 'docenteId'>) => Materia
+  addMateria: (data: Omit<Materia, 'id' | 'docenteIds'>) => Materia
   updateMateria: (id: string, data: Partial<Materia>) => void
   deleteMateria: (id: string) => void
   getMateria: (id: string) => Materia | undefined
@@ -126,9 +133,9 @@ interface DataContextValue extends DataState {
   // Incorporar un profesor desde la base de datos global de la universidad
   agregarDocente: (globalId: string) => void
   profesoresDisponibles: Docente[]
-  // Asignaciones
+  // Asignaciones (una materia puede tener varios docentes)
   asignarDocente: (materiaId: string, docenteId: string) => void
-  removerAsignacion: (materiaId: string) => void
+  removerAsignacion: (materiaId: string, docenteId: string) => void
   // Exportaciones / oferta
   addExportacion: (nombre: string, tamañoKB: number) => void
   confirmarOferta: () => void
@@ -162,7 +169,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // ── Materias ──
   const addMateria = useCallback<DataContextValue['addMateria']>((data) => {
-    const materia: Materia = { ...data, id: newId('m') }
+    const materia: Materia = { ...data, id: newId('m'), docenteIds: [] }
     setState((prev) => {
       const draft: DataState = { ...prev, materias: [...prev.materias, materia] }
       logActividad(`Nueva materia "${materia.nombre}" creada`, 'creacion', draft)
@@ -185,15 +192,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => {
       const materia = prev.materias.find((m) => m.id === id)
       if (!materia) return prev
-      // Liberar al docente asignado.
-      let docentes = prev.docentes
-      if (materia.docenteId) {
-        docentes = prev.docentes.map((d) =>
-          d.id === materia.docenteId
-            ? { ...d, horasAsignadas: Math.max(0, d.horasAsignadas - materia.horas), materiasIds: d.materiasIds.filter((x) => x !== id) }
-            : d,
-        )
-      }
+      // Liberar a todos los docentes asignados.
+      const docentes = prev.docentes.map((d) =>
+        materia.docenteIds.includes(d.id)
+          ? { ...d, horasAsignadas: Math.max(0, d.horasAsignadas - materia.horas), materiasIds: d.materiasIds.filter((x) => x !== id) }
+          : d,
+      )
       const draft: DataState = {
         ...prev,
         materias: prev.materias.filter((m) => m.id !== id),
@@ -250,8 +254,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const draft: DataState = {
         ...prev,
         docentes: prev.docentes.filter((d) => d.id !== id),
-        // Desasignar sus materias y quitar sus bloques de horario.
-        materias: prev.materias.map((m) => (m.docenteId === id ? { ...m, docenteId: undefined } : m)),
+        // Quitarlo de las materias que tenía asignadas y de sus bloques de horario.
+        materias: prev.materias.map((m) =>
+          m.docenteIds.includes(id) ? { ...m, docenteIds: m.docenteIds.filter((x) => x !== id) } : m,
+        ),
         horario: prev.horario.filter((h) => h.docenteId !== id),
       }
       logActividad(`Docente "${docente.nombre}" retirado del área`, 'eliminacion', draft)
@@ -278,23 +284,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [state.docentes],
   )
 
-  // ── Asignaciones ──
+  // ── Asignaciones (varios docentes por materia) ──
   const asignarDocente = useCallback<DataContextValue['asignarDocente']>((materiaId, docenteId) => {
     setState((prev) => {
       const materia = prev.materias.find((m) => m.id === materiaId)
-      if (!materia || materia.docenteId === docenteId) return prev
-      const prevDocenteId = materia.docenteId
+      if (!materia || materia.docenteIds.includes(docenteId)) return prev
 
-      const materias = prev.materias.map((m) => (m.id === materiaId ? { ...m, docenteId } : m))
-      const docentes = prev.docentes.map((d) => {
-        if (d.id === prevDocenteId) {
-          return { ...d, horasAsignadas: Math.max(0, d.horasAsignadas - materia.horas), materiasIds: d.materiasIds.filter((x) => x !== materiaId) }
-        }
-        if (d.id === docenteId) {
-          return { ...d, horasAsignadas: d.horasAsignadas + materia.horas, materiasIds: [...new Set([...d.materiasIds, materiaId])] }
-        }
-        return d
-      })
+      const materias = prev.materias.map((m) => (m.id === materiaId ? { ...m, docenteIds: [...m.docenteIds, docenteId] } : m))
+      const docentes = prev.docentes.map((d) =>
+        d.id === docenteId
+          ? { ...d, horasAsignadas: d.horasAsignadas + materia.horas, materiasIds: [...new Set([...d.materiasIds, materiaId])] }
+          : d,
+      )
 
       const draft: DataState = { ...prev, materias, docentes }
       const nombreDocente = docentes.find((d) => d.id === docenteId)?.nombre ?? ''
@@ -303,12 +304,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     })
   }, [logActividad])
 
-  const removerAsignacion = useCallback<DataContextValue['removerAsignacion']>((materiaId) => {
+  const removerAsignacion = useCallback<DataContextValue['removerAsignacion']>((materiaId, docenteId) => {
     setState((prev) => {
       const materia = prev.materias.find((m) => m.id === materiaId)
-      if (!materia || !materia.docenteId) return prev
-      const docenteId = materia.docenteId
-      const materias = prev.materias.map((m) => (m.id === materiaId ? { ...m, docenteId: undefined } : m))
+      if (!materia || !materia.docenteIds.includes(docenteId)) return prev
+      const materias = prev.materias.map((m) => (m.id === materiaId ? { ...m, docenteIds: m.docenteIds.filter((x) => x !== docenteId) } : m))
       const docentes = prev.docentes.map((d) =>
         d.id === docenteId
           ? { ...d, horasAsignadas: Math.max(0, d.horasAsignadas - materia.horas), materiasIds: d.materiasIds.filter((x) => x !== materiaId) }

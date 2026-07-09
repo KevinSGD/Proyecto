@@ -12,11 +12,11 @@ export default function ConfirmarPage() {
   const [loading, setLoading] = useState(false)
   const { toasts, addToast, removeToast } = useToast()
 
-  const asignadas = materias.filter((m) => m.docenteId).length
+  const asignadas = materias.filter((m) => m.docenteIds.length > 0).length
   const docentesActivos = docentes.filter((d) => d.estado === 'Activo').length
 
   // Validaciones calculadas a partir de los datos reales del sistema.
-  const sinDocente = materias.filter((m) => !m.docenteId)
+  const sinDocente = materias.filter((m) => m.docenteIds.length === 0)
   const pendientes = materias.filter((m) => m.estado === 'Pendiente')
   const sobrecargados = docentes.filter((d) => d.horasAsignadas > d.horasMax)
 

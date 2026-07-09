@@ -145,7 +145,7 @@ export default function MateriasPage() {
                     <td className="px-5 py-4">{tipoBadge(m.tipo)}</td>
                     <td className="px-5 py-4">{estadoMateriaBadge(m.estado)}</td>
                     <td className="px-5 py-4">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1">
                         <button onClick={() => setViewMateria(m)} className="p-2 rounded-lg hover:bg-muted transition-colors" title="Ver detalle" aria-label="Ver detalle">
                           <Eye className="w-4 h-4 text-muted-foreground" />
                         </button>
@@ -223,7 +223,7 @@ export default function MateriasPage() {
                 { label: 'Grupos', value: viewMateria.grupos },
                 { label: 'Semestre', value: viewMateria.semestre },
                 { label: 'Tipo de aula requerida', value: viewMateria.tipoAula },
-                { label: 'Docente asignado', value: docentes.find((d) => d.id === viewMateria.docenteId)?.nombre ?? 'Sin asignar' },
+                { label: viewMateria.docenteIds.length > 1 ? 'Docentes asignados' : 'Docente asignado', value: viewMateria.docenteIds.length ? viewMateria.docenteIds.map((id) => docentes.find((d) => d.id === id)?.nombre ?? '').filter(Boolean).join(', ') : 'Sin asignar' },
               ].map((item) => (
                 <div key={item.label} className="bg-muted/40 rounded-xl px-4 py-3">
                   <dt className="text-xs text-muted-foreground">{item.label}</dt>

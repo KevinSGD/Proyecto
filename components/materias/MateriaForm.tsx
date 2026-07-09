@@ -8,7 +8,7 @@ import { type Materia } from '@/lib/data'
 import { useData } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
-type FormData = Omit<Materia, 'id' | 'docenteId'>
+type FormData = Omit<Materia, 'id' | 'docenteIds'>
 
 const INITIAL: FormData = {
   codigo: '',
@@ -163,23 +163,15 @@ export function MateriaForm({ initial = {}, materiaId, title, subtitle, onSave }
             <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4 pb-2 border-b border-border">Tipo y configuración</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <Field label="Tipo de materia" required>
-                <div className="flex gap-3">
-                  {(['Teórica', 'Práctica'] as const).map((tipo) => (
-                    <button
-                      key={tipo}
-                      type="button"
-                      onClick={() => update('tipo', tipo)}
-                      className={cn(
-                        'flex-1 py-2.5 px-4 text-sm font-medium rounded-xl border transition-all',
-                        form.tipo === tipo
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-white text-muted-foreground border-border hover:border-primary/40'
-                      )}
-                    >
-                      {tipo}
-                    </button>
-                  ))}
-                </div>
+                <select
+                  value={form.tipo}
+                  onChange={(e) => update('tipo', e.target.value as Materia['tipo'])}
+                  className={inputCls}
+                >
+                  <option value="Teórica">Teórica</option>
+                  <option value="Práctica">Práctica</option>
+                  <option value="Teórico-Práctica">Teórico-Práctica</option>
+                </select>
               </Field>
               <Field label="Estado">
                 <select

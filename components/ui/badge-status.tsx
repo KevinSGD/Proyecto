@@ -53,5 +53,6 @@ export function estadoDocenteBadge(estado: string) {
 
 export function tipoBadge(tipo: string) {
   if (tipo === 'Teórica') return <BadgeStatus variant="info" label="Teórica" dot={false} />
+  if (tipo === 'Teórico-Práctica') return <BadgeStatus variant="neutral" label="Teórico-Práctica" dot={false} />
   return <BadgeStatus variant="primary" label="Práctica" dot={false} />
 }

@@ -43,13 +43,18 @@ export default function ExportarPage() {
     return id ? (docentes.find((d) => d.id === id)?.nombre ?? '') : 'Sin asignar'
   }
 
+  function nombresDocentes(ids: string[]) {
+    if (ids.length === 0) return 'Sin asignar'
+    return ids.map((id) => docentes.find((d) => d.id === id)?.nombre ?? '').filter(Boolean).join(', ')
+  }
+
   // Construye el contenido CSV con los reportes seleccionados.
   function buildCsv(ids: string[]): string {
     const secciones: string[] = []
 
     if (ids.includes('materias') || ids.includes('oferta')) {
       const rows = [csvRow(['Código', 'Materia', 'Créditos', 'Horas', 'Tipo', 'Semestre', 'Estado', 'Tipo de aula', 'Docente'])]
-      materias.forEach((m) => rows.push(csvRow([m.codigo, m.nombre, m.creditos, m.horas, m.tipo, m.semestre, m.estado, m.tipoAula, nombreDocente(m.docenteId)])))
+      materias.forEach((m) => rows.push(csvRow([m.codigo, m.nombre, m.creditos, m.horas, m.tipo, m.semestre, m.estado, m.tipoAula, nombresDocentes(m.docenteIds)])))
       secciones.push('LISTADO DE MATERIAS\n' + rows.join('\n'))
     }
     if (ids.includes('docentes') || ids.includes('oferta')) {
@@ -59,7 +64,7 @@ export default function ExportarPage() {
     }
     if (ids.includes('asignaciones') || ids.includes('oferta')) {
       const rows = [csvRow(['Código', 'Materia', 'Docente', 'Horas', 'Estado'])]
-      materias.forEach((m) => rows.push(csvRow([m.codigo, m.nombre, nombreDocente(m.docenteId), m.horas, m.docenteId ? 'Asignada' : 'Sin asignar'])))
+      materias.forEach((m) => rows.push(csvRow([m.codigo, m.nombre, nombresDocentes(m.docenteIds), m.horas, m.docenteIds.length ? 'Asignada' : 'Sin asignar'])))
       secciones.push('ASIGNACIONES DOCENTE-MATERIA\n' + rows.join('\n'))
     }
     if (ids.includes('horario') || ids.includes('oferta')) {
@@ -203,7 +208,7 @@ export default function ExportarPage() {
                       <td className="border border-border px-3 py-1.5 text-foreground">{m.nombre}</td>
                       <td className="border border-border px-3 py-1.5 text-foreground">{m.creditos}</td>
                       <td className="border border-border px-3 py-1.5 text-foreground">{m.tipo}</td>
-                      <td className="border border-border px-3 py-1.5 text-foreground">{nombreDocente(m.docenteId)}</td>
+                      <td className="border border-border px-3 py-1.5 text-foreground">{nombresDocentes(m.docenteIds)}</td>
                       <td className="border border-border px-3 py-1.5 text-foreground">{m.estado}</td>
                     </tr>
                   ))}
