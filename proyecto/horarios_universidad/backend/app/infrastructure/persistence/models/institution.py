@@ -11,10 +11,11 @@ from sqlalchemy import (
     Date,
     ForeignKey,
     Integer,
+    JSON,
     String,
     UniqueConstraint,
+    Uuid,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -24,7 +25,7 @@ class InstitutionModel(Base):
     __tablename__ = "institutions"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     abbreviation: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -35,7 +36,7 @@ class InstitutionModel(Base):
     logo_url: Mapped[str] = mapped_column(String(500), default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     metadata_: Mapped[dict[str, Any]] = mapped_column(
-        "metadata", JSONB, default=dict
+        "metadata", JSON, default=dict
     )
 
     campuses: Mapped[list[CampusModel]] = relationship(
@@ -54,10 +55,10 @@ class CampusModel(Base):
     __tablename__ = "campuses"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,
@@ -86,10 +87,10 @@ class AcademicPeriodModel(Base):
     __tablename__ = "academic_periods"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,

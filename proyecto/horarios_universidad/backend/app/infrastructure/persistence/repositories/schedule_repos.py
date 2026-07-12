@@ -7,12 +7,14 @@ from typing import TYPE_CHECKING
 from app.core.utils.types import EntityId
 from app.domain.entities.schedule import (
     Assignment,
+    ExecutionLog,
     OptimizationConfig,
     ScheduleRun,
     SessionBlock,
 )
 from app.domain.interfaces.repositories import (
     AssignmentRepository,
+    ExecutionLogRepository,
     OptimizationConfigRepository,
     ScheduleRunRepository,
     SessionBlockRepository,
@@ -154,3 +156,54 @@ class SqlOptimizationConfigRepository(
             .all()
         )
         return [self._to_entity(m) for m in models]
+
+
+class SqlExecutionLogRepository(
+    SqlAlchemyRepository[ExecutionLog],
+    ExecutionLogRepository,
+):
+    """Persists solver execution event logs."""
+
+    def __init__(self, session: Session) -> None:
+        from app.infrastructure.persistence.models.schedule import (
+            ExecutionLogModel,
+        )
+
+        self._model_cls = ExecutionLogModel
+        self._entity_cls = ExecutionLog
+        super().__init__(session)
+
+    def list_by_run(
+        self, schedule_run_id: EntityId,
+    ) -> list[ExecutionLog]:
+        models = (
+            self._query()
+            .filter(self._model_cls.schedule_run_id == schedule_run_id)
+            .order_by(self._model_cls.timestamp)
+            .all()
+        )
+        return [self._to_entity(m) for m in models]
+
+    def _to_entity(self, model: object) -> ExecutionLog:
+        return ExecutionLog(
+            id=model.id,  # type: ignore[attr-defined]
+            schedule_run_id=model.schedule_run_id,  # type: ignore[attr-defined]
+            event_type=model.event_type,  # type: ignore[attr-defined]
+            message=model.message,  # type: ignore[attr-defined]
+            timestamp=model.timestamp,  # type: ignore[attr-defined]
+            metadata=model.metadata_,  # type: ignore[attr-defined]
+        )
+
+    def _to_model(self, entity: ExecutionLog) -> object:
+        from app.infrastructure.persistence.models.schedule import (
+            ExecutionLogModel,
+        )
+
+        return ExecutionLogModel(
+            id=entity.id,
+            schedule_run_id=entity.schedule_run_id,
+            event_type=entity.event_type,
+            message=entity.message,
+            timestamp=entity.timestamp,
+            metadata_=entity.metadata,
+        )

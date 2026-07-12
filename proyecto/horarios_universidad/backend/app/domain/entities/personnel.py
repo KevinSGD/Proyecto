@@ -28,7 +28,6 @@ class Instructor:
     last_name: str = ""
     email: str = ""
     phone: str = ""
-    department_id: EntityId | None = None
     is_active: bool = True
 
 

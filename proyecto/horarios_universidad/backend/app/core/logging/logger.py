@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import logging
 import sys
-
-from app.core.config.settings import LoggingSettings
+from dataclasses import dataclass
 
 _CONFIGURED = False
+
+
+@dataclass(frozen=True, slots=True)
+class LoggingSettings:
+    level: str = "INFO"
+    format: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    log_file: str | None = None
 
 
 class _Formatter(logging.Formatter):

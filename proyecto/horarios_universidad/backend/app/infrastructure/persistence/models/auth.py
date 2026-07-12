@@ -12,8 +12,8 @@ from sqlalchemy import (
     ForeignKey,
     String,
     UniqueConstraint,
+    Uuid,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -23,10 +23,10 @@ class RoleModel(Base):
     __tablename__ = "roles"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=True,
         index=True,
@@ -51,10 +51,10 @@ class PermissionModel(Base):
     __tablename__ = "permissions"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     role_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("roles.id"),
         nullable=False,
         index=True,
@@ -78,16 +78,16 @@ class UserModel(Base):
     __tablename__ = "users"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=True,
         index=True,
     )
     role_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("roles.id"),
         nullable=True,
         index=True,
@@ -115,16 +115,16 @@ class UserAreaModel(Base):
     __tablename__ = "user_areas"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     user_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("users.id"),
         nullable=False,
         index=True,
     )
     area_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("academic_areas.id"),
         nullable=False,
         index=True,

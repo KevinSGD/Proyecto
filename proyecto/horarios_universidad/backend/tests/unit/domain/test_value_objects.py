@@ -9,7 +9,6 @@ from app.domain.value_objects import (
     Capacity,
     CreditHours,
     PreferenceScore,
-    Semester,
     SessionPattern,
     TimeSlot,
     WorkloadLimits,
@@ -29,20 +28,6 @@ class TestCreditHours:
     def test_above_maximum(self) -> None:
         with pytest.raises(DomainError):
             CreditHours(13)
-
-
-class TestSemester:
-    def test_valid_range(self) -> None:
-        assert Semester(1).value == 1
-        assert Semester(16).value == 16
-
-    def test_below_minimum(self) -> None:
-        with pytest.raises(DomainError):
-            Semester(0)
-
-    def test_above_maximum(self) -> None:
-        with pytest.raises(DomainError):
-            Semester(17)
 
 
 class TestTimeSlot:

@@ -8,7 +8,6 @@ __all__ = [
     "EntityId",
     "InstitutionId",
     "AreaId",
-    "ProgramId",
     "SubjectId",
     "GroupId",
     "InstructorId",
@@ -18,7 +17,6 @@ __all__ = [
 
 InstitutionId = EntityId
 AreaId = EntityId
-ProgramId = EntityId
 SubjectId = EntityId
 GroupId = EntityId
 InstructorId = EntityId

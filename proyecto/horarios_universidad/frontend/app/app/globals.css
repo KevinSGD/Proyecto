@@ -1,0 +1,141 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-dm-sans), 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-sora), 'Sora', system-ui, -apple-system, sans-serif;
+
+  /* Tailwind color utilities mapped from CSS variables */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-strong: var(--strong);
+  --color-subtle: var(--subtle);
+
+  /* Brand scale */
+  --color-brand-900: #7A0514;
+  --color-brand-700: #A6061B;
+  --color-brand-500: #C7304A;
+  --color-brand-100: #FCEBED;
+  --color-brand-50: #FBF3F4;
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+}
+
+:root {
+  color-scheme: light;
+
+  /* Institutional palette:
+     Primary #A6061B · Secondary #FFFFFF · Background #F8F9FA · Neutral #2D2D2D */
+  --background: #F8F9FA;
+  --foreground: #2D2D2D;
+  --card: #ffffff;
+  --card-foreground: #2D2D2D;
+  --primary: #A6061B;
+  --primary-foreground: #ffffff;
+  --primary-hover: #8A0517;
+  --primary-soft: #FCEBED;
+  --muted: #F1F2F4;
+  --muted-foreground: #6B6F76;
+  --accent: #FCEBED;
+  --accent-foreground: #A6061B;
+  --destructive: #A6061B;
+  --border: #E6E8EB;
+  --input: #E6E8EB;
+  --ring: #A6061B;
+  --radius: 0.75rem;
+
+  /* Semantic status */
+  --success: #1E8E3E;
+  --success-soft: #E7F4EC;
+  --warning: #C77700;
+  --warning-soft: #FBF0DE;
+  --danger: #A6061B;
+  --danger-soft: #FCEBED;
+
+  /* Text levels */
+  --strong: #45484D;
+  --subtle: #9CA0A6;
+
+  /* Neutral scale */
+  --neutral-50: #F8F9FA;
+  --neutral-100: #F1F2F4;
+  --neutral-200: #E6E8EB;
+  --neutral-400: #9CA0A6;
+  --neutral-500: #6B6F76;
+  --neutral-700: #45484D;
+  --neutral-900: #2D2D2D;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(45, 45, 45, 0.04), 0 1px 3px rgba(45, 45, 45, 0.03);
+  --shadow-md: 0 4px 12px rgba(45, 45, 45, 0.06), 0 2px 4px rgba(45, 45, 45, 0.04);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-dm-sans), 'DM Sans', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sora), 'Sora', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--neutral-400); }
+
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up { animation: fadeInUp 0.3s ease-out; }
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.slide-in-right { animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+
+@keyframes modalPop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-pop { animation: modalPop 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.animate-spin { animation: spin 1s linear infinite; }

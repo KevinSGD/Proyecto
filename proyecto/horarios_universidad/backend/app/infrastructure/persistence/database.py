@@ -6,7 +6,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import (
     DeclarativeBase,
     Session,
@@ -18,21 +18,14 @@ class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
 
 
+def _is_sqlite(url: str) -> bool:
+    return url.startswith("sqlite")
+
+
 class DatabaseEngine:
     """Thin wrapper around SQLAlchemy engine and session factory.
 
-    Parameters
-    ----------
-    database_url:
-        PostgreSQL connection string (or any SQLAlchemy-compatible URL).
-    echo:
-        When *True*, emit SQL statements to the log for debugging.
-    pool_size:
-        Number of connections to keep in the pool.
-    max_overflow:
-        Number of extra connections allowed above *pool_size*.
-    **engine_kwargs:
-        Forwarded verbatim to ``create_engine``.
+    Supports both PostgreSQL and SQLite transparently.
     """
 
     def __init__(
@@ -44,14 +37,26 @@ class DatabaseEngine:
         max_overflow: int = 10,
         **engine_kwargs: Any,
     ) -> None:
-        self._engine = create_engine(
-            database_url,
-            echo=echo,
-            pool_size=pool_size,
-            max_overflow=max_overflow,
-            pool_pre_ping=True,
-            **engine_kwargs,
-        )
+        kwargs: dict[str, Any] = {"echo": echo, **engine_kwargs}
+
+        if _is_sqlite(database_url):
+            kwargs["connect_args"] = {"check_same_thread": False}
+            kwargs["pool_pre_ping"] = False
+        else:
+            kwargs["pool_size"] = pool_size
+            kwargs["max_overflow"] = max_overflow
+            kwargs["pool_pre_ping"] = True
+
+        self._engine = create_engine(database_url, **kwargs)
+
+        if _is_sqlite(database_url):
+            @event.listens_for(self._engine, "connect")
+            def _set_sqlite_pragma(dbapi_conn, _connection_record):
+                cursor = dbapi_conn.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.close()
+
         self._session_factory = sessionmaker(
             bind=self._engine,
             expire_on_commit=False,

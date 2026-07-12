@@ -1,4 +1,4 @@
-"""ORM models for physical infrastructure: buildings, classrooms, equipment."""
+"""ORM models for physical infrastructure: buildings, classrooms, resources."""
 
 from __future__ import annotations
 
@@ -6,9 +6,8 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, ForeignKey, Integer, String, UniqueConstraint,
+    Boolean, CheckConstraint, ForeignKey, Integer, String, UniqueConstraint, Uuid,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -17,9 +16,9 @@ from app.infrastructure.persistence.database import Base
 class BuildingModel(Base):
     __tablename__ = "buildings"
 
-    id: Mapped[Any] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[Any] = mapped_column(Uuid, primary_key=True, default=uuid4)
     campus_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("campuses.id"), nullable=False, index=True,
+        Uuid, ForeignKey("campuses.id"), nullable=False, index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     code: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -35,52 +34,21 @@ class BuildingModel(Base):
     )
 
 
-class ClassroomTypeModel(Base):
-    __tablename__ = "classroom_types"
-
-    id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
-    )
-    institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("institutions.id"),
-        nullable=False,
-        index=True,
-    )
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    code: Mapped[str] = mapped_column(String(50), nullable=False)
-    description: Mapped[str] = mapped_column(String(1000), default="")
-
-    __table_args__ = (
-        UniqueConstraint(
-            "institution_id",
-            "code",
-            name="uq_classroom_types_institution_code",
-        ),
-    )
-
-
 class ClassroomModel(Base):
     __tablename__ = "classrooms"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,
     )
     building_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("buildings.id"),
-        nullable=True,
-        index=True,
-    )
-    classroom_type_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("classroom_types.id"),
         nullable=True,
         index=True,
     )
@@ -94,11 +62,10 @@ class ClassroomModel(Base):
     building: Mapped["BuildingModel | None"] = relationship(
         back_populates="classrooms"
     )
-    classroom_type: Mapped["ClassroomTypeModel | None"] = relationship()
     availabilities: Mapped[list[ClassroomAvailabilityModel]] = relationship(
         back_populates="classroom"
     )
-    equipment_links: Mapped[list[ClassroomEquipmentModel]] = relationship(
+    resource_links: Mapped[list[RoomResourceModel]] = relationship(
         back_populates="classroom"
     )
 
@@ -114,16 +81,16 @@ class ClassroomAvailabilityModel(Base):
     __tablename__ = "classroom_availabilities"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     classroom_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("classrooms.id"),
         nullable=False,
         index=True,
     )
     period_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("academic_periods.id"),
         nullable=True,
         index=True,
@@ -154,14 +121,14 @@ class ClassroomAvailabilityModel(Base):
     )
 
 
-class EquipmentModel(Base):
-    __tablename__ = "equipment"
+class ResourceModel(Base):
+    __tablename__ = "resources"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,
@@ -172,75 +139,75 @@ class EquipmentModel(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "institution_id", "code", name="uq_equipment_institution_code"
+            "institution_id", "code", name="uq_resources_institution_code"
         ),
     )
 
 
-class ClassroomEquipmentModel(Base):
-    __tablename__ = "classroom_equipment"
+class RoomResourceModel(Base):
+    __tablename__ = "room_resources"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     classroom_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("classrooms.id"),
         nullable=False,
         index=True,
     )
-    equipment_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("equipment.id"),
+    resource_id: Mapped[Any] = mapped_column(
+        Uuid,
+        ForeignKey("resources.id"),
         nullable=False,
         index=True,
     )
     quantity: Mapped[int] = mapped_column(Integer, default=1)
 
     classroom: Mapped[ClassroomModel] = relationship(
-        back_populates="equipment_links"
+        back_populates="resource_links"
     )
-    equipment: Mapped[EquipmentModel] = relationship()
+    resource: Mapped[ResourceModel] = relationship()
 
     __table_args__ = (
         UniqueConstraint(
             "classroom_id",
-            "equipment_id",
-            name="uq_classroom_equipment_pair",
+            "resource_id",
+            name="uq_room_resources_pair",
         ),
         CheckConstraint(
-            "quantity >= 1", name="ck_classroom_equipment_quantity"
+            "quantity >= 1", name="ck_room_resources_quantity"
         ),
     )
 
 
-class SubjectEquipmentRequirementModel(Base):
-    __tablename__ = "subject_equipment_requirements"
+class SubjectResourceRequirementModel(Base):
+    __tablename__ = "subject_resource_requirements"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     subject_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("subjects.id"),
         nullable=False,
         index=True,
     )
-    equipment_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("equipment.id"),
+    resource_id: Mapped[Any] = mapped_column(
+        Uuid,
+        ForeignKey("resources.id"),
         nullable=False,
         index=True,
     )
     is_mandatory: Mapped[bool] = mapped_column(Boolean, default=True)
 
     subject: Mapped["SubjectModel"] = relationship()
-    equipment: Mapped[EquipmentModel] = relationship()
+    resource: Mapped[ResourceModel] = relationship()
 
     __table_args__ = (
         UniqueConstraint(
             "subject_id",
-            "equipment_id",
-            name="uq_subject_equipment_requirements_pair",
+            "resource_id",
+            name="uq_subject_resource_requirements_pair",
         ),
     )

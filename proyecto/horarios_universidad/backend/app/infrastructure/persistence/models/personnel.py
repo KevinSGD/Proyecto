@@ -14,8 +14,8 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    Uuid,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -25,10 +25,10 @@ class InstructorModel(Base):
     __tablename__ = "instructors"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,
@@ -38,12 +38,6 @@ class InstructorModel(Base):
     last_name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), default="")
     phone: Mapped[str] = mapped_column(String(50), default="")
-    department_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("departments.id"),
-        nullable=True,
-        index=True,
-    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     contracts: Mapped[list[InstructorContractModel]] = relationship(
@@ -75,10 +69,10 @@ class InstructorContractModel(Base):
     __tablename__ = "instructor_contracts"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     instructor_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("instructors.id"),
         nullable=False,
         index=True,
@@ -101,16 +95,16 @@ class InstructorSpecialtyModel(Base):
     __tablename__ = "instructor_specialties"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     instructor_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("instructors.id"),
         nullable=False,
         index=True,
     )
     subject_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("subjects.id"),
         nullable=False,
         index=True,
@@ -138,10 +132,10 @@ class InstructorQualificationModel(Base):
     __tablename__ = "instructor_qualifications"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     instructor_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("instructors.id"),
         nullable=False,
         index=True,
@@ -164,16 +158,16 @@ class InstructorAvailabilityModel(Base):
     __tablename__ = "instructor_availabilities"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     instructor_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("instructors.id"),
         nullable=False,
         index=True,
     )
     period_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("academic_periods.id"),
         nullable=True,
         index=True,
@@ -209,28 +203,28 @@ class InstructorPreferenceModel(Base):
     __tablename__ = "instructor_preferences"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     instructor_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("instructors.id"),
         nullable=False,
         index=True,
     )
     period_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("academic_periods.id"),
         nullable=True,
         index=True,
     )
     group_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("groups.id"),
         nullable=True,
         index=True,
     )
     subject_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("subjects.id"),
         nullable=True,
         index=True,

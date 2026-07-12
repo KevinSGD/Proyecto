@@ -8,14 +8,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 from app.core.utils.types import EntityId
 
 if TYPE_CHECKING:
-    from app.domain.entities.academic import (
-        AcademicArea,
-        Department,
-        PlanSubject,
-        Program,
-        StudyPlan,
-        Subject,
-    )
+    from app.domain.entities.academic import AcademicArea, Subject
     from app.domain.entities.auth import Permission, Role, User, UserArea
     from app.domain.entities.import_export import (
         ImportLogEntry,
@@ -27,8 +20,8 @@ if TYPE_CHECKING:
         Building,
         Classroom,
         ClassroomAvailability,
-        ClassroomEquipment,
-        Equipment,
+        Resource,
+        RoomResource,
     )
     from app.domain.entities.institution import (
         AcademicPeriod,
@@ -65,10 +58,7 @@ __all__ = [
     "CampusRepository",
     "AcademicPeriodRepository",
     "AcademicAreaRepository",
-    "DepartmentRepository",
     "SubjectRepository",
-    "StudyPlanRepository",
-    "PlanSubjectRepository",
     "InstructorRepository",
     "AvailabilityRepository",
     "ContractRepository",
@@ -77,7 +67,7 @@ __all__ = [
     "ClassroomRepository",
     "ClassroomAvailabilityRepository",
     "BuildingRepository",
-    "EquipmentRepository",
+    "ResourceRepository",
     "OfferingRepository",
     "OfferingLineRepository",
     "GroupRepository",
@@ -87,6 +77,7 @@ __all__ = [
     "SessionBlockRepository",
     "OptimizationConfigRepository",
     "UserRepository",
+    "UserAreaRepository",
     "RoleRepository",
     "ImportSessionRepository",
     "ImportTemplateRepository",
@@ -145,35 +136,9 @@ class AcademicAreaRepository(Repository["AcademicArea"]):
     def list_by_institution(self, institution_id: EntityId) -> "list[AcademicArea]": ...
 
 
-class DepartmentRepository(Repository["Department"]):
-    @abstractmethod
-    def list_by_area(self, area_id: EntityId) -> "list[Department]": ...
-
-
 class SubjectRepository(Repository["Subject"]):
     @abstractmethod
     def list_by_institution(self, institution_id: EntityId) -> "list[Subject]": ...
-
-    @abstractmethod
-    def list_by_study_plan(self, study_plan_id: EntityId) -> "list[Subject]": ...
-
-
-class StudyPlanRepository(Repository["StudyPlan"]):
-    @abstractmethod
-    def list_by_program(self, program_id: EntityId) -> "list[StudyPlan]": ...
-
-    @abstractmethod
-    def get_active(self, program_id: EntityId) -> "StudyPlan | None": ...
-
-
-class PlanSubjectRepository(Repository["PlanSubject"]):
-    @abstractmethod
-    def list_by_study_plan(self, study_plan_id: EntityId) -> "list[PlanSubject]": ...
-
-    @abstractmethod
-    def list_by_semester(
-        self, study_plan_id: EntityId, semester: int,
-    ) -> "list[PlanSubject]": ...
 
 
 # ── personnel ─────────────────────────────────────────────────────────────────
@@ -186,8 +151,6 @@ class InstructorRepository(Repository["Instructor"]):
     @abstractmethod
     def list_by_subject(self, subject_id: EntityId) -> "list[Instructor]": ...
 
-    @abstractmethod
-    def list_by_department(self, department_id: EntityId) -> "list[Instructor]": ...
 
 
 class AvailabilityRepository(Repository["InstructorAvailability"]):
@@ -251,12 +214,15 @@ class ClassroomAvailabilityRepository(Repository["ClassroomAvailability"]):
     def bulk_save(self, entries: "list[ClassroomAvailability]") -> int: ...
 
 
-class EquipmentRepository(Repository["Equipment"]):
+class ResourceRepository(Repository["Resource"]):
     @abstractmethod
-    def list_by_classroom(self, classroom_id: EntityId) -> "list[Equipment]": ...
+    def list_by_classroom(self, classroom_id: EntityId) -> "list[Resource]": ...
 
     @abstractmethod
-    def list_required_by_subject(self, subject_id: EntityId) -> "list[Equipment]": ...
+    def list_required_by_subject(self, subject_id: EntityId) -> "list[Resource]": ...
+
+    @abstractmethod
+    def list_preferred_by_subject(self, subject_id: EntityId) -> "list[Resource]": ...
 
 
 # ── offering & scheduling ────────────────────────────────────────────────────
@@ -290,6 +256,15 @@ class ScheduleTypeRepository(Repository["ScheduleType"]):
 
 
 # ── schedule results ──────────────────────────────────────────────────────────
+
+
+class ExecutionLogRepository(Repository["ExecutionLog"]):
+    """Repository for solver execution event logs."""
+
+    @abstractmethod
+    def list_by_run(
+        self, schedule_run_id: EntityId,
+    ) -> "list[ExecutionLog]": ...
 
 
 class ScheduleRunRepository(Repository["ScheduleRun"]):
@@ -331,6 +306,14 @@ class UserRepository(Repository["User"]):
 
     @abstractmethod
     def list_by_institution(self, institution_id: EntityId) -> "list[User]": ...
+
+
+class UserAreaRepository(Repository["UserArea"]):
+    @abstractmethod
+    def list_by_user(self, user_id: EntityId) -> "list[UserArea]": ...
+
+    @abstractmethod
+    def list_by_area(self, area_id: EntityId) -> "list[UserArea]": ...
 
 
 class RoleRepository(Repository["Role"]):

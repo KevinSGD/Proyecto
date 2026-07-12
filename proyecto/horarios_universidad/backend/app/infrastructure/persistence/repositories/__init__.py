@@ -3,20 +3,18 @@
 from app.infrastructure.persistence.repositories.base import SqlAlchemyRepository
 from app.infrastructure.persistence.repositories.academic_repos import (
     SqlAcademicAreaRepository,
-    SqlDepartmentRepository,
-    SqlPlanSubjectRepository,
-    SqlStudyPlanRepository,
     SqlSubjectRepository,
 )
 from app.infrastructure.persistence.repositories.auth_repos import (
     SqlRoleRepository,
+    SqlUserAreaRepository,
     SqlUserRepository,
 )
 from app.infrastructure.persistence.repositories.infrastructure_repos import (
     SqlBuildingRepository,
     SqlClassroomAvailabilityRepository,
     SqlClassroomRepository,
-    SqlEquipmentRepository,
+    SqlResourceRepository,
 )
 from app.infrastructure.persistence.repositories.institution_repos import (
     SqlAcademicPeriodRepository,
@@ -38,6 +36,7 @@ from app.infrastructure.persistence.repositories.personnel_repos import (
 )
 from app.infrastructure.persistence.repositories.schedule_repos import (
     SqlAssignmentRepository,
+    SqlExecutionLogRepository,
     SqlOptimizationConfigRepository,
     SqlScheduleRunRepository,
     SqlSessionBlockRepository,
@@ -59,10 +58,7 @@ __all__ = [
     "SqlAcademicPeriodRepository",
     # academic
     "SqlAcademicAreaRepository",
-    "SqlDepartmentRepository",
     "SqlSubjectRepository",
-    "SqlStudyPlanRepository",
-    "SqlPlanSubjectRepository",
     # personnel
     "SqlInstructorRepository",
     "SqlAvailabilityRepository",
@@ -73,7 +69,7 @@ __all__ = [
     "SqlBuildingRepository",
     "SqlClassroomRepository",
     "SqlClassroomAvailabilityRepository",
-    "SqlEquipmentRepository",
+    "SqlResourceRepository",
     # offering & scheduling
     "SqlOfferingRepository",
     "SqlOfferingLineRepository",
@@ -83,9 +79,11 @@ __all__ = [
     "SqlScheduleRunRepository",
     "SqlAssignmentRepository",
     "SqlSessionBlockRepository",
+    "SqlExecutionLogRepository",
     "SqlOptimizationConfigRepository",
     # auth
     "SqlUserRepository",
+    "SqlUserAreaRepository",
     "SqlRoleRepository",
     # system & import/export
     "SqlImportSessionRepository",

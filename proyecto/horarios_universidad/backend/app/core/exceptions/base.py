@@ -98,14 +98,6 @@ class TimeoutError_(OptimizationError):
         super().__init__(f"Solver timed out after {elapsed_seconds:.1f}s{obj_info}")
 
 
-class SolverConfigError(OptimizationError):
-    """The solver configuration is invalid."""
-
-    def __init__(self, *, parameter: str, reason: str) -> None:
-        self.parameter = parameter
-        self.reason = reason
-        super().__init__(f"Bad solver config for '{parameter}': {reason}")
-
 
 class ConfigurationError(SchedulerError):
     """Application configuration is missing or invalid."""

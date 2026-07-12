@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from app.domain.entities.academic import PlanSubject, Subject, SubjectPrerequisite
+from app.domain.entities.academic import Subject
 from app.domain.entities.infrastructure import (
     Classroom,
     ClassroomAvailability,
-    ClassroomEquipment,
+    RoomResource,
 )
 from app.domain.entities.offering import AcademicOffering, OfferingLine
 from app.domain.entities.personnel import (
@@ -29,7 +29,6 @@ __all__ = [
     "ClassroomValidationData",
     "OfferingValidationData",
     "CapacityValidationData",
-    "CurriculumValidationData",
 ]
 
 
@@ -52,8 +51,7 @@ class SubjectValidationData:
     specialties: list[InstructorSpecialty] = field(default_factory=list)
     offering_lines: list[OfferingLine] = field(default_factory=list)
     classrooms: list[Classroom] = field(default_factory=list)
-    classroom_equipment: list[ClassroomEquipment] = field(default_factory=list)
-    prerequisites: list[SubjectPrerequisite] = field(default_factory=list)
+    room_resources: list[RoomResource] = field(default_factory=list)
 
 
 @dataclass
@@ -86,12 +84,4 @@ class CapacityValidationData:
     classroom_availabilities: list[ClassroomAvailability] = field(default_factory=list)
     groups: list[Group] = field(default_factory=list)
     offering_lines: list[OfferingLine] = field(default_factory=list)
-    subjects: list[Subject] = field(default_factory=list)
-
-
-@dataclass
-class CurriculumValidationData:
-    """All entities required by :class:`CurriculumValidator`."""
-
-    plan_subjects: list[PlanSubject] = field(default_factory=list)
     subjects: list[Subject] = field(default_factory=list)

@@ -65,15 +65,6 @@ class SqlInstructorRepository(
         )
         return [self._to_entity(m) for m in models]
 
-    def list_by_department(
-        self, department_id: EntityId,
-    ) -> list[Instructor]:
-        models = (
-            self._query()
-            .filter(self._model_cls.department_id == department_id)
-            .all()
-        )
-        return [self._to_entity(m) for m in models]
 
 
 class SqlAvailabilityRepository(

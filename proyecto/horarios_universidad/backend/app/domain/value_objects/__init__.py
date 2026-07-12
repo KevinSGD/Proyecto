@@ -3,8 +3,6 @@
 from app.domain.value_objects.academic import (
     CreditHours,
     Modality,
-    Semester,
-    SubjectCategory,
 )
 from app.domain.value_objects.capacity import (
     Capacity,
@@ -22,7 +20,6 @@ from app.domain.value_objects.identifiers import (
     GroupId,
     InstitutionId,
     InstructorId,
-    ProgramId,
     SubjectId,
     UserId,
 )
@@ -44,7 +41,6 @@ __all__ = [
     "EntityId",
     "InstitutionId",
     "AreaId",
-    "ProgramId",
     "SubjectId",
     "GroupId",
     "InstructorId",
@@ -52,9 +48,7 @@ __all__ = [
     "UserId",
     # academic
     "CreditHours",
-    "Semester",
     "Modality",
-    "SubjectCategory",
     # temporal
     "DayOfWeek",
     "TimeSlot",

@@ -4,7 +4,7 @@ Aggregates all soft-constraint penalty and reward variables into objective terms
     f5 = -Σ_s p_s · v_s + Σ_r r_r · b_r
 
 Sub-weights follow the SB priority table:
-    SB-07: 5000   SB-02: 2000   SB-01: 1500   SB-09: 1000   SB-05: 500
+    SB-02: 2000   SB-01: 1500   SB-09: 1000   SB-05: 500
     SB-06: 400    SB-08: 200    SB-11: 150     SB-04: 100    SB-10: 50
     SB-03: 300 (reward — positive coefficient)
 
@@ -27,7 +27,6 @@ __all__ = ["F5SoftPenalties"]
 
 # Sub-weights for each soft-constraint penalty (positive = penalty weight to negate).
 _PENALTY_WEIGHTS: dict[str, int] = {
-    "penalty_sb07": 5000,
     "penalty_sb02": 2000,
     "penalty_sb01": 1500,
     "penalty_sb09": 1000,

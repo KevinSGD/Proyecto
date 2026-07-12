@@ -3,12 +3,7 @@
 from app.infrastructure.persistence.database import Base
 from app.infrastructure.persistence.models.academic import (
     AcademicAreaModel,
-    DepartmentModel,
-    PlanSubjectModel,
-    ProgramModel,
-    StudyPlanModel,
     SubjectModel,
-    SubjectPrerequisiteModel,
 )
 from app.infrastructure.persistence.models.auth import (
     PermissionModel,
@@ -25,11 +20,10 @@ from app.infrastructure.persistence.models.import_export import (
 from app.infrastructure.persistence.models.infrastructure_models import (
     BuildingModel,
     ClassroomAvailabilityModel,
-    ClassroomEquipmentModel,
     ClassroomModel,
-    ClassroomTypeModel,
-    EquipmentModel,
-    SubjectEquipmentRequirementModel,
+    ResourceModel,
+    RoomResourceModel,
+    SubjectResourceRequirementModel,
 )
 from app.infrastructure.persistence.models.institution import (
     AcademicPeriodModel,
@@ -71,12 +65,7 @@ __all__ = [
     "CampusModel",
     "AcademicPeriodModel",
     "AcademicAreaModel",
-    "DepartmentModel",
-    "ProgramModel",
-    "StudyPlanModel",
-    "PlanSubjectModel",
     "SubjectModel",
-    "SubjectPrerequisiteModel",
     "InstructorModel",
     "InstructorContractModel",
     "InstructorSpecialtyModel",
@@ -84,12 +73,11 @@ __all__ = [
     "InstructorAvailabilityModel",
     "InstructorPreferenceModel",
     "BuildingModel",
-    "ClassroomTypeModel",
     "ClassroomModel",
     "ClassroomAvailabilityModel",
-    "EquipmentModel",
-    "ClassroomEquipmentModel",
-    "SubjectEquipmentRequirementModel",
+    "ResourceModel",
+    "RoomResourceModel",
+    "SubjectResourceRequirementModel",
     "AcademicOfferingModel",
     "OfferingLineModel",
     "ScheduleTypeModel",

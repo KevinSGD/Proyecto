@@ -75,7 +75,6 @@
 | SB-04 | Doc 06 | `constraints/soft/sb04_timeslot_preference.py` | `Sb04TimeslotPreference` | `reward_sb04` | Preferencia de franja horaria |
 | SB-05 | Doc 06 | `constraints/soft/sb05_schedule_compactness.py` | `Sb05ScheduleCompactness` | `penalty_sb05` | Compacidad del horario (huecos) |
 | SB-06 | Doc 06 | `constraints/soft/sb06_max_attendance_days.py` | `Sb06MaxAttendanceDays` | `penalty_sb06` | Dias maximos de asistencia |
-| SB-07 | Doc 06 | `constraints/soft/sb07_semester_no_overlap.py` | `Sb07SemesterNoOverlap` | `penalty_sb07` | No solapamiento por semestre |
 | SB-08 | Doc 06 | `constraints/soft/sb08_weekly_distribution.py` | `Sb08WeeklyDistribution` | `penalty_sb08` | Distribucion semanal equilibrada |
 | SB-09 | Doc 06 | `constraints/soft/sb09_lunch_break.py` | `Sb09LunchBreak` | `penalty_sb09` | Hora de almuerzo libre |
 | SB-10 | Doc 06 | `constraints/soft/sb10_room_preference.py` | `Sb10RoomPreference` | `reward_sb10` | Preferencia de aula (ajuste de capacidad) |
@@ -91,12 +90,12 @@
 | F4 | Doc 07 S3.4 | `objective/components/f4_schedule_compactness.py` | `F4ScheduleCompactness` | 20 | `[(penalty_sb05_var, -1)]` |
 | F5 | Doc 07 S3.5 | `objective/components/f5_soft_penalties.py` | `F5SoftPenalties` | 80 | Agrega penalty_sb01..11 y reward_sb03/04/10 |
 | F6 | Doc 07 S3.6 | `objective/components/f6_room_utilization.py` | `F6RoomUtilization` | 10 | `[(u_max, -1), (u_min, +1)]` |
+| F7 | Phase 10.5 | `objective/components/f7_preferred_resources.py` | `F7PreferredResources` | 20 | `[(Z_{g,w,h,a}, +200)]` para aulas con recursos preferidos |
 
 ## 8. Sub-pesos de F5 (Penalizaciones Blandas)
 
 | Grupo de variable | Sub-peso | Signo en objetivo |
 |---|---|---|
-| `penalty_sb07` | 5000 | negativo (penalizacion) |
 | `penalty_sb02` | 2000 | negativo (penalizacion) |
 | `penalty_sb01` | 1500 | negativo (penalizacion) |
 | `penalty_sb09` | 1000 | negativo (penalizacion) |

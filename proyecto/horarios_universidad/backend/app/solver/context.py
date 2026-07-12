@@ -35,6 +35,7 @@ class SolverGroup:
     block_durations: tuple[int, ...]
     candidate_instructors: list[EntityId] = field(default_factory=list)
     compatible_classrooms: list[EntityId] = field(default_factory=list)
+    preferred_classrooms: list[EntityId] = field(default_factory=list)
     priority: int = 2
 
 
@@ -57,7 +58,7 @@ class SolverClassroom:
 
     id: EntityId
     capacity: int
-    equipment_ids: set[EntityId] = field(default_factory=set)
+    resource_ids: set[EntityId] = field(default_factory=set)
     available_slots: set[tuple[int, int]] = field(default_factory=set)
     is_virtual: bool = False
 

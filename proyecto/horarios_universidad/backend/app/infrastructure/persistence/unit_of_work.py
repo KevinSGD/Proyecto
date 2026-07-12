@@ -7,20 +7,18 @@ from typing import TYPE_CHECKING
 from app.domain.interfaces.unit_of_work import UnitOfWork
 from app.infrastructure.persistence.repositories.academic_repos import (
     SqlAcademicAreaRepository,
-    SqlDepartmentRepository,
-    SqlPlanSubjectRepository,
-    SqlStudyPlanRepository,
     SqlSubjectRepository,
 )
 from app.infrastructure.persistence.repositories.auth_repos import (
     SqlRoleRepository,
+    SqlUserAreaRepository,
     SqlUserRepository,
 )
 from app.infrastructure.persistence.repositories.infrastructure_repos import (
     SqlBuildingRepository,
     SqlClassroomAvailabilityRepository,
     SqlClassroomRepository,
-    SqlEquipmentRepository,
+    SqlResourceRepository,
 )
 from app.infrastructure.persistence.repositories.offering_repos import (
     SqlGroupRepository,
@@ -37,11 +35,13 @@ from app.infrastructure.persistence.repositories.personnel_repos import (
 )
 from app.infrastructure.persistence.repositories.schedule_repos import (
     SqlAssignmentRepository,
+    SqlExecutionLogRepository,
     SqlOptimizationConfigRepository,
     SqlScheduleRunRepository,
     SqlSessionBlockRepository,
 )
 from app.infrastructure.persistence.repositories.institution_repos import (
+    SqlAcademicPeriodRepository,
     SqlCampusRepository,
     SqlInstitutionRepository,
 )
@@ -57,6 +57,8 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
 
     from app.domain.interfaces.repositories import (
+        AcademicAreaRepository,
+        AcademicPeriodRepository,
         AssignmentRepository,
         AuditLogRepository,
         AvailabilityRepository,
@@ -65,8 +67,8 @@ if TYPE_CHECKING:
         ClassroomAvailabilityRepository,
         ClassroomRepository,
         ContractRepository,
-        DepartmentRepository,
-        EquipmentRepository,
+        ResourceRepository,
+        ExecutionLogRepository,
         GroupRepository,
         ImportSessionRepository,
         InstitutionRepository,
@@ -75,14 +77,13 @@ if TYPE_CHECKING:
         OfferingLineRepository,
         OfferingRepository,
         OptimizationConfigRepository,
-        PlanSubjectRepository,
         PreferenceRepository,
         RoleRepository,
+        UserAreaRepository,
         ScheduleRunRepository,
         ScheduleTypeRepository,
         SessionBlockRepository,
         SpecialtyRepository,
-        StudyPlanRepository,
         SubjectRepository,
         SystemParameterRepository,
         UserRepository,
@@ -146,20 +147,16 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         return self._get_repo("campuses", SqlCampusRepository)  # type: ignore[return-value]
 
     @property
-    def departments(self) -> DepartmentRepository:
-        return self._get_repo("departments", SqlDepartmentRepository)  # type: ignore[return-value]
+    def academic_periods(self) -> AcademicPeriodRepository:
+        return self._get_repo("academic_periods", SqlAcademicPeriodRepository)  # type: ignore[return-value]
+
+    @property
+    def academic_areas(self) -> AcademicAreaRepository:
+        return self._get_repo("academic_areas", SqlAcademicAreaRepository)  # type: ignore[return-value]
 
     @property
     def subjects(self) -> SubjectRepository:
         return self._get_repo("subjects", SqlSubjectRepository)  # type: ignore[return-value]
-
-    @property
-    def study_plans(self) -> StudyPlanRepository:
-        return self._get_repo("study_plans", SqlStudyPlanRepository)  # type: ignore[return-value]
-
-    @property
-    def plan_subjects(self) -> PlanSubjectRepository:
-        return self._get_repo("plan_subjects", SqlPlanSubjectRepository)  # type: ignore[return-value]
 
     @property
     def instructors(self) -> InstructorRepository:
@@ -194,8 +191,8 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         return self._get_repo("classroom_availabilities", SqlClassroomAvailabilityRepository)  # type: ignore[return-value]
 
     @property
-    def equipment(self) -> EquipmentRepository:
-        return self._get_repo("equipment", SqlEquipmentRepository)  # type: ignore[return-value]
+    def resources(self) -> ResourceRepository:
+        return self._get_repo("resources", SqlResourceRepository)  # type: ignore[return-value]
 
     @property
     def offerings(self) -> OfferingRepository:
@@ -226,6 +223,10 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
         return self._get_repo("session_blocks", SqlSessionBlockRepository)  # type: ignore[return-value]
 
     @property
+    def execution_logs(self) -> ExecutionLogRepository:
+        return self._get_repo("execution_logs", SqlExecutionLogRepository)  # type: ignore[return-value]
+
+    @property
     def optimization_configs(self) -> OptimizationConfigRepository:
         return self._get_repo("optimization_configs", SqlOptimizationConfigRepository)  # type: ignore[return-value]
 
@@ -236,6 +237,10 @@ class SqlAlchemyUnitOfWork(UnitOfWork):
     @property
     def roles(self) -> RoleRepository:
         return self._get_repo("roles", SqlRoleRepository)  # type: ignore[return-value]
+
+    @property
+    def user_areas(self) -> UserAreaRepository:
+        return self._get_repo("user_areas", SqlUserAreaRepository)  # type: ignore[return-value]
 
     @property
     def import_sessions(self) -> ImportSessionRepository:

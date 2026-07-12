@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.domain.interfaces.repositories import (
+        AcademicAreaRepository,
+        AcademicPeriodRepository,
         AssignmentRepository,
         AuditLogRepository,
         AvailabilityRepository,
@@ -15,8 +17,8 @@ if TYPE_CHECKING:
         ClassroomAvailabilityRepository,
         ClassroomRepository,
         ContractRepository,
-        DepartmentRepository,
-        EquipmentRepository,
+        ResourceRepository,
+        ExecutionLogRepository,
         GroupRepository,
         ImportSessionRepository,
         InstitutionRepository,
@@ -25,16 +27,15 @@ if TYPE_CHECKING:
         OfferingLineRepository,
         OfferingRepository,
         OptimizationConfigRepository,
-        PlanSubjectRepository,
         PreferenceRepository,
         RoleRepository,
         ScheduleRunRepository,
         ScheduleTypeRepository,
         SessionBlockRepository,
         SpecialtyRepository,
-        StudyPlanRepository,
         SubjectRepository,
         SystemParameterRepository,
+        UserAreaRepository,
         UserRepository,
         ValidationReportRepository,
     )
@@ -74,19 +75,15 @@ class UnitOfWork(ABC):
 
     @property
     @abstractmethod
-    def departments(self) -> DepartmentRepository: ...
+    def academic_periods(self) -> AcademicPeriodRepository: ...
+
+    @property
+    @abstractmethod
+    def academic_areas(self) -> AcademicAreaRepository: ...
 
     @property
     @abstractmethod
     def subjects(self) -> SubjectRepository: ...
-
-    @property
-    @abstractmethod
-    def study_plans(self) -> StudyPlanRepository: ...
-
-    @property
-    @abstractmethod
-    def plan_subjects(self) -> PlanSubjectRepository: ...
 
     @property
     @abstractmethod
@@ -122,7 +119,7 @@ class UnitOfWork(ABC):
 
     @property
     @abstractmethod
-    def equipment(self) -> EquipmentRepository: ...
+    def resources(self) -> ResourceRepository: ...
 
     @property
     @abstractmethod
@@ -154,6 +151,10 @@ class UnitOfWork(ABC):
 
     @property
     @abstractmethod
+    def execution_logs(self) -> ExecutionLogRepository: ...
+
+    @property
+    @abstractmethod
     def optimization_configs(self) -> OptimizationConfigRepository: ...
 
     @property
@@ -163,6 +164,10 @@ class UnitOfWork(ABC):
     @property
     @abstractmethod
     def roles(self) -> RoleRepository: ...
+
+    @property
+    @abstractmethod
+    def user_areas(self) -> UserAreaRepository: ...
 
     @property
     @abstractmethod

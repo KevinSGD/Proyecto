@@ -9,13 +9,13 @@ from app.domain.entities.infrastructure import (
     Building,
     Classroom,
     ClassroomAvailability,
-    Equipment,
+    Resource,
 )
 from app.domain.interfaces.repositories import (
     BuildingRepository,
     ClassroomAvailabilityRepository,
     ClassroomRepository,
-    EquipmentRepository,
+    ResourceRepository,
 )
 from app.infrastructure.persistence.repositories.base import SqlAlchemyRepository
 
@@ -127,55 +127,80 @@ class SqlClassroomAvailabilityRepository(
         return count
 
 
-class SqlEquipmentRepository(
-    SqlAlchemyRepository[Equipment],
-    EquipmentRepository,
+class SqlResourceRepository(
+    SqlAlchemyRepository[Resource],
+    ResourceRepository,
 ):
     def __init__(self, session: Session) -> None:
         from app.infrastructure.persistence.models.infrastructure_models import (
-            EquipmentModel,
+            ResourceModel,
         )
 
-        self._model_cls = EquipmentModel
-        self._entity_cls = Equipment
+        self._model_cls = ResourceModel
+        self._entity_cls = Resource
         super().__init__(session)
 
-    def list_by_classroom(self, classroom_id: EntityId) -> list[Equipment]:
+    def list_by_classroom(self, classroom_id: EntityId) -> list[Resource]:
         from app.infrastructure.persistence.models.infrastructure_models import (
-            ClassroomEquipmentModel,
+            RoomResourceModel,
         )
 
-        equipment_ids = (
-            self._session.query(ClassroomEquipmentModel.equipment_id)
-            .filter(ClassroomEquipmentModel.classroom_id == classroom_id)
+        resource_ids = (
+            self._session.query(RoomResourceModel.resource_id)
+            .filter(RoomResourceModel.classroom_id == classroom_id)
             .subquery()
         )
         models = (
             self._query()
-            .filter(self._model_cls.id.in_(equipment_ids))
+            .filter(self._model_cls.id.in_(resource_ids))
             .all()
         )
         return [self._to_entity(m) for m in models]
 
     def list_required_by_subject(
         self, subject_id: EntityId,
-    ) -> list[Equipment]:
+    ) -> list[Resource]:
         from app.infrastructure.persistence.models.infrastructure_models import (
-            SubjectEquipmentRequirementModel,
+            SubjectResourceRequirementModel,
         )
 
-        equipment_ids = (
+        resource_ids = (
             self._session.query(
-                SubjectEquipmentRequirementModel.equipment_id,
+                SubjectResourceRequirementModel.resource_id,
             )
             .filter(
-                SubjectEquipmentRequirementModel.subject_id == subject_id,
+                SubjectResourceRequirementModel.subject_id == subject_id,
+                SubjectResourceRequirementModel.is_mandatory.is_(True),
             )
             .subquery()
         )
         models = (
             self._query()
-            .filter(self._model_cls.id.in_(equipment_ids))
+            .filter(self._model_cls.id.in_(resource_ids))
+            .all()
+        )
+        return [self._to_entity(m) for m in models]
+
+    def list_preferred_by_subject(
+        self, subject_id: EntityId,
+    ) -> list[Resource]:
+        from app.infrastructure.persistence.models.infrastructure_models import (
+            SubjectResourceRequirementModel,
+        )
+
+        resource_ids = (
+            self._session.query(
+                SubjectResourceRequirementModel.resource_id,
+            )
+            .filter(
+                SubjectResourceRequirementModel.subject_id == subject_id,
+                SubjectResourceRequirementModel.is_mandatory.is_(False),
+            )
+            .subquery()
+        )
+        models = (
+            self._query()
+            .filter(self._model_cls.id.in_(resource_ids))
             .all()
         )
         return [self._to_entity(m) for m in models]

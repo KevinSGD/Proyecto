@@ -9,7 +9,10 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
+from app.core.logging.logger import get_logger
 from app.core.utils.types import EntityId
+
+_logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from app.domain.entities.infrastructure import Classroom
@@ -58,10 +61,13 @@ class DatasetBuilder:
                 for s in self._uow.subjects.list_by_institution(institution_id)
             }
             specialty_index = self._build_specialty_index(institution_id)
-            classroom_equipment_index = self._build_classroom_equipment_index(
+            classroom_resource_index = self._build_classroom_resource_index(
                 institution_id,
             )
-            subject_equipment_index = self._build_subject_equipment_index(
+            subject_resource_index = self._build_subject_resource_index(
+                subject_map.keys(),
+            )
+            subject_preferred_index = self._build_subject_preferred_index(
                 subject_map.keys(),
             )
 
@@ -83,16 +89,25 @@ class DatasetBuilder:
                 schedule_type_map,
                 specialty_index,
                 active_classrooms,
-                classroom_equipment_index,
-                subject_equipment_index,
+                classroom_resource_index,
+                subject_resource_index,
+                subject_preferred_index,
             )
             solver_instructors = self._build_instructors(
                 active_instructors, period_id,
             )
             solver_classrooms = self._build_classrooms(
-                active_classrooms, period_id, classroom_equipment_index,
+                active_classrooms, period_id, classroom_resource_index,
             )
             solver_time_config = self._build_time_config(schedule_types)
+
+        _logger.info(
+            "DatasetBuilder — %d groups, %d instructors, %d classrooms, %d slots",
+            len(solver_groups), len(solver_instructors),
+            len(solver_classrooms),
+            solver_time_config.periods_per_day * len(solver_time_config.days)
+            if solver_time_config else 0,
+        )
 
         return OptimizationProblem(
             institution_id=institution_id,
@@ -121,28 +136,39 @@ class DatasetBuilder:
                 index[sp.subject_id].append(instructor.id)
         return dict(index)
 
-    def _build_classroom_equipment_index(
+    def _build_classroom_resource_index(
         self, institution_id: EntityId,
     ) -> dict[EntityId, set[EntityId]]:
-        """classroom_id -> set of equipment_ids installed."""
+        """classroom_id -> set of resource_ids installed."""
         index: dict[EntityId, set[EntityId]] = {}
         classrooms = self._uow.classrooms.list_by_institution(institution_id)
         for classroom in classrooms:
             if not classroom.is_active:
                 continue
-            equip_list = self._uow.equipment.list_by_classroom(classroom.id)
-            index[classroom.id] = {e.id for e in equip_list}
+            resource_list = self._uow.resources.list_by_classroom(classroom.id)
+            index[classroom.id] = {r.id for r in resource_list}
         return index
 
-    def _build_subject_equipment_index(
+    def _build_subject_resource_index(
         self, subject_ids: object,
     ) -> dict[EntityId, set[EntityId]]:
-        """subject_id -> set of required equipment_ids."""
+        """subject_id -> set of mandatory resource_ids."""
         index: dict[EntityId, set[EntityId]] = {}
         for sid in subject_ids:  # type: ignore[union-attr]
-            equip_list = self._uow.equipment.list_required_by_subject(sid)
-            if equip_list:
-                index[sid] = {e.id for e in equip_list}
+            resource_list = self._uow.resources.list_required_by_subject(sid)
+            if resource_list:
+                index[sid] = {r.id for r in resource_list}
+        return index
+
+    def _build_subject_preferred_index(
+        self, subject_ids: object,
+    ) -> dict[EntityId, set[EntityId]]:
+        """subject_id -> set of preferred (non-mandatory) resource_ids."""
+        index: dict[EntityId, set[EntityId]] = {}
+        for sid in subject_ids:  # type: ignore[union-attr]
+            resource_list = self._uow.resources.list_preferred_by_subject(sid)
+            if resource_list:
+                index[sid] = {r.id for r in resource_list}
         return index
 
     def _build_groups(
@@ -152,8 +178,9 @@ class DatasetBuilder:
         schedule_type_map: dict[EntityId, ScheduleType],
         specialty_index: dict[EntityId, list[EntityId]],
         classrooms: list[Classroom],
-        classroom_equipment_index: dict[EntityId, set[EntityId]],
-        subject_equipment_index: dict[EntityId, set[EntityId]],
+        classroom_resource_index: dict[EntityId, set[EntityId]],
+        subject_resource_index: dict[EntityId, set[EntityId]],
+        subject_preferred_index: dict[EntityId, set[EntityId]],
     ) -> list[SolverGroup]:
         from app.solver.context import SolverGroup
 
@@ -174,8 +201,14 @@ class DatasetBuilder:
                 group,
                 subject,
                 classrooms,
-                classroom_equipment_index,
-                subject_equipment_index,
+                classroom_resource_index,
+                subject_resource_index,
+            )
+            preferred_classrooms = self._find_preferred_classrooms(
+                group.subject_id,
+                compatible_classrooms,
+                classroom_resource_index,
+                subject_preferred_index,
             )
 
             solver_groups.append(SolverGroup(
@@ -189,6 +222,7 @@ class DatasetBuilder:
                 block_durations=tuple(block_durations),
                 candidate_instructors=list(candidate_instructors),
                 compatible_classrooms=compatible_classrooms,
+                preferred_classrooms=preferred_classrooms,
                 priority=group.priority,
             ))
         return solver_groups
@@ -225,10 +259,10 @@ class DatasetBuilder:
         group: Group,
         subject: object,
         classrooms: list[Classroom],
-        classroom_equipment_index: dict[EntityId, set[EntityId]],
-        subject_equipment_index: dict[EntityId, set[EntityId]],
+        classroom_resource_index: dict[EntityId, set[EntityId]],
+        subject_resource_index: dict[EntityId, set[EntityId]],
     ) -> list[EntityId]:
-        required_equipment = subject_equipment_index.get(
+        required_resources = subject_resource_index.get(
             group.subject_id, set(),
         )
         compatible: list[EntityId] = []
@@ -239,12 +273,29 @@ class DatasetBuilder:
                 continue
             if group.modality == "presential" and classroom.is_virtual:
                 continue
-            if required_equipment:
-                installed = classroom_equipment_index.get(classroom.id, set())
-                if not required_equipment.issubset(installed):
+            if required_resources:
+                installed = classroom_resource_index.get(classroom.id, set())
+                if not required_resources.issubset(installed):
                     continue
             compatible.append(classroom.id)
         return compatible
+
+    @staticmethod
+    def _find_preferred_classrooms(
+        subject_id: EntityId,
+        compatible_classrooms: list[EntityId],
+        classroom_resource_index: dict[EntityId, set[EntityId]],
+        subject_preferred_index: dict[EntityId, set[EntityId]],
+    ) -> list[EntityId]:
+        preferred_resources = subject_preferred_index.get(subject_id, set())
+        if not preferred_resources:
+            return []
+        preferred: list[EntityId] = []
+        for cid in compatible_classrooms:
+            installed = classroom_resource_index.get(cid, set())
+            if preferred_resources & installed:
+                preferred.append(cid)
+        return preferred
 
     def _build_instructors(
         self,
@@ -308,7 +359,7 @@ class DatasetBuilder:
         self,
         classrooms: list[Classroom],
         period_id: EntityId,
-        classroom_equipment_index: dict[EntityId, set[EntityId]],
+        classroom_resource_index: dict[EntityId, set[EntityId]],
     ) -> list[SolverClassroom]:
         from app.solver.context import SolverClassroom
 
@@ -325,7 +376,7 @@ class DatasetBuilder:
             solver_classrooms.append(SolverClassroom(
                 id=classroom.id,
                 capacity=classroom.capacity,
-                equipment_ids=classroom_equipment_index.get(
+                resource_ids=classroom_resource_index.get(
                     classroom.id, set(),
                 ),
                 available_slots=available_slots,

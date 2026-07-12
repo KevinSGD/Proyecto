@@ -12,10 +12,11 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    JSON,
     String,
     UniqueConstraint,
+    Uuid,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -25,30 +26,30 @@ class OptimizationConfigModel(Base):
     __tablename__ = "optimization_configs"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,
     )
     period_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("academic_periods.id"),
         nullable=True,
         index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     config_data: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, default=dict
+        JSON, default=dict
     )
     is_default: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     created_by: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("users.id"),
         nullable=True,
     )
@@ -58,22 +59,22 @@ class ScheduleRunModel(Base):
     __tablename__ = "schedule_runs"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,
     )
     period_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("academic_periods.id"),
         nullable=False,
         index=True,
     )
     config_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("optimization_configs.id"),
         nullable=True,
         index=True,
@@ -82,10 +83,10 @@ class ScheduleRunModel(Base):
         String(50), nullable=False, default="pending"
     )
     solver_config: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, default=dict
+        JSON, default=dict
     )
     statistics: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, default=dict
+        JSON, default=dict
     )
     started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -98,7 +99,7 @@ class ScheduleRunModel(Base):
     )
     gap: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_by: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("users.id"),
         nullable=True,
     )
@@ -115,22 +116,22 @@ class AssignmentModel(Base):
     __tablename__ = "assignments"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     schedule_run_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("schedule_runs.id"),
         nullable=False,
         index=True,
     )
     group_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("groups.id"),
         nullable=False,
         index=True,
     )
     instructor_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("instructors.id"),
         nullable=False,
         index=True,
@@ -158,10 +159,10 @@ class SessionBlockModel(Base):
     __tablename__ = "session_blocks"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     assignment_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("assignments.id"),
         nullable=False,
         index=True,
@@ -171,7 +172,7 @@ class SessionBlockModel(Base):
     start_period: Mapped[int] = mapped_column(Integer, nullable=False)
     duration: Mapped[int] = mapped_column(Integer, nullable=False)
     classroom_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("classrooms.id"),
         nullable=False,
         index=True,
@@ -200,10 +201,10 @@ class ExecutionLogModel(Base):
     __tablename__ = "execution_logs"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     schedule_run_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("schedule_runs.id"),
         nullable=False,
         index=True,
@@ -214,7 +215,7 @@ class ExecutionLogModel(Base):
         DateTime(timezone=True), nullable=True
     )
     metadata_: Mapped[dict[str, Any]] = mapped_column(
-        "metadata", JSONB, default=dict
+        "metadata", JSON, default=dict
     )
 
     schedule_run: Mapped[ScheduleRunModel] = relationship(

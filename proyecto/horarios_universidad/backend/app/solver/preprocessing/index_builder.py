@@ -32,9 +32,6 @@ class IndexData:
     # coverage: slots covered by starting block l of group g at (w, h_start)
     coverage: dict[tuple[EntityId, int, int, int], list[tuple[int, int]]] = field(default_factory=dict)
 
-    # groups_by_semester: groups indexed by (plan_id, semester) — empty if fields absent
-    groups_by_semester: dict[tuple[EntityId, int], list[EntityId]] = field(default_factory=dict)
-
     days: list[int] = field(default_factory=list)
     periods: list[int] = field(default_factory=list)
     all_slots: list[tuple[int, int]] = field(default_factory=list)
@@ -113,12 +110,5 @@ def build_indices(problem: OptimizationProblem) -> IndexData:
     for gid, instructors in index.D_g.items():
         for did in instructors:
             index.G_d.setdefault(did, []).append(gid)
-
-    # groups_by_semester: only populated if group has plan_id and semester attrs
-    for group in problem.groups:
-        plan_id = getattr(group, "plan_id", None)
-        semester = getattr(group, "semester", None)
-        if plan_id is not None and semester is not None:
-            index.groups_by_semester.setdefault((plan_id, semester), []).append(group.id)
 
     return index

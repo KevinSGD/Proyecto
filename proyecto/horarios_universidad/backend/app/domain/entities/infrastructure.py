@@ -8,12 +8,11 @@ from app.core.utils.types import EntityId, generate_id
 
 __all__ = [
     "Building",
-    "ClassroomType",
     "Classroom",
     "ClassroomAvailability",
-    "Equipment",
-    "ClassroomEquipment",
-    "SubjectEquipmentRequirement",
+    "Resource",
+    "RoomResource",
+    "SubjectResourceRequirement",
 ]
 
 
@@ -30,24 +29,12 @@ class Building:
 
 
 @dataclass
-class ClassroomType:
-    """Classification of classrooms (lab, lecture hall, etc.)."""
-
-    id: EntityId = field(default_factory=generate_id)
-    institution_id: EntityId = field(default_factory=generate_id)
-    name: str = ""
-    code: str = ""
-    description: str = ""
-
-
-@dataclass
 class Classroom:
     """A physical or virtual room where classes can be held."""
 
     id: EntityId = field(default_factory=generate_id)
     institution_id: EntityId = field(default_factory=generate_id)
     building_id: EntityId | None = None
-    classroom_type_id: EntityId | None = None
     name: str = ""
     code: str = ""
     capacity: int = 0
@@ -69,8 +56,8 @@ class ClassroomAvailability:
 
 
 @dataclass
-class Equipment:
-    """A piece of equipment available in the institution."""
+class Resource:
+    """A resource available in the institution (projector, whiteboard, etc.)."""
 
     id: EntityId = field(default_factory=generate_id)
     institution_id: EntityId = field(default_factory=generate_id)
@@ -80,20 +67,20 @@ class Equipment:
 
 
 @dataclass
-class ClassroomEquipment:
-    """Association between a classroom and its available equipment."""
+class RoomResource:
+    """Association between a classroom and its available resources."""
 
     id: EntityId = field(default_factory=generate_id)
     classroom_id: EntityId = field(default_factory=generate_id)
-    equipment_id: EntityId = field(default_factory=generate_id)
+    resource_id: EntityId = field(default_factory=generate_id)
     quantity: int = 1
 
 
 @dataclass
-class SubjectEquipmentRequirement:
-    """Equipment required by a subject."""
+class SubjectResourceRequirement:
+    """Resource required by a subject."""
 
     id: EntityId = field(default_factory=generate_id)
     subject_id: EntityId = field(default_factory=generate_id)
-    equipment_id: EntityId = field(default_factory=generate_id)
+    resource_id: EntityId = field(default_factory=generate_id)
     is_mandatory: bool = True

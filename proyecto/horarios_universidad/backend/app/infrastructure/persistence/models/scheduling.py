@@ -9,10 +9,11 @@ from sqlalchemy import (
     CheckConstraint,
     ForeignKey,
     Integer,
+    JSON,
     String,
     UniqueConstraint,
+    Uuid,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -22,17 +23,17 @@ class ScheduleTypeModel(Base):
     __tablename__ = "schedule_types"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     schedule_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    active_days: Mapped[list[int]] = mapped_column(JSONB, default=list)
+    active_days: Mapped[list[int]] = mapped_column(JSON, default=list)
     start_period: Mapped[int] = mapped_column(Integer, default=0)
     end_period: Mapped[int] = mapped_column(Integer, default=0)
     slot_duration_minutes: Mapped[int] = mapped_column(
@@ -63,16 +64,16 @@ class GroupModel(Base):
     __tablename__ = "groups"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     offering_line_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("offering_lines.id"),
         nullable=False,
         index=True,
     )
     subject_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("subjects.id"),
         nullable=False,
         index=True,
@@ -81,7 +82,7 @@ class GroupModel(Base):
     expected_enrollment: Mapped[int] = mapped_column(Integer, default=0)
     modality: Mapped[str] = mapped_column(String(50), default="")
     schedule_type_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("schedule_types.id"),
         nullable=False,
         index=True,

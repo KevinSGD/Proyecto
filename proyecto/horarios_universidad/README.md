@@ -1,360 +1,167 @@
 # Horarios Universidad
 
-Generador de horarios académicos con backend en FastAPI y frontend en Vue 3.
+Plataforma de generación automática de horarios académicos universitarios.
+Combina una API REST (FastAPI) con un frontend moderno (Next.js) y un motor de optimización basado en Google OR-Tools CP-SAT.
 
----
+## Stack Tecnológico
 
-## 📋 Requisitos Previos
+| Capa | Tecnología |
+|---|---|
+| **Backend** | Python 3.12+, FastAPI, SQLAlchemy 2.x, Alembic, Pydantic-settings |
+| **Frontend** | Next.js 16, React 19, TypeScript 5.7, Tailwind CSS v4, Zustand |
+| **Solver** | Google OR-Tools CP-SAT (13 restricciones duras, 11 suaves, 6 componentes de objetivo) |
+| **Base de datos** | SQLite (desarrollo local) · PostgreSQL (producción) |
+| **Autenticación** | JWT (python-jose) + bcrypt |
 
-Asegúrate de tener instalado:
+## Quick Start (5 minutos)
 
-- **Python 3.10+**
-- **Node.js 18+**
-- **npm**
+> **Requisitos**: Python >= 3.12, Node.js >= 18, npm.
+> **No necesitas**: PostgreSQL, Docker, Redis, ni servicios en la nube.
 
----
+```powershell
+# 1. Clonar
+git clone <repo-url> && cd horarios_universidad
 
-## 🏗️ Estructura del Proyecto
+# 2. Variables de entorno (SQLite por defecto — sin editar nada)
+cp .env.example .env
+
+# 3. Backend
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1          # Windows
+# source .venv/bin/activate            # Linux/macOS
+python -m pip install -U pip
+pip install -e ".[dev]"
+
+# 4. Migraciones + Seed
+alembic upgrade head
+python -m scripts.seed_demo
+
+# 5. Iniciar backend (Terminal 1)
+uvicorn app.api.main:app --reload --host 127.0.0.1 --port 8000
+
+# 6. Frontend (Terminal 2)
+cd ../frontend/app
+npm install
+npm run dev
+```
+
+Abrir http://localhost:3000 → Login → `director@udemo.edu` / `director123`
+
+## Arquitectura
+
+```
+Clean Architecture + DDD + CQRS-lite
+├── domain/          Entidades, value objects, interfaces
+├── application/     Commands, queries, services, validators
+├── infrastructure/  Persistence (SQLAlchemy), migrations (Alembic)
+├── api/             Routers, schemas, middlewares, dependencies
+└── solver/          Constraints, objective, optimizer, extractor
+```
+
+## Estructura del Proyecto
 
 ```
 horarios_universidad/
-├── src/scheduler/              # Backend Python
-│   ├── config/                 # Configuración
-│   ├── application/            # Casos de uso y ensamblaje de datos
-│   ├── infrastructure/         # OR-Tools y exportadores
-│   │   ├── optimization/       # Solver OR-Tools
-│   │   └── exporters/          # Exportador Excel
-│   └── interfaces/             # API FastAPI y CLI
-├── frontend/                   # Frontend Vue 3 + Vite
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   └── vite.config.js
-├── requirements.txt            # Dependencias Python
-├── pyproject.toml              # Configuración del paquete
-└── README.md                   # Este archivo
+├── backend/
+│   ├── app/
+│   │   ├── api/                  # FastAPI (routers, schemas, middlewares)
+│   │   ├── application/          # Casos de uso (commands, queries, services)
+│   │   ├── core/                 # Excepciones, logging, seguridad
+│   │   ├── domain/               # Entidades, value objects, interfaces
+│   │   ├── infrastructure/       # SQLAlchemy models, repositories, UoW
+│   │   └── solver/               # OR-Tools CP-SAT engine
+│   ├── scripts/                  # Seed y utilidades
+│   ├── tests/                    # Unit + integration tests
+│   └── pyproject.toml
+├── frontend/
+│   └── app/                      # Next.js App Router
+│       ├── app/                  # Pages: (auth)/ y (platform)/
+│       ├── components/           # UI components + domain forms
+│       └── lib/                  # API client, services, stores, types
+├── .env.example                  # Variables de entorno (plantilla)
+└── .gitignore
 ```
 
----
+## Usuarios de prueba
 
-## 🚀 Instalación Completa (Primera Vez)
+| Usuario | Email | Contraseña | Rol |
+|---|---|---|---|
+| Director | `director@udemo.edu` | `director123` | director |
+| Coordinador | `coordinador@udemo.edu` | `coordinador123` | area_coordinator |
 
-### Paso 1: Crear Entorno Virtual Python
+## Datos del seed
 
-Desde este directorio (`proyecto/horarios_universidad`):
+El script `seed_demo` crea un dataset completo para desarrollo:
 
-```powershell
-# Crear entorno virtual
-python -m venv .venv
+- 1 institución (Universidad Demo) con 1 campus y 1 período activo
+- 2 áreas académicas (Ciencias Básicas, Ingeniería)
+- 8 materias con créditos y horas semanales
+- 5 docentes con contratos, especialidades y disponibilidad completa (L-V)
+- 1 edificio con 5 aulas (3 regulares + 2 laboratorios)
+- 3 recursos (proyector, computadoras, pizarra digital)
+- 2 ofertas académicas con líneas y grupos pre-generados
+- 1 tipo de horario (Diurno, slots 1-12, L-V)
 
-# Activar (Windows PowerShell)
-.\.venv\Scripts\Activate.ps1
+## URLs
 
-# Si obtienes error de permisos:
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-```
-
-### Paso 2: Instalar Dependencias Python
-
-```powershell
-# Actualizar pip
-python -m pip install -U pip
-
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Instalar paquete en modo editable
-pip install -e .
-```
-
-### Paso 3: Instalar Dependencias Frontend
-
-```powershell
-cd frontend
-
-npm install
-
-cd ..
-```
-
----
-
-## ▶️ Ejecutar la Aplicación
-
-### Opción A: Dos Terminales (Recomendado)
-
-**Terminal 1 - Backend:**
-
-```powershell
-# Asegúrate de estar en proyecto/horarios_universidad
-# Con el venv activado
-python -m uvicorn scheduler.interfaces.api.main:app --reload --host 127.0.0.1 --port 8000 --app-dir src
-```
-
-Deberías ver:
-```
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-```
-
-**Terminal 2 - Frontend:**
-
-```powershell
-# Abre otra terminal en el mismo directorio
-cd frontend
-npm run dev -- --host 127.0.0.1
-```
-
-Deberías ver:
-```
-➜  Local:   http://127.0.0.1:5173/
-```
-
-### Opción B: Ejecutar Manualmente
-
-Si prefieres más control:
-
-**Backend:**
-```powershell
-# Asegúrate de que .venv esté activado
-uvicorn scheduler.interfaces.api.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-**Frontend:**
-```powershell
-cd frontend
-npm run dev -- --host 127.0.0.1
-```
-
----
-
-## 🌐 Acceder a la Aplicación
-
-| Componente | URL |
+| Servicio | URL |
 |---|---|
-| **Frontend** | http://127.0.0.1:5173/ |
-| **API Backend** | http://127.0.0.1:8000 |
-| **Swagger UI (Docs)** | http://127.0.0.1:8000/docs |
-| **ReDoc** | http://127.0.0.1:8000/redoc |
+| Frontend | http://localhost:3000 |
+| API | http://localhost:8000/api/v1 |
+| Swagger UI | http://localhost:8000/docs |
+| Health check | http://localhost:8000/health |
 
----
+## Configuración
 
-## 🔐 Configurar Variables de Entorno (Opcional)
+Todas las variables usan el prefijo `SCHEDULER_` y se cargan desde `.env`:
 
-Si necesitas conectar a una base de datos:
-
-```powershell
-# Base de datos PostgreSQL
-$env:DB_HOST = "localhost"
-$env:DB_PORT = "5432"
-$env:DB_NAME = "horarios"
-$env:DB_USER = "postgres"
-$env:DB_PASSWORD = "password"
-
-# O si usas Railway
-$env:RAILWAY_RUN_URL = "https://tu-servicio.railway.app/run"
-```
-
----
-
-## ✅ Verificar que Funciona
-
-### 1. Verificar Backend
-
-```powershell
-curl http://127.0.0.1:8000/health
-```
-
-O desde PowerShell:
-
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/health"
-```
-
-### 2. Acceder a Swagger UI
-
-Abre: http://127.0.0.1:8000/docs
-
-Aquí puedes probar los endpoints interactivamente.
-
----
-
-## 🛑 Detener la Aplicación
-
-En cada terminal presiona:
-
-```
-CTRL + C
-```
-
-Para desactivar el entorno virtual:
-
-```powershell
-deactivate
-```
-
----
-
-## 🔧 Solución de Problemas
-
-### "El archivo de script no se encontró"
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-```
-
-### "No module named 'scheduler'"
-
-```powershell
-pip install -e .
-```
-
-### "Port 8000 already in use"
-
-Otro proceso usa el puerto 8000:
-
-```powershell
-# En PowerShell, busca qué está usando el puerto
-netstat -ano | findstr :8000
-
-# Mata el proceso (reemplaza PID con el número)
-taskkill /PID <PID> /F
-
-# O cambia el puerto en el comando uvicorn
-```
-
-### "npm install falla"
-
-```powershell
-# Limpia caché
-npm cache clean --force
-
-# Intenta de nuevo
-npm install
-```
-
----
-
-## 📚 Endpoints Principales
-
-| Método | Ruta | Descripción |
+| Variable | Descripción | Default |
 |---|---|---|
-| `GET` | `/health` | Verifica que la API esté viva |
-| `GET` | `/db/health` | Verifica conexión a BD |
-| `POST` | `/run` | Genera el horario |
+| `SCHEDULER_DATABASE_URL` | URL de conexión (SQLite o PostgreSQL) | `sqlite:///scheduler.db` |
+| `SCHEDULER_SECRET_KEY` | Clave para firmar JWT | `CHANGE-ME-IN-PRODUCTION...` |
+| `SCHEDULER_LOG_LEVEL` | Nivel de logging | `INFO` |
+| `SCHEDULER_DEBUG` | Modo debug | `false` |
+| `SCHEDULER_SOLVER_MAX_TIME_SECONDS` | Timeout del solver | `300` |
+| `SCHEDULER_SOLVER_NUM_WORKERS` | Workers paralelos del solver | `4` |
 
-Ver documentación completa en: http://127.0.0.1:8000/docs
+## Flujo completo de uso
 
----
+1. **Login** → Ingresar como director
+2. **Dashboard** → Vista general de la institución
+3. **Materias** → Consultar/crear materias
+4. **Docentes** → Gestionar docentes, especialidades, disponibilidad
+5. **Aulas** → Administrar edificios y salones con recursos
+6. **Oferta** → Ver ofertas académicas y líneas
+7. **Generar horario** → Pestaña "Generación / Resultados" → Botón "Generar horario"
+8. **Publicar** → Publicar un horario completado
+9. **Horarios** → Visualizar el horario generado en formato semanal
 
-## 🎯 Resumen Rápido
-
-```powershell
-# 1. Crear y activar venv
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-
-# 2. Instalar dependencias
-python -m pip install -U pip
-pip install -r requirements.txt
-pip install -e .
-
-# 3. Instalar frontend
-cd frontend
-npm install
-cd ..
-
-# 4. Terminal 1 - Backend
-python -m uvicorn scheduler.interfaces.api.main:app --reload --host 127.0.0.1 --port 8000 --app-dir src
-
-# 5. Terminal 2 - Frontend (otra terminal)
-cd frontend
-npm run dev -- --host 127.0.0.1
-
-# 6. Abrir navegador
-# http://127.0.0.1:5173/
-```
-
----
-
-## 🔄 Hot Reload
-
-Ambos servidores están configurados para hot reload:
-
-- **Backend**: Cualquier cambio en `src/` recarga automáticamente
-- **Frontend**: Cualquier cambio en `frontend/src/` se refleja al instante
-
-Si no funciona, reinicia los servidores.
-
----
-
-## 📝 Desarrollo
-
-### Agregar Dependencias Python
+## Tests
 
 ```powershell
-pip install nombre-paquete
-pip freeze > requirements.txt
+cd backend
+python -m pytest tests/ -q
 ```
 
-### Agregar Dependencias Frontend
+## API Endpoints
 
-```powershell
-cd frontend
-npm install nombre-paquete
-cd ..
-```
+Todos los endpoints (excepto health) usan el prefijo `/api/v1`.
 
----
+| Módulo | Prefijo | Descripción |
+|---|---|---|
+| Health | `/health` | Estado del servicio |
+| Auth | `/api/v1/auth` | Login, logout, refresh, perfil |
+| Institution | `/api/v1/institutions` | Instituciones, campuses, periodos |
+| Academic | `/api/v1/institutions/{id}` | Áreas y materias |
+| Personnel | `/api/v1/institutions/{id}` | Docentes, contratos, disponibilidad |
+| Infrastructure | `/api/v1/institutions/{id}` | Aulas, edificios, recursos |
+| Offering | `/api/v1/institutions/{id}/periods/{pid}` | Oferta académica y grupos |
+| Schedule | `/api/v1/schedule` | Generación, publicación, ejecuciones |
+| Dashboard | `/api/v1/institutions/{id}/dashboard` | Estadísticas y métricas |
 
-## ✨ Características
+Documentación interactiva completa en http://localhost:8000/docs.
 
-- **Backend**: FastAPI con validación automática
-- **Frontend**: Vue 3 con Vite (rápido y moderno)
-- **Optimización**: OR-Tools para resolver horarios complejos
-- **Exportación**: Excel con formatos profesionales
-- **API**: Documentación interactiva automática
+## Licencia
 
----
-
-## 🆘 ¿Necesitas Ayuda?
-
-1. Verifica que todas las dependencias estén instaladas
-2. Asegúrate de usar Python 3.10+ y Node.js 18+
-3. Revisa los logs en las terminales
-4. Verifica que los puertos 8000 y 5173 estén disponibles
-- Healthcheck: `http://127.0.0.1:8000/health`
-
-Si usas base de datos, define las variables de entorno en el mismo terminal antes de ejecutar el script:
-
-```powershell
-$env:DB_HOST = "..."
-$env:DB_PORT = "5432"
-$env:DB_NAME = "postgres"
-$env:DB_USER = "postgres"
-$env:DB_PASSWORD = "..."
-$env:DB_SSLMODE = "require"
-```
-
-## Ejecutar frontend
-
-Desde `proyecto/horarios_universidad` en otro terminal PowerShell:
-
-```powershell
-cd frontend
-npm run dev -- --host 127.0.0.1
-```
-
-Esto inicia Vite y abre la interfaz en un puerto local, normalmente:
-
-- `http://127.0.0.1:5173` (o el siguiente puerto libre)
-
-## Flujo de uso
-
-1. Inicia el backend con el comando `python -m uvicorn ... --app-dir src`.
-2. Inicia el frontend con `npm run dev -- --host 127.0.0.1` desde `frontend/`.
-3. Abre la URL local que indique Vite y usa la aplicación.
-
-## Notas
-
-- El frontend se comunica con el backend a través del proxy de Vite.
-- No es necesario un archivo `.env.example` para ejecutar el proyecto.
+Proyecto académico — Universidad.

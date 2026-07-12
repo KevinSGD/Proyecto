@@ -1,14 +1,6 @@
 """Domain entity re-exports."""
 
-from app.domain.entities.academic import (
-    AcademicArea,
-    Department,
-    PlanSubject,
-    Program,
-    StudyPlan,
-    Subject,
-    SubjectPrerequisite,
-)
+from app.domain.entities.academic import AcademicArea, Subject
 from app.domain.entities.auth import Permission, Role, RoleName, User, UserArea
 from app.domain.entities.import_export import (
     ImportLogEntry,
@@ -20,10 +12,9 @@ from app.domain.entities.infrastructure import (
     Building,
     Classroom,
     ClassroomAvailability,
-    ClassroomEquipment,
-    ClassroomType,
-    Equipment,
-    SubjectEquipmentRequirement,
+    Resource,
+    RoomResource,
+    SubjectResourceRequirement,
 )
 from app.domain.entities.institution import AcademicPeriod, Campus, Institution
 from app.domain.entities.offering import AcademicOffering, OfferingLine
@@ -52,12 +43,7 @@ __all__ = [
     "AcademicPeriod",
     # academic
     "AcademicArea",
-    "Department",
-    "Program",
-    "StudyPlan",
-    "PlanSubject",
     "Subject",
-    "SubjectPrerequisite",
     # personnel
     "Instructor",
     "InstructorContract",
@@ -67,12 +53,11 @@ __all__ = [
     "InstructorPreference",
     # infrastructure
     "Building",
-    "ClassroomType",
     "Classroom",
     "ClassroomAvailability",
-    "Equipment",
-    "ClassroomEquipment",
-    "SubjectEquipmentRequirement",
+    "Resource",
+    "RoomResource",
+    "SubjectResourceRequirement",
     # offering
     "AcademicOffering",
     "OfferingLine",

@@ -28,7 +28,7 @@ def _ensure_virtual_classroom(
     synthetic = SolverClassroom(
         id=synthetic_id,
         capacity=9999,
-        equipment_ids=set(),
+        resource_ids=set(),
         available_slots=set(index.all_slots),
         is_virtual=True,
     )

@@ -18,8 +18,6 @@ from .validators import (
     CapacityValidator,
     ClassroomDataValidator,
     ClassroomValidationData,
-    CurriculumValidationData,
-    CurriculumValidator,
     InstructorDataValidator,
     InstructorValidationData,
     OfferingDataValidator,
@@ -47,17 +45,8 @@ class DomainValidationService:
         institution_id: EntityId,
         period_id: EntityId,
     ) -> ValidationReport:
-        """Run all validators and return a comprehensive report.
-
-        Steps:
-        1. Load all data via UoW repositories.
-        2. Package into validation data types.
-        3. Run each validator.
-        4. Merge results.
-        5. Create and return a ``ValidationReport`` entity.
-        """
+        """Run all validators and return a comprehensive report."""
         with self._uow:
-            # 1. Load data
             instructors = self._uow.instructors.list_by_institution(
                 institution_id,
             )
@@ -96,14 +85,9 @@ class DomainValidationService:
                 institution_id,
             )
 
-            # Entities not directly accessible via UoW are supplied as
-            # empty lists; the orchestrator gracefully degrades.
             offering_lines: list = []
-            classroom_equipment: list = []
-            prerequisites: list = []
-            plan_subjects: list = []
+            room_resources: list = []
 
-            # 2. Package into data types
             instructor_data = InstructorValidationData(
                 instructors=instructors,
                 specialties=specialties,
@@ -116,8 +100,7 @@ class DomainValidationService:
                 specialties=specialties,
                 offering_lines=offering_lines,
                 classrooms=classrooms,
-                classroom_equipment=classroom_equipment,
-                prerequisites=prerequisites,
+                room_resources=room_resources,
             )
             classroom_data = ClassroomValidationData(
                 classrooms=classrooms,
@@ -140,12 +123,7 @@ class DomainValidationService:
                 offering_lines=offering_lines,
                 subjects=subjects,
             )
-            curriculum_data = CurriculumValidationData(
-                plan_subjects=plan_subjects,
-                subjects=subjects,
-            )
 
-            # 3. Run each validator
             merged = ValidationResult.ok()
             validators_and_data = [
                 (InstructorDataValidator(), instructor_data),
@@ -153,12 +131,10 @@ class DomainValidationService:
                 (ClassroomDataValidator(), classroom_data),
                 (OfferingDataValidator(), offering_data),
                 (CapacityValidator(), capacity_data),
-                (CurriculumValidator(), curriculum_data),
             ]
             for validator, vdata in validators_and_data:
                 merged.merge(validator.validate(vdata))
 
-            # 5. Build the report entity
             report = ValidationReport(
                 institution_id=institution_id,
                 period_id=period_id,

@@ -11,8 +11,8 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    Uuid,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -22,22 +22,22 @@ class AcademicOfferingModel(Base):
     __tablename__ = "academic_offerings"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,
     )
     period_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("academic_periods.id"),
         nullable=False,
         index=True,
     )
     area_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("academic_areas.id"),
         nullable=False,
         index=True,
@@ -46,7 +46,7 @@ class AcademicOfferingModel(Base):
         String(50), nullable=False, default="draft"
     )
     created_by: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("users.id"),
         nullable=True,
     )
@@ -69,16 +69,16 @@ class OfferingLineModel(Base):
     __tablename__ = "offering_lines"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     offering_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("academic_offerings.id"),
         nullable=False,
         index=True,
     )
     subject_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("subjects.id"),
         nullable=False,
         index=True,
@@ -91,7 +91,7 @@ class OfferingLineModel(Base):
         String(50), default="presential"
     )
     schedule_type_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("schedule_types.id"),
         nullable=True,
         index=True,

@@ -6,11 +6,9 @@ service for convenient single-import access.
 
 from .capacity_validator import CapacityValidator
 from .classroom_validator import ClassroomDataValidator
-from .curriculum_validator import CurriculumValidator
 from .data_types import (
     CapacityValidationData,
     ClassroomValidationData,
-    CurriculumValidationData,
     InstructorValidationData,
     OfferingValidationData,
     SubjectValidationData,
@@ -26,12 +24,10 @@ __all__ = [
     "ClassroomDataValidator",
     "OfferingDataValidator",
     "CapacityValidator",
-    "CurriculumValidator",
     # Data types
     "InstructorValidationData",
     "SubjectValidationData",
     "ClassroomValidationData",
     "OfferingValidationData",
     "CapacityValidationData",
-    "CurriculumValidationData",
 ]

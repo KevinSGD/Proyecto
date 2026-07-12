@@ -12,10 +12,12 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    JSON,
     String,
+    UniqueConstraint,
+    Uuid,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.persistence.database import Base
@@ -25,16 +27,16 @@ class ImportSessionModel(Base):
     __tablename__ = "import_sessions"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,
     )
     user_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("users.id"),
         nullable=True,
         index=True,
@@ -58,7 +60,7 @@ class ImportSessionModel(Base):
         DateTime(timezone=True), nullable=True
     )
     rollback_data: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, default=dict
+        JSON, default=dict
     )
 
     log_entries: Mapped[list[ImportLogEntryModel]] = relationship(
@@ -83,10 +85,10 @@ class ImportLogEntryModel(Base):
     __tablename__ = "import_log_entries"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     import_session_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("import_sessions.id"),
         nullable=False,
         index=True,
@@ -96,10 +98,10 @@ class ImportLogEntryModel(Base):
         String(50), nullable=False, default="pending"
     )
     entity_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
+        Uuid, nullable=True
     )
     error_message: Mapped[str] = mapped_column(String(2000), default="")
-    raw_data: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    raw_data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
     import_session: Mapped[ImportSessionModel] = relationship(
         back_populates="log_entries"
@@ -110,10 +112,10 @@ class ImportTemplateModel(Base):
     __tablename__ = "import_templates"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=True,
         index=True,
@@ -124,13 +126,13 @@ class ImportTemplateModel(Base):
     )
     version: Mapped[str] = mapped_column(String(50), default="1.0")
     column_mappings: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, default=list
+        JSON, default=list
     )
     transformation_rules: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, default=list
+        JSON, default=list
     )
     validation_rules: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, default=list
+        JSON, default=list
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -148,16 +150,16 @@ class ValidationReportModel(Base):
     __tablename__ = "validation_reports"
 
     id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid4
+        Uuid, primary_key=True, default=uuid4
     )
     institution_id: Mapped[Any] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("institutions.id"),
         nullable=False,
         index=True,
     )
     period_id: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("academic_periods.id"),
         nullable=True,
         index=True,
@@ -169,19 +171,19 @@ class ValidationReportModel(Base):
         String(50), nullable=False, default="pending"
     )
     errors: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, default=list
+        JSON, default=list
     )
     warnings: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, default=list
+        JSON, default=list
     )
-    summary: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    summary: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
         server_default=func.now(),
     )
     created_by: Mapped[Any | None] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("users.id"),
         nullable=True,
     )

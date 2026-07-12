@@ -14,7 +14,6 @@ from app.core.exceptions.base import (
     OptimizationError,
     RepositoryError,
     SchedulerError,
-    SolverConfigError,
     TimeoutError_,
     ValidationError,
 )
@@ -33,7 +32,6 @@ __all__ = [
     "OptimizationError",
     "RepositoryError",
     "SchedulerError",
-    "SolverConfigError",
     "TimeoutError_",
     "ValidationError",
 ]

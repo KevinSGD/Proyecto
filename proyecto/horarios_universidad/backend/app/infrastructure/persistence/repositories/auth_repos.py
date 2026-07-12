@@ -5,8 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.core.utils.types import EntityId
-from app.domain.entities.auth import Permission, Role, User
-from app.domain.interfaces.repositories import RoleRepository, UserRepository
+from app.domain.entities.auth import Permission, Role, User, UserArea
+from app.domain.interfaces.repositories import (
+    RoleRepository,
+    UserAreaRepository,
+    UserRepository,
+)
 from app.infrastructure.persistence.repositories.base import SqlAlchemyRepository
 
 if TYPE_CHECKING:
@@ -89,3 +93,31 @@ class SqlRoleRepository(
             resource=model.resource,  # type: ignore[attr-defined]
             action=model.action,  # type: ignore[attr-defined]
         )
+
+
+class SqlUserAreaRepository(
+    SqlAlchemyRepository[UserArea],
+    UserAreaRepository,
+):
+    def __init__(self, session: Session) -> None:
+        from app.infrastructure.persistence.models.auth import UserAreaModel
+
+        self._model_cls = UserAreaModel
+        self._entity_cls = UserArea
+        super().__init__(session)
+
+    def list_by_user(self, user_id: EntityId) -> list[UserArea]:
+        models = (
+            self._query()
+            .filter(self._model_cls.user_id == user_id)
+            .all()
+        )
+        return [self._to_entity(m) for m in models]
+
+    def list_by_area(self, area_id: EntityId) -> list[UserArea]:
+        models = (
+            self._query()
+            .filter(self._model_cls.area_id == area_id)
+            .all()
+        )
+        return [self._to_entity(m) for m in models]
