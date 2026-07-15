@@ -39,6 +39,16 @@ export const scheduleService = {
     return api.post<ApiResponse<unknown>>(`${BASE}/schedule/validate`, { institutionId, periodId })
   },
 
+  updateSessionBlock(blockId: string, data: {
+    dayOfWeek?: number
+    startPeriod?: number
+    duration?: number
+    classroomId?: string
+    instructorId?: string
+  }) {
+    return api.patch<ApiResponse<unknown>>(`${BASE}/session-blocks/${blockId}`, data)
+  },
+
   dashboard(institutionId: string) {
     return api.get<ApiResponse<Record<string, unknown>>>(
       `${BASE}/institutions/${institutionId}/dashboard`,

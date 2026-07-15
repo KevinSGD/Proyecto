@@ -64,6 +64,7 @@ class Resource:
     name: str = ""
     code: str = ""
     description: str = ""
+    is_active: bool = True
 
 
 @dataclass

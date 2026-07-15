@@ -22,6 +22,7 @@ class OfferingCreate(CamelModel):
 class OfferingUpdate(CamelModel):
     status: str | None = None
     area_id: UUID | None = None
+    observations: str | None = None
 
 
 class OfferingOut(CamelModel):
@@ -30,6 +31,7 @@ class OfferingOut(CamelModel):
     period_id: UUID
     area_id: UUID
     status: str
+    observations: str = ""
     created_by: UUID | None
 
 

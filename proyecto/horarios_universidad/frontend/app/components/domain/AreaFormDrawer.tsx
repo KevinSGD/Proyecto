@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Drawer from '@/components/ui/Drawer'
 import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
 import { Field, Textarea } from '@/components/ui/Field'
 import { areaService } from '@/lib/services/area.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
@@ -14,12 +15,21 @@ interface Props {
   onSaved: () => void
 }
 
+interface CreatedCredentials {
+  areaName: string
+  coordName: string
+  coordEmail: string
+  coordPassword: string
+  role: string
+}
+
 export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
   const isEdit = !!area
   const { user } = useAuthStore()
   const institutionId = user?.institutionId ?? ''
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [credentials, setCredentials] = useState<CreatedCredentials | null>(null)
 
   const [code, setCode] = useState(area?.code ?? '')
   const [name, setName] = useState(area?.name ?? '')
@@ -50,6 +60,7 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
     try {
       if (isEdit) {
         await areaService.update(area.id, { name, code, description })
+        onSaved()
       } else {
         await areaService.create({
           institutionId,
@@ -62,8 +73,14 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
             password: coordPassword,
           },
         })
+        setCredentials({
+          areaName: name,
+          coordName,
+          coordEmail,
+          coordPassword,
+          role: 'Coordinador',
+        })
       }
-      onSaved()
     } catch {
       setErrors({ _form: 'Error al guardar. Verifica los datos e intenta de nuevo.' })
     } finally {
@@ -71,7 +88,13 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
     }
   }
 
+  const handleCloseCredentials = () => {
+    setCredentials(null)
+    onSaved()
+  }
+
   return (
+    <>
     <Drawer
       open
       onClose={onClose}
@@ -111,5 +134,47 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
         )}
       </div>
     </Drawer>
+
+    {credentials && (
+      <Modal
+        open
+        onClose={handleCloseCredentials}
+        title="Área y Coordinador Creados"
+        confirmLabel="Entendido"
+        onConfirm={handleCloseCredentials}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Se ha creado el área y su coordinador. El nuevo usuario puede iniciar sesión inmediatamente.
+          </p>
+          <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Área</span>
+              <span className="font-medium">{credentials.areaName}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Coordinador</span>
+              <span className="font-medium">{credentials.coordName}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Correo</span>
+              <span className="font-medium font-mono text-xs">{credentials.coordEmail}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Contraseña</span>
+              <span className="font-medium font-mono text-xs">{credentials.coordPassword}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Rol</span>
+              <span className="font-medium">{credentials.role}</span>
+            </div>
+          </div>
+          <p className="text-xs text-warning">
+            Guarda estas credenciales. La contraseña no se puede recuperar después.
+          </p>
+        </div>
+      </Modal>
+    )}
+    </>
   )
 }

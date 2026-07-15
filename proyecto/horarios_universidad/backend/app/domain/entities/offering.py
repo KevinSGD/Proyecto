@@ -21,6 +21,7 @@ class AcademicOffering:
     period_id: EntityId = field(default_factory=generate_id)
     area_id: EntityId = field(default_factory=generate_id)
     status: str = "draft"
+    observations: str = ""
     created_by: EntityId | None = None
 
 

@@ -11,6 +11,7 @@ interface GanttGridProps {
   zoom?: number
   startHour?: number
   endHour?: number
+  onEdit?: (assignment: EnrichedAssignment) => void
 }
 
 function groupByEntity(assignments: EnrichedAssignment[], viewMode: ViewMode): ScheduleEntity[] {
@@ -44,7 +45,7 @@ function parseMinutes(time: string): number {
   return h * 60 + (m || 0)
 }
 
-export default function GanttGrid({ assignments, viewMode, zoom = 1, startHour = 7, endHour = 21 }: GanttGridProps) {
+export default function GanttGrid({ assignments, viewMode, zoom = 1, startHour = 7, endHour = 21, onEdit }: GanttGridProps) {
   const entities = useMemo(() => groupByEntity(assignments, viewMode), [assignments, viewMode])
   const totalMinutes = (endHour - startHour) * 60
   const hours = useMemo(() => Array.from({ length: endHour - startHour + 1 }, (_, i) => i + startHour), [startHour, endHour])
@@ -130,7 +131,7 @@ export default function GanttGrid({ assignments, viewMode, zoom = 1, startHour =
                         return (
                           <div
                             key={a.id}
-                            className="absolute top-1 bottom-1 rounded-md flex items-center px-2 text-[10px] font-medium cursor-grab transition-shadow hover:shadow-md overflow-hidden"
+                            className="absolute top-1 bottom-1 rounded-md flex items-center px-2 text-[10px] font-medium cursor-pointer transition-shadow hover:shadow-md overflow-hidden"
                             style={{
                               left: `${left}%`,
                               width: `${width}%`,
@@ -139,6 +140,7 @@ export default function GanttGrid({ assignments, viewMode, zoom = 1, startHour =
                               color: color.fg,
                             }}
                             title={`${a.subjectName || a.subjectCode} — ${a.startTime.slice(0, 5)}–${a.endTime.slice(0, 5)} — ${a.teacherName} — ${a.classroomName}`}
+                            onClick={() => onEdit?.(a)}
                           >
                             <span className="truncate">
                               {a.subjectCode} {a.startTime.slice(0, 5)}–{a.endTime.slice(0, 5)}

@@ -6,6 +6,7 @@ export interface User {
   name: string
   role: UserRole
   institutionId: string
+  areaId?: string | null
 }
 
 export interface LoginRequest {

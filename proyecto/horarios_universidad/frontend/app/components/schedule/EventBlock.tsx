@@ -10,15 +10,17 @@ interface EventBlockProps {
   showClassroom?: boolean
   showSubject?: boolean
   compact?: boolean
+  onEdit?: (assignment: EnrichedAssignment) => void
 }
 
-export default function EventBlock({ assignment, showTeacher = true, showClassroom = true, showSubject = true, compact }: EventBlockProps) {
+export default function EventBlock({ assignment, showTeacher = true, showClassroom = true, showSubject = true, compact, onEdit }: EventBlockProps) {
   const [hovered, setHovered] = useState(false)
   const color = getBlockColor(assignment.colorIndex)
 
   return (
     <div
-      className="relative rounded-md px-2 py-1.5 text-xs mb-1 last:mb-0 cursor-grab select-none transition-shadow"
+      className="relative rounded-md px-2 py-1.5 text-xs mb-1 last:mb-0 cursor-pointer select-none transition-shadow"
+      onClick={() => onEdit?.(assignment)}
       style={{
         backgroundColor: color.bg,
         borderLeft: `3px solid ${color.fg}`,

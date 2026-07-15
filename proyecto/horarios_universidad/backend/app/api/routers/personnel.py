@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -64,7 +65,20 @@ async def list_teachers(
     institution_id: UUID, uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[list[InstructorOut]]:
     entities = ListTeachers(uow).execute(institution_id)
-    items = [InstructorOut.model_validate(asdict(e)) for e in entities]
+    contracts = uow.contracts.list_all()
+    contract_map: dict[str, Any] = {}
+    for c in contracts:
+        if c.is_active and str(c.instructor_id) not in contract_map:
+            contract_map[str(c.instructor_id)] = c
+
+    items = []
+    for e in entities:
+        d = asdict(e)
+        c = contract_map.get(str(e.id))
+        if c:
+            d["contract_type"] = c.contract_type
+            d["max_weekly_hours"] = c.max_weekly_periods
+        items.append(InstructorOut.model_validate(d))
     return ApiResponse(data=items, message="Teachers retrieved")
 
 

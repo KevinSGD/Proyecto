@@ -15,9 +15,11 @@ import PageHeader from '@/components/ui/PageHeader'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
 import { subjectService } from '@/lib/services/subject.service'
+import { classroomService } from '@/lib/services/classroom.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import type { Subject } from '@/lib/types/academic'
+import type { Resource } from '@/lib/types/infrastructure'
 import MateriaFormDrawer from '@/components/domain/MateriaFormDrawer'
 
 const PAGE_SIZE = 10
@@ -39,8 +41,14 @@ export default function MateriasPage() {
     () => institutionId ? subjectService.list(institutionId) : Promise.resolve({ data: [] } as any),
     [institutionId],
   )
+  const { data: resourceData } = useApiQuery(
+    () => institutionId ? classroomService.listResources(institutionId) : Promise.resolve({ data: [] } as any),
+    [institutionId],
+  )
 
   const subjects: Subject[] = data?.data ?? []
+  const allResources: Resource[] = resourceData?.data ?? []
+  const resourceMap = useMemo(() => new Map(allResources.map(r => [r.id, r])), [allResources])
 
   useEffect(() => { setPage(1) }, [debouncedSearch, filterType, filterStatus])
 
@@ -169,16 +177,7 @@ export default function MateriasPage() {
       {/* View detail drawer */}
       <Drawer open={!!viewing} onClose={() => setViewing(null)} title={viewing?.name ?? ''} subtitle={viewing?.code}>
         {viewing && (
-          <div className="space-y-4">
-            <DetailRow label="Código" value={viewing.code} />
-            <DetailRow label="Nombre" value={viewing.name} />
-            <DetailRow label="Créditos" value={String(viewing.creditHours)} />
-            <DetailRow label="Horas semanales" value={String(viewing.weeklyHours)} />
-            <DetailRow label="Modalidad" value={modalityLabel(viewing.modalityDefault)} />
-            <DetailRow label="Estado" value={viewing.isActive ? 'Activa' : 'Inactiva'} />
-            {viewing.requirements && <DetailRow label="Recursos requeridos" value={viewing.requirements} />}
-            {viewing.observations && <DetailRow label="Observaciones" value={viewing.observations} />}
-          </div>
+          <SubjectDetailView subject={viewing} modalityLabel={modalityLabel} resourceMap={resourceMap} />
         )}
       </Drawer>
 
@@ -204,6 +203,41 @@ export default function MateriasPage() {
       </Modal>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+    </div>
+  )
+}
+
+function SubjectDetailView({ subject, modalityLabel, resourceMap }: { subject: Subject; modalityLabel: (t: string) => string; resourceMap: Map<string, Resource> }) {
+  const [resources, setResources] = useState<{ id: string; resourceId: string }[]>([])
+
+  useEffect(() => {
+    subjectService.listResources(subject.id).then(resp => {
+      setResources((resp as any)?.data ?? [])
+    }).catch(() => {})
+  }, [subject.id])
+
+  return (
+    <div className="space-y-4">
+      <DetailRow label="Código" value={subject.code} />
+      <DetailRow label="Nombre" value={subject.name} />
+      <DetailRow label="Créditos" value={String(subject.creditHours)} />
+      <DetailRow label="Horas semanales" value={String(subject.weeklyHours)} />
+      <DetailRow label="Modalidad" value={modalityLabel(subject.modalityDefault)} />
+      <DetailRow label="Estado" value={subject.isActive ? 'Activa' : 'Inactiva'} />
+      {resources.length > 0 && (
+        <div className="border-b border-muted pb-3">
+          <span className="text-sm text-muted-foreground">Recursos requeridos</span>
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {resources.map(r => {
+              const res = resourceMap.get(r.resourceId)
+              return (
+                <Badge key={r.id} variant="neutral">{res?.name ?? r.resourceId.slice(0, 8)}</Badge>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      {subject.observations && <DetailRow label="Observaciones" value={subject.observations} />}
     </div>
   )
 }

@@ -136,6 +136,7 @@ class ResourceModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     code: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(String(1000), default="")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     __table_args__ = (
         UniqueConstraint(

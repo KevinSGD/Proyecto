@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { FileText, Eye, Play, CheckCircle, Zap, Plus, Trash2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import {
+  FileText, ChevronDown, ChevronRight, Check, X, Plus, Eye, Trash2, BookOpen,
+} from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
-import Drawer from '@/components/ui/Drawer'
 import Modal from '@/components/ui/Modal'
-import { Table, THead, TH, TBody, TR, TD } from '@/components/ui/Table'
-import { FilterSelect } from '@/components/ui/Field'
+import Drawer from '@/components/ui/Drawer'
+import { SelectField, NumberField, Textarea } from '@/components/ui/Field'
 import DataView from '@/components/ui/DataView'
 import PageHeader from '@/components/ui/PageHeader'
 import StatCard from '@/components/ui/StatCard'
@@ -16,51 +17,40 @@ import { SkeletonCard } from '@/components/ui/Skeleton'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
 import { offeringService } from '@/lib/services/offering.service'
-import { scheduleService } from '@/lib/services/schedule.service'
-import { subjectService } from '@/lib/services/subject.service'
 import { areaService } from '@/lib/services/area.service'
+import { subjectService } from '@/lib/services/subject.service'
 import { institutionService } from '@/lib/services/institution.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
-import type { Offering, OfferingLine, ScheduleRun } from '@/lib/types/scheduling'
-import type { Subject, AcademicArea } from '@/lib/types/academic'
 import RoleGuard from '@/lib/guards/RoleGuard'
-import Tabs from '@/components/ui/Tabs'
+import type { Offering, OfferingLine } from '@/lib/types/scheduling'
+import type { AcademicArea } from '@/lib/types/academic'
+import type { Subject } from '@/lib/types/academic'
 
-const STATUS_MAP: Record<string, { label: string; variant: 'neutral' | 'warning' | 'success' | 'danger' | 'info' }> = {
+const STATUS_MAP: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'neutral' | 'info' }> = {
   draft: { label: 'Borrador', variant: 'neutral' },
-  pending: { label: 'Pendiente', variant: 'neutral' },
+  pending: { label: 'Pendiente', variant: 'warning' },
   approved: { label: 'Aprobada', variant: 'success' },
-  running: { label: 'Ejecutando', variant: 'warning' },
-  optimal: { label: 'Óptimo', variant: 'success' },
-  feasible: { label: 'Factible', variant: 'success' },
-  published: { label: 'Publicado', variant: 'info' },
-  error: { label: 'Error', variant: 'danger' },
-  blocked: { label: 'Bloqueado', variant: 'danger' },
+  rejected: { label: 'Rechazada', variant: 'danger' },
+  submitted: { label: 'Enviada', variant: 'info' },
 }
 
-type Tab = 'offerings' | 'runs'
-
 export default function OfertaPage() {
-  const [tab, setTab] = useState<Tab>('offerings')
-  const [viewingLines, setViewingLines] = useState<{ offering: Offering; lines: OfferingLine[] } | null>(null)
-  const [showCreateOffer, setShowCreateOffer] = useState(false)
-  const [showAddLine, setShowAddLine] = useState<Offering | null>(null)
-  const [confirmGenerate, setConfirmGenerate] = useState(false)
-  const [confirmPublish, setConfirmPublish] = useState<ScheduleRun | null>(null)
-  const [deletingOffer, setDeletingOffer] = useState<Offering | null>(null)
-
-  // Add line form state
-  const [newLineSubject, setNewLineSubject] = useState('')
-  const [newLineGroups, setNewLineGroups] = useState('1')
-  const [newLineEnrollment, setNewLineEnrollment] = useState('30')
-  const [newLineModality, setNewLineModality] = useState('presential')
-
-  // Create offering form
-  const [newOfferArea, setNewOfferArea] = useState('')
-
-  const { toasts, addToast, removeToast } = useToast()
   const { user } = useAuthStore()
   const institutionId = user?.institutionId ?? ''
+  const { toasts, addToast, removeToast } = useToast()
+
+  const [expandedArea, setExpandedArea] = useState<string | null>(null)
+  const [createModal, setCreateModal] = useState(false)
+  const [createAreaId, setCreateAreaId] = useState('')
+  const [rejectModal, setRejectModal] = useState<Offering | null>(null)
+  const [rejectObs, setRejectObs] = useState('')
+  const [addLineModal, setAddLineModal] = useState<string | null>(null)
+  const [lineSubjectId, setLineSubjectId] = useState('')
+  const [lineNumGroups, setLineNumGroups] = useState(1)
+  const [lineEnrollment, setLineEnrollment] = useState(30)
+  const [lineModality, setLineModality] = useState('presential')
+  const [linesDrawer, setLinesDrawer] = useState<Offering | null>(null)
+  const [drawerLines, setDrawerLines] = useState<OfferingLine[]>([])
 
   const { data: periodData } = useApiQuery(
     () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
@@ -68,348 +58,284 @@ export default function OfertaPage() {
   )
   const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
 
-  const { data: offData, loading: offLoad, error: offErr, refetch: offRefetch } =
-    useApiQuery(
-      () => (institutionId && periodId) ? offeringService.list(institutionId, periodId) : Promise.resolve({ data: [] } as any),
-      [institutionId, periodId],
-    )
-  const { data: runData, loading: runLoad, error: runErr, refetch: runRefetch } =
-    useApiQuery(
-      () => (institutionId && periodId) ? scheduleService.listRuns(institutionId, periodId) : Promise.resolve({ data: [] } as any),
-      [institutionId, periodId],
-    )
-  const { data: subData } = useApiQuery(
-    () => institutionId ? subjectService.list(institutionId) : Promise.resolve({ data: [] } as any),
-    [institutionId],
+  const { data: offeringData, loading, refetch } = useApiQuery(
+    () => (institutionId && periodId) ? offeringService.list(institutionId, periodId) : Promise.resolve({ data: [] } as any),
+    [institutionId, periodId],
   )
   const { data: areaData } = useApiQuery(
     () => institutionId ? areaService.list(institutionId) : Promise.resolve({ data: [] } as any),
     [institutionId],
   )
+  const { data: subjectData } = useApiQuery(
+    () => institutionId ? subjectService.list(institutionId) : Promise.resolve({ data: [] } as any),
+    [institutionId],
+  )
 
-  const offerings: Offering[] = offData?.data ?? []
-  const runs: ScheduleRun[] = runData?.data ?? []
-  const subjects: Subject[] = subData?.data ?? []
+  const offerings: Offering[] = offeringData?.data ?? []
   const areas: AcademicArea[] = areaData?.data ?? []
-
-  const subjectMap = useMemo(() => new Map(subjects.map(s => [s.id, s])), [subjects])
+  const subjects: Subject[] = subjectData?.data ?? []
   const areaMap = useMemo(() => new Map(areas.map(a => [a.id, a])), [areas])
+  const subjectMap = useMemo(() => new Map(subjects.map(s => [s.id, s])), [subjects])
 
-  const handleViewLines = async (offering: Offering) => {
-    try {
-      const res = await offeringService.listLines(offering.id)
-      setViewingLines({ offering, lines: res?.data ?? [] })
-    } catch { addToast('error', 'Error al cargar líneas') }
-  }
-
-  const [generating, setGenerating] = useState(false)
-
-  const handleGenerate = async () => {
-    if (!institutionId || !periodId) return
-    setGenerating(true)
-    setConfirmGenerate(false)
-    try {
-      await scheduleService.generate({ institutionId, periodId })
-      addToast('success', 'Horario generado exitosamente')
-      runRefetch()
-    } catch {
-      addToast('error', 'Error al generar el horario')
-    } finally {
-      setGenerating(false)
+  const offeringsByArea = useMemo(() => {
+    const map = new Map<string, Offering[]>()
+    for (const o of offerings) {
+      const list = map.get(o.areaId) ?? []
+      list.push(o)
+      map.set(o.areaId, list)
     }
-  }
+    return map
+  }, [offerings])
 
-  const handlePublish = async () => {
-    if (!confirmPublish) return
+  const handleCreate = async () => {
+    if (!createAreaId || !periodId) return
     try {
-      await scheduleService.publish(confirmPublish.id)
-      addToast('success', 'Horario publicado correctamente')
-      setConfirmPublish(null)
-      runRefetch()
-    } catch { addToast('error', 'Error al publicar') }
-  }
-
-  const handleCreateOffering = async () => {
-    if (!newOfferArea || !institutionId || !periodId) return
-    try {
-      await offeringService.create({ institutionId, periodId, areaId: newOfferArea })
+      await offeringService.create({ institutionId, periodId, areaId: createAreaId })
       addToast('success', 'Oferta creada')
-      setShowCreateOffer(false)
-      setNewOfferArea('')
-      offRefetch()
+      setCreateModal(false)
+      setCreateAreaId('')
+      refetch()
     } catch { addToast('error', 'Error al crear oferta') }
   }
 
-  const handleDeleteOffering = async () => {
-    if (!deletingOffer) return
+  const handleApprove = async (offering: Offering) => {
     try {
-      await offeringService.delete(deletingOffer.id)
+      await offeringService.update(offering.id, { status: 'approved' })
+      addToast('success', 'Oferta aprobada')
+      refetch()
+    } catch { addToast('error', 'Error al aprobar') }
+  }
+
+  const handleReject = async () => {
+    if (!rejectModal) return
+    try {
+      await offeringService.update(rejectModal.id, { status: 'rejected', observations: rejectObs })
+      addToast('success', 'Oferta rechazada')
+      setRejectModal(null)
+      setRejectObs('')
+      refetch()
+    } catch { addToast('error', 'Error al rechazar') }
+  }
+
+  const handleDelete = async (offering: Offering) => {
+    if (!confirm('¿Eliminar esta oferta?')) return
+    try {
+      await offeringService.delete(offering.id)
       addToast('success', 'Oferta eliminada')
-      setDeletingOffer(null)
-      offRefetch()
-    } catch { addToast('error', 'Error al eliminar oferta') }
+      refetch()
+    } catch { addToast('error', 'Error al eliminar') }
   }
 
   const handleAddLine = async () => {
-    if (!showAddLine || !newLineSubject) return
+    if (!addLineModal || !lineSubjectId) return
     try {
-      await offeringService.addLine(showAddLine.id, {
-        offeringId: showAddLine.id,
-        subjectId: newLineSubject,
-        numGroups: parseInt(newLineGroups) || 1,
-        expectedEnrollmentPerGroup: parseInt(newLineEnrollment) || 30,
-        modality: newLineModality,
+      await offeringService.addLine(addLineModal, {
+        subjectId: lineSubjectId,
+        numGroups: lineNumGroups,
+        expectedEnrollmentPerGroup: lineEnrollment,
+        modality: lineModality,
       })
-      addToast('success', 'Línea agregada a la oferta')
-      setShowAddLine(null)
-      setNewLineSubject('')
-      setNewLineGroups('1')
-      setNewLineEnrollment('30')
-      offRefetch()
-      if (viewingLines && viewingLines.offering.id === showAddLine.id) {
-        handleViewLines(showAddLine)
-      }
+      addToast('success', 'Línea agregada')
+      setAddLineModal(null)
+      setLineSubjectId('')
+      refetch()
     } catch { addToast('error', 'Error al agregar línea') }
+  }
+
+  const handleViewLines = async (offering: Offering) => {
+    setLinesDrawer(offering)
+    try {
+      const resp = await offeringService.listLines(offering.id)
+      setDrawerLines((resp as any)?.data ?? [])
+    } catch { setDrawerLines([]) }
   }
 
   const handleRemoveLine = async (lineId: string) => {
     try {
       await offeringService.removeLine(lineId)
+      setDrawerLines(prev => prev.filter(l => l.id !== lineId))
       addToast('success', 'Línea eliminada')
-      if (viewingLines) {
-        setViewingLines({ ...viewingLines, lines: viewingLines.lines.filter(l => l.id !== lineId) })
-      }
+      refetch()
     } catch { addToast('error', 'Error al eliminar línea') }
   }
+
+  const toggleArea = (areaId: string) => {
+    setExpandedArea(prev => prev === areaId ? null : areaId)
+  }
+
+  const approvedCount = offerings.filter(o => o.status === 'approved').length
+  const pendingCount = offerings.filter(o => o.status === 'submitted' || o.status === 'pending' || o.status === 'draft').length
 
   return (
     <RoleGuard allowed={['director']} fallback={<p className="text-muted-foreground">Sin acceso.</p>}>
       <div className="space-y-6">
         <PageHeader
           title="Oferta Académica"
-          description="Gestión del ciclo de vida de la oferta y generación de horarios"
-          actions={
-            <Button icon={<Plus className="size-4" />} onClick={() => setShowCreateOffer(true)}>
-              Nueva Oferta
-            </Button>
-          }
+          description="Revisión y aprobación de ofertas por área"
+          action={<Button icon={Plus} onClick={() => setCreateModal(true)}>Nueva Oferta</Button>}
         />
 
-        {(offLoad || runLoad) ? (
+        {loading ? (
           <div className="grid gap-4 sm:grid-cols-3">{[1, 2, 3].map(i => <SkeletonCard key={i} />)}</div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard title="Ofertas" value={offerings.length} icon={FileText} subtitle="Registradas" />
-            <StatCard title="Ejecuciones" value={runs.length} icon={Play} subtitle="Del solver" />
-            <StatCard title="Publicadas" value={runs.filter(r => r.status === 'published').length} icon={CheckCircle} subtitle="Horarios activos" />
+            <StatCard title="Total ofertas" value={offerings.length} icon={FileText} subtitle="Este período" />
+            <StatCard title="Aprobadas" value={approvedCount} icon={Check} subtitle="Listas para generar" />
+            <StatCard title="Pendientes" value={pendingCount} icon={BookOpen} subtitle="Por revisar" />
           </div>
         )}
 
-        <Tabs<Tab>
-          tabs={[
-            { key: 'offerings', label: 'Ofertas' },
-            { key: 'runs', label: 'Generación / Resultados' },
-          ]}
-          value={tab}
-          onChange={setTab}
-        />
+        <DataView
+          data={areas}
+          loading={loading}
+          emptyIcon={FileText}
+          emptyTitle="Sin áreas registradas"
+          emptyDescription="Crea áreas académicas primero"
+        >
+          {() => (
+            <div className="space-y-3">
+              {areas.map(area => {
+                const areaOfferings = offeringsByArea.get(area.id) ?? []
+                const isExpanded = expandedArea === area.id
 
-        {tab === 'offerings' && (
-          <Card bodyClassName="p-0">
-            <DataView data={offerings} loading={offLoad} error={offErr} onRetry={offRefetch}
-              emptyIcon={FileText} emptyTitle="Sin ofertas académicas"
-              emptyDescription="Crea una oferta para iniciar el proceso de generación de horarios"
-              emptyAction={<Button size="sm" onClick={() => setShowCreateOffer(true)}>Crear oferta</Button>}>
-              {() => (
-                <Table>
-                  <THead>
-                    <TH>ID</TH>
-                    <TH>Área</TH>
-                    <TH>Estado</TH>
-                    <TH align="right">Acciones</TH>
-                  </THead>
-                  <TBody>
-                    {offerings.map(o => (
-                      <TR key={o.id}>
-                        <TD><span className="font-mono text-xs text-primary">{o.id.slice(0, 8)}</span></TD>
-                        <TD><span className="font-medium">{areaMap.get(o.areaId)?.name ?? '—'}</span></TD>
-                        <TD><Badge variant={STATUS_MAP[o.status]?.variant ?? 'neutral'}>{STATUS_MAP[o.status]?.label ?? o.status}</Badge></TD>
-                        <TD align="right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => handleViewLines(o)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" aria-label="Ver líneas">
-                              <Eye className="size-4" />
-                            </button>
-                            <button onClick={() => { setShowAddLine(o) }} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" aria-label="Agregar línea">
-                              <Plus className="size-4" />
-                            </button>
-                            <button onClick={() => setDeletingOffer(o)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger transition-colors" aria-label="Eliminar">
-                              <Trash2 className="size-4" />
-                            </button>
-                          </div>
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
-              )}
-            </DataView>
-          </Card>
-        )}
-
-        {tab === 'runs' && (
-          <Card bodyClassName="p-0">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <p className="text-sm text-muted-foreground">Resultados de generación de horarios</p>
-              <Button
-                size="sm"
-                icon={<Zap className="size-4" />}
-                loading={generating}
-                disabled={!periodId}
-                onClick={() => setConfirmGenerate(true)}
-              >
-                Generar horario
-              </Button>
-            </div>
-            <DataView data={runs} loading={runLoad} error={runErr} onRetry={runRefetch}
-              emptyIcon={Play} emptyTitle="Sin ejecuciones del solver"
-              emptyDescription="Presiona 'Generar horario' para ejecutar el solver">
-              {() => (
-                <Table>
-                  <THead>
-                    <TH>ID</TH>
-                    <TH>Estado</TH>
-                    <TH>Inicio</TH>
-                    <TH>Fin</TH>
-                    <TH align="right">Acciones</TH>
-                  </THead>
-                  <TBody>
-                    {runs.map(r => {
-                      const st = STATUS_MAP[r.status]
-                      const canPublish = r.status === 'optimal' || r.status === 'feasible'
-                      return (
-                        <TR key={r.id}>
-                          <TD><span className="font-mono text-xs text-primary">{r.id.slice(0, 8)}</span></TD>
-                          <TD><Badge variant={st?.variant ?? 'neutral'}>{st?.label ?? r.status}</Badge></TD>
-                          <TD><span className="text-xs text-muted-foreground">{r.startedAt ? new Date(r.startedAt).toLocaleString() : '—'}</span></TD>
-                          <TD><span className="text-xs text-muted-foreground">{r.completedAt ? new Date(r.completedAt).toLocaleString() : '—'}</span></TD>
-                          <TD align="right">
-                            {canPublish && (
-                              <Button size="sm" variant="outline" onClick={() => setConfirmPublish(r)}>Publicar</Button>
-                            )}
-                          </TD>
-                        </TR>
-                      )
-                    })}
-                  </TBody>
-                </Table>
-              )}
-            </DataView>
-          </Card>
-        )}
-
-        {/* View Lines Drawer */}
-        <Drawer open={!!viewingLines} onClose={() => setViewingLines(null)}
-          title="Líneas de oferta" subtitle={viewingLines ? `Oferta ${viewingLines.offering.id.slice(0, 8)}` : undefined}>
-          {viewingLines && (
-            viewingLines.lines.length === 0
-              ? <p className="text-sm text-muted-foreground">Sin líneas de oferta registradas.</p>
-              : <div className="space-y-3">
-                  {viewingLines.lines.map(l => {
-                    const sub = subjectMap.get(l.subjectId)
-                    return (
-                      <div key={l.id} className="rounded-lg border border-border p-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-sm font-medium">{sub?.name ?? l.subjectId.slice(0, 8)}</span>
-                            {sub && <span className="ml-2 text-xs text-muted-foreground">{sub.code}</span>}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="neutral">{l.numGroups} grupos</Badge>
-                            <button onClick={() => handleRemoveLine(l.id)} className="p-1 rounded text-muted-foreground hover:text-danger transition-colors" aria-label="Eliminar línea">
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="mt-1 flex gap-4 text-xs text-muted-foreground">
-                          <span>Cupo: {l.expectedEnrollmentPerGroup}</span>
-                          <span>Modalidad: {l.modality}</span>
+                return (
+                  <Card key={area.id} bodyClassName="p-0">
+                    <button
+                      onClick={() => toggleArea(area.id)}
+                      className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {isExpanded ? <ChevronDown className="size-4 text-muted-foreground" /> : <ChevronRight className="size-4 text-muted-foreground" />}
+                        <div>
+                          <p className="font-medium text-foreground">{area.name}</p>
+                          <p className="text-xs text-muted-foreground">{area.code} — {areaOfferings.length} oferta(s)</p>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
+                      <div className="flex items-center gap-2">
+                        {areaOfferings.map(o => {
+                          const st = STATUS_MAP[o.status] ?? { label: o.status, variant: 'neutral' as const }
+                          return <Badge key={o.id} variant={st.variant}>{st.label}</Badge>
+                        })}
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-border px-5 py-4 space-y-4">
+                        {areaOfferings.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No hay ofertas para esta área.</p>
+                        ) : (
+                          areaOfferings.map(offering => (
+                            <div key={offering.id} className="rounded-lg border border-border p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={(STATUS_MAP[offering.status] ?? { variant: 'neutral' as const }).variant}>
+                                    {(STATUS_MAP[offering.status] ?? { label: offering.status }).label}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground font-mono">{offering.id.slice(0, 8)}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button onClick={() => handleViewLines(offering)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" title="Ver líneas">
+                                    <Eye className="size-4" />
+                                  </button>
+                                  <button onClick={() => setAddLineModal(offering.id)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" title="Agregar línea">
+                                    <Plus className="size-4" />
+                                  </button>
+                                  <button onClick={() => handleDelete(offering)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger" title="Eliminar">
+                                    <Trash2 className="size-4" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {offering.observations && (
+                                <div className="rounded-md bg-warning-soft px-3 py-2">
+                                  <p className="text-xs font-medium text-warning">Observaciones:</p>
+                                  <p className="text-xs text-foreground">{offering.observations}</p>
+                                </div>
+                              )}
+
+                              {(offering.status === 'submitted' || offering.status === 'draft' || offering.status === 'pending') && (
+                                <div className="flex gap-2 pt-1">
+                                  <Button size="sm" onClick={() => handleApprove(offering)} icon={<Check className="size-3.5" />}>
+                                    Aprobar
+                                  </Button>
+                                  <Button size="sm" variant="danger" onClick={() => { setRejectModal(offering); setRejectObs('') }} icon={<X className="size-3.5" />}>
+                                    Rechazar
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
           )}
-        </Drawer>
+        </DataView>
 
-        {/* Create Offering Modal */}
-        <Modal open={showCreateOffer} onClose={() => setShowCreateOffer(false)} title="Nueva Oferta Académica"
-          confirmLabel="Crear" onConfirm={handleCreateOffering}>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Selecciona el área académica para la nueva oferta del período activo.</p>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Área Académica</label>
-              <select value={newOfferArea} onChange={e => setNewOfferArea(e.target.value)}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm">
-                <option value="">Seleccionar área...</option>
-                {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </div>
+        {/* Create offering modal */}
+        <Modal open={createModal} onClose={() => setCreateModal(false)} title="Nueva Oferta" confirmLabel="Crear" onConfirm={handleCreate}>
+          <SelectField
+            label="Área académica" value={createAreaId} onChange={setCreateAreaId}
+            options={['', ...areas.map(a => a.id)]}
+            labels={{ '': '— Seleccionar área —', ...Object.fromEntries(areas.map(a => [a.id, a.name])) }}
+          />
+        </Modal>
+
+        {/* Reject offering modal */}
+        <Modal open={!!rejectModal} onClose={() => setRejectModal(null)} title="Rechazar Oferta" confirmLabel="Rechazar" onConfirm={handleReject} destructive>
+          <div className="space-y-3">
+            <p className="text-sm">Escribe las observaciones para el coordinador:</p>
+            <Textarea label="Observaciones" value={rejectObs} onChange={setRejectObs} placeholder="Motivo del rechazo..." />
           </div>
         </Modal>
 
-        {/* Add Line Modal */}
-        <Modal open={!!showAddLine} onClose={() => setShowAddLine(null)} title="Agregar Línea de Oferta"
-          confirmLabel="Agregar" onConfirm={handleAddLine}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Materia</label>
-              <select value={newLineSubject} onChange={e => setNewLineSubject(e.target.value)}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm">
-                <option value="">Seleccionar materia...</option>
-                {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
-              </select>
-            </div>
+        {/* Add line modal */}
+        <Modal open={!!addLineModal} onClose={() => setAddLineModal(null)} title="Agregar Línea" confirmLabel="Agregar" onConfirm={handleAddLine}>
+          <div className="space-y-3">
+            <SelectField
+              label="Materia" value={lineSubjectId} onChange={setLineSubjectId}
+              options={['', ...subjects.map(s => s.id)]}
+              labels={{ '': '— Seleccionar materia —', ...Object.fromEntries(subjects.map(s => [s.id, `${s.code} — ${s.name}`])) }}
+            />
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Número de grupos</label>
-                <input type="number" min="1" value={newLineGroups} onChange={e => setNewLineGroups(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Cupo por grupo</label>
-                <input type="number" min="1" value={newLineEnrollment} onChange={e => setNewLineEnrollment(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm" />
-              </div>
+              <NumberField label="Grupos" value={lineNumGroups} onChange={setLineNumGroups} />
+              <NumberField label="Cupo/grupo" value={lineEnrollment} onChange={setLineEnrollment} />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Modalidad</label>
-              <select value={newLineModality} onChange={e => setNewLineModality(e.target.value)}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm">
-                <option value="presential">Presencial</option>
-                <option value="virtual">Virtual</option>
-                <option value="hybrid">Híbrida</option>
-              </select>
-            </div>
+            <SelectField label="Modalidad" value={lineModality} onChange={setLineModality}
+              options={['presential', 'virtual', 'hybrid']}
+              labels={{ presential: 'Presencial', virtual: 'Virtual', hybrid: 'Híbrida' }}
+            />
           </div>
         </Modal>
 
-        {/* Delete Offering Confirmation */}
-        <Modal open={!!deletingOffer} onClose={() => setDeletingOffer(null)} title="Eliminar Oferta"
-          confirmLabel="Eliminar" onConfirm={handleDeleteOffering} destructive>
-          <p>¿Estás seguro de eliminar esta oferta? Se eliminarán todas las líneas asociadas. Esta acción no se puede deshacer.</p>
-        </Modal>
-
-        {/* Confirm Generate */}
-        <Modal open={confirmGenerate} onClose={() => setConfirmGenerate(false)} title="Generar Horario"
-          confirmLabel="Generar" onConfirm={handleGenerate}>
-          <p>¿Estás seguro de ejecutar el solver? Este proceso puede tardar algunos minutos dependiendo de la complejidad de la oferta.</p>
-        </Modal>
-
-        {/* Confirm Publish */}
-        <Modal open={!!confirmPublish} onClose={() => setConfirmPublish(null)} title="Publicar Horario"
-          confirmLabel="Publicar" onConfirm={handlePublish}>
-          <p>¿Estás seguro de publicar este horario? Una vez publicado, será visible para todos los usuarios del sistema.</p>
-        </Modal>
+        {/* Lines drawer */}
+        <Drawer open={!!linesDrawer} onClose={() => setLinesDrawer(null)} title="Líneas de Oferta" subtitle={linesDrawer ? areaMap.get(linesDrawer.areaId)?.name : ''}>
+          <div className="space-y-3">
+            {drawerLines.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">Sin líneas registradas</p>
+            ) : (
+              drawerLines.map(line => {
+                const sub = subjectMap.get(line.subjectId)
+                return (
+                  <div key={line.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                    <div>
+                      <p className="text-sm font-medium">{sub?.name ?? 'Materia'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {sub?.code} — {line.numGroups} grupo(s) — {line.expectedEnrollmentPerGroup} cupo — {line.modality}
+                      </p>
+                    </div>
+                    <button onClick={() => handleRemoveLine(line.id)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger">
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </Drawer>
 
         <ToastContainer toasts={toasts} onRemove={removeToast} />
       </div>

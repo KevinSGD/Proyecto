@@ -107,12 +107,14 @@ class ResourceCreate(CamelModel):
     name: str
     code: str
     description: str = ""
+    is_active: bool = True
 
 
 class ResourceUpdate(CamelModel):
     name: str | None = None
     code: str | None = None
     description: str | None = None
+    is_active: bool | None = None
 
 
 class ResourceOut(CamelModel):
@@ -121,6 +123,7 @@ class ResourceOut(CamelModel):
     name: str
     code: str
     description: str
+    is_active: bool = True
 
 
 # ── Room resource ──────────────────────────────────────────────────────────
@@ -144,3 +147,20 @@ class RoomResourceOut(CamelModel):
     classroom_id: UUID
     resource_id: UUID
     quantity: int
+
+
+# ── Subject resource requirement ──────────────────────────────────────────
+
+
+class SubjectResourceBody(CamelModel):
+    """Request body for POST /subjects/{id}/resources."""
+
+    resource_id: UUID
+    is_mandatory: bool = True
+
+
+class SubjectResourceOut(CamelModel):
+    id: UUID
+    subject_id: UUID
+    resource_id: UUID
+    is_mandatory: bool

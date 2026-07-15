@@ -17,6 +17,7 @@ from app.api.schemas.academic import (
     SubjectUpdate,
 )
 from app.api.schemas.base import ApiResponse
+from app.api.schemas.infrastructure import SubjectResourceBody, SubjectResourceOut
 from app.application.commands.academic_commands import (
     CreateArea,
     CreateSubject,
@@ -142,4 +143,87 @@ async def delete_subject(
     uow: UnitOfWork = Depends(get_uow),
 ) -> Response:
     DeleteSubject(uow).execute(subject_id)
+    return Response(status_code=204)
+
+
+# ── Subject resource requirements ──────────────────────────────────────────
+
+
+@router.get(
+    "/subjects/{subject_id}/resources",
+    response_model=ApiResponse[list[SubjectResourceOut]],
+)
+async def list_subject_resources(
+    subject_id: UUID,
+    uow: UnitOfWork = Depends(get_uow),
+) -> ApiResponse[list[SubjectResourceOut]]:
+    from app.infrastructure.persistence.models.infrastructure_models import (
+        SubjectResourceRequirementModel,
+    )
+
+    with uow:
+        models = (
+            uow._session.query(SubjectResourceRequirementModel)
+            .filter(SubjectResourceRequirementModel.subject_id == subject_id)
+            .all()
+        )
+        items = [
+            SubjectResourceOut(
+                id=m.id,
+                subject_id=m.subject_id,
+                resource_id=m.resource_id,
+                is_mandatory=m.is_mandatory,
+            )
+            for m in models
+        ]
+    return ApiResponse(data=items)
+
+
+@router.post(
+    "/subjects/{subject_id}/resources",
+    response_model=ApiResponse[SubjectResourceOut],
+    status_code=201,
+)
+async def add_subject_resource(
+    subject_id: UUID,
+    body: SubjectResourceBody,
+    uow: UnitOfWork = Depends(get_uow),
+) -> ApiResponse[SubjectResourceOut]:
+    from app.core.utils.types import generate_id
+    from app.infrastructure.persistence.models.infrastructure_models import (
+        SubjectResourceRequirementModel,
+    )
+
+    with uow:
+        model = SubjectResourceRequirementModel(
+            id=generate_id(),
+            subject_id=subject_id,
+            resource_id=body.resource_id,
+            is_mandatory=body.is_mandatory,
+        )
+        uow._session.add(model)
+        uow.commit()
+        out = SubjectResourceOut(
+            id=model.id,
+            subject_id=model.subject_id,
+            resource_id=model.resource_id,
+            is_mandatory=model.is_mandatory,
+        )
+    return ApiResponse(data=out, message="Resource requirement added")
+
+
+@router.delete("/subject-resources/{requirement_id}", status_code=204)
+async def remove_subject_resource(
+    requirement_id: UUID,
+    uow: UnitOfWork = Depends(get_uow),
+) -> Response:
+    from app.infrastructure.persistence.models.infrastructure_models import (
+        SubjectResourceRequirementModel,
+    )
+
+    with uow:
+        model = uow._session.get(SubjectResourceRequirementModel, requirement_id)
+        if model:
+            uow._session.delete(model)
+            uow.commit()
     return Response(status_code=204)

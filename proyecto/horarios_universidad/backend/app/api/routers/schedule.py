@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies.database import get_uow
 from app.api.schemas.base import ApiResponse
@@ -18,6 +18,7 @@ from app.api.schemas.schedule import (
     ScheduleRunDetailOut,
     ScheduleRunOut,
     ScheduleValidateRequest,
+    SessionBlockUpdateRequest,
     ValidationReportOut,
 )
 from app.application.commands.schedule_commands import (
@@ -102,6 +103,55 @@ async def block_schedule(
     return ApiResponse(
         data=ScheduleRunOut.model_validate(asdict(run)),
         message="Schedule blocked",
+    )
+
+
+@router.patch(
+    "/session-blocks/{block_id}",
+    response_model=ApiResponse[dict],
+)
+async def update_session_block(
+    block_id: UUID,
+    body: SessionBlockUpdateRequest,
+    uow: UnitOfWork = Depends(get_uow),
+) -> ApiResponse[dict]:
+    """Manually edit a session block (day, period, classroom, instructor)."""
+    from sqlalchemy import select
+    from app.infrastructure.persistence.models.schedule import (
+        SessionBlockModel,
+        AssignmentModel,
+    )
+
+    session = uow._session
+    block = session.get(SessionBlockModel, str(block_id))
+    if not block:
+        raise HTTPException(status_code=404, detail="Session block not found")
+
+    if body.day_of_week is not None:
+        block.day_of_week = body.day_of_week
+    if body.start_period is not None:
+        block.start_period = body.start_period
+    if body.duration is not None:
+        block.duration = body.duration
+    if body.classroom_id is not None:
+        block.classroom_id = str(body.classroom_id)
+
+    if body.instructor_id is not None:
+        assignment = session.get(AssignmentModel, str(block.assignment_id))
+        if assignment:
+            assignment.instructor_id = str(body.instructor_id)
+
+    session.commit()
+
+    return ApiResponse(
+        data={
+            "id": str(block.id),
+            "dayOfWeek": block.day_of_week,
+            "startPeriod": block.start_period,
+            "duration": block.duration,
+            "classroomId": str(block.classroom_id),
+        },
+        message="Session block updated",
     )
 
 

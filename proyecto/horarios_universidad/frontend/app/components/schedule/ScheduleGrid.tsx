@@ -11,6 +11,7 @@ interface ScheduleGridProps {
   zoom?: number
   startHour?: number
   endHour?: number
+  onEdit?: (assignment: EnrichedAssignment) => void
 }
 
 function groupByEntity(assignments: EnrichedAssignment[], viewMode: ViewMode): ScheduleEntity[] {
@@ -48,7 +49,7 @@ function parseMinutes(time: string): number {
   return h * 60 + (m || 0)
 }
 
-export default function ScheduleGrid({ assignments, viewMode, zoom = 1, startHour = 7, endHour = 21 }: ScheduleGridProps) {
+export default function ScheduleGrid({ assignments, viewMode, zoom = 1, startHour = 7, endHour = 21, onEdit }: ScheduleGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const entities = useMemo(() => groupByEntity(assignments, viewMode), [assignments, viewMode])
   const hours = useMemo(() => Array.from({ length: endHour - startHour }, (_, i) => i + startHour), [startHour, endHour])
@@ -124,6 +125,7 @@ export default function ScheduleGrid({ assignments, viewMode, zoom = 1, startHou
                             showClassroom={showClassroom}
                             showSubject={showSubject}
                             compact={zoom < 1}
+                            onEdit={onEdit}
                           />
                         ))}
                       </div>

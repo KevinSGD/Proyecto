@@ -21,13 +21,25 @@ from app.domain.interfaces.unit_of_work import UnitOfWork
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _user_to_out(user: User, role_display: str) -> UserOut:
+def _get_user_area_id(uow: UnitOfWork, user_id) -> str | None:
+    from app.infrastructure.persistence.models.auth import UserAreaModel
+    from sqlalchemy import select
+
+    with uow:
+        row = uow._session.execute(
+            select(UserAreaModel.area_id).where(UserAreaModel.user_id == user_id)
+        ).scalars().first()
+        return str(row) if row else None
+
+
+def _user_to_out(user: User, role_display: str, area_id=None) -> UserOut:
     return UserOut(
         id=user.id,
         email=user.email,
         name=user.name,
         role=role_display,
         institution_id=user.institution_id,
+        area_id=area_id,
     )
 
 
@@ -40,13 +52,14 @@ async def login(
     auth = AuthService(uow)
     user, access_token, refresh_token = auth.login(body.email, body.password)
     role_display = auth.get_role_display_name(user)
+    area_id = _get_user_area_id(uow, user.id)
     return ApiResponse(
         data=AuthResponse(
             tokens=TokenPair(
                 access_token=access_token,
                 refresh_token=refresh_token,
             ),
-            user=_user_to_out(user, role_display),
+            user=_user_to_out(user, role_display, area_id),
         ),
         message="Inicio de sesión exitoso",
     )
@@ -61,13 +74,14 @@ async def refresh_token(
     auth = AuthService(uow)
     user, access_token, new_refresh = auth.refresh(body.refresh_token)
     role_display = auth.get_role_display_name(user)
+    area_id = _get_user_area_id(uow, user.id)
     return ApiResponse(
         data=AuthResponse(
             tokens=TokenPair(
                 access_token=access_token,
                 refresh_token=new_refresh,
             ),
-            user=_user_to_out(user, role_display),
+            user=_user_to_out(user, role_display, area_id),
         ),
         message="Tokens actualizados",
     )
@@ -88,7 +102,8 @@ async def get_me(
 ) -> ApiResponse[UserOut]:
     """Return the current authenticated user."""
     role_display = AuthService(uow).get_role_display_name(user)
+    area_id = _get_user_area_id(uow, user.id)
     return ApiResponse(
-        data=_user_to_out(user, role_display),
+        data=_user_to_out(user, role_display, area_id),
         message="Usuario autenticado",
     )

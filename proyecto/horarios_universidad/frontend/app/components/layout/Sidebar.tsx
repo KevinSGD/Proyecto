@@ -3,8 +3,8 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
-  LayoutDashboard, BookOpen, Users, Link2, Calendar, Building2,
-  FileText, Settings, Package, Upload, CheckSquare, Download, GraduationCap, LogOut, X,
+  LayoutDashboard, BookOpen, Users, Calendar, Building2,
+  FileText, Settings, CheckSquare, Download, GraduationCap, LogOut, X,
   Layers, Play,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -25,16 +25,13 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Áreas Académicas', href: '/areas', icon: Layers, roles: ['director'] },
   { label: 'Docentes', href: '/docentes', icon: Users, roles: ['director', 'coordinador'] },
   { label: 'Materias', href: '/materias', icon: BookOpen, roles: ['director', 'coordinador'] },
-  { label: 'Grupos', href: '/grupos', icon: Package, roles: ['director'] },
-  { label: 'Asignaciones', href: '/asignacion', icon: Link2, roles: ['director', 'coordinador'] },
   { label: 'Aulas', href: '/aulas', icon: Building2, roles: ['director'] },
   { label: 'Oferta Académica', href: '/oferta', icon: FileText, roles: ['director'] },
   { label: 'Confirmar Oferta', href: '/confirmar', icon: CheckSquare, roles: ['coordinador'] },
   { label: 'Generar Horarios', href: '/generar-horarios', icon: Play, roles: ['director'] },
   { label: 'Horarios', href: '/horarios', icon: Calendar, roles: ['director'] },
   { label: 'Horario del Área', href: '/horario-area', icon: Calendar, roles: ['coordinador'] },
-  { label: 'Reportes', href: '/reportes', icon: FileText, roles: ['director'] },
-  { label: 'Importar/Exportar', href: '/importar-exportar', icon: Upload, roles: ['director'] },
+  { label: 'Reportes y Datos', href: '/reportes', icon: FileText, roles: ['director'] },
   { label: 'Exportar', href: '/exportar', icon: Download, roles: ['coordinador'] },
   { label: 'Configuración', href: '/configuracion', icon: Settings, roles: ['director'] },
 ]

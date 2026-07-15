@@ -24,4 +24,18 @@ export const subjectService = {
   delete(id: string) {
     return api.delete(`${BASE}/subjects/${id}`)
   },
+
+  listResources(subjectId: string) {
+    return api.get<ApiResponse<{ id: string; subjectId: string; resourceId: string; isMandatory: boolean }[]>>(
+      `${BASE}/subjects/${subjectId}/resources`,
+    )
+  },
+
+  addResource(subjectId: string, resourceId: string, isMandatory = true) {
+    return api.post(`${BASE}/subjects/${subjectId}/resources`, { resourceId, isMandatory })
+  },
+
+  removeResource(requirementId: string) {
+    return api.delete(`${BASE}/subject-resources/${requirementId}`)
+  },
 }

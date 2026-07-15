@@ -46,6 +46,7 @@ export interface Offering {
   periodId: string
   areaId: string
   status: string
+  observations?: string
   createdBy?: string | null
 }
 

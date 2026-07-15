@@ -20,7 +20,9 @@ export interface Classroom {
 
 export interface Resource {
   id: string
+  institutionId?: string
   name: string
+  code: string
   description?: string
   isActive: boolean
 }

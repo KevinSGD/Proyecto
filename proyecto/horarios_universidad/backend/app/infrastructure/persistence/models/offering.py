@@ -45,6 +45,9 @@ class AcademicOfferingModel(Base):
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="draft"
     )
+    observations: Mapped[str] = mapped_column(
+        String(2000), nullable=False, default=""
+    )
     created_by: Mapped[Any | None] = mapped_column(
         Uuid,
         ForeignKey("users.id"),

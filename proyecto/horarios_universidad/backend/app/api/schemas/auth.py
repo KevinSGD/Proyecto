@@ -38,6 +38,7 @@ class UserOut(CamelModel):
     name: str
     role: str
     institution_id: UUID | None = None
+    area_id: UUID | None = None
 
 
 class AuthResponse(CamelModel):

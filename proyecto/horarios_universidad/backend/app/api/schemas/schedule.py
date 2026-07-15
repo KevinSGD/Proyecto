@@ -49,6 +49,16 @@ class ScheduleBlockRequest(CamelModel):
     schedule_run_id: UUID
 
 
+class SessionBlockUpdateRequest(CamelModel):
+    """Update a session block (manual schedule edit)."""
+
+    day_of_week: int | None = Field(default=None, ge=0, le=6)
+    start_period: int | None = Field(default=None, ge=1)
+    duration: int | None = Field(default=None, ge=1)
+    classroom_id: UUID | None = None
+    instructor_id: UUID | None = None
+
+
 # ── Responses ───────────────────────────────────────────────────────────────
 
 
