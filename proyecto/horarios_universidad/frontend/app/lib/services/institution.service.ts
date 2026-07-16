@@ -36,4 +36,8 @@ export const institutionService = {
   getActivePeriod(institutionId: string) {
     return api.get<ApiResponse<{ id: string; name: string; code: string }>>(`${BASE}/${institutionId}/periods/active`)
   },
+
+  createPeriod(institutionId: string, data: { name: string; year: number; periodNumber: number }) {
+    return api.post<ApiResponse<{ id: string; name: string }>>(`${BASE}/${institutionId}/periods`, { institutionId, ...data })
+  },
 }

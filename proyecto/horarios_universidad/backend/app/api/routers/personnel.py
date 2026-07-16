@@ -66,7 +66,8 @@ async def list_teachers(
     institution_id: UUID, uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[list[InstructorOut]]:
     entities = ListTeachers(uow).execute(institution_id)
-    contracts = uow.contracts.list_all()
+    with uow:
+        contracts = uow.contracts.list_all()
     contract_map: dict[str, Any] = {}
     for c in contracts:
         if c.is_active and str(c.instructor_id) not in contract_map:

@@ -34,7 +34,7 @@ __all__ = [
 class ContractCreate(CamelModel):
     """Payload to create an instructor contract."""
 
-    instructor_id: UUID
+    instructor_id: UUID | None = None
     contract_type: str
     start_date: date | None = None
     end_date: date | None = None
@@ -76,7 +76,7 @@ class ContractOut(CamelModel):
 class SpecialtyCreate(CamelModel):
     """Payload to link an instructor to a subject."""
 
-    instructor_id: UUID
+    instructor_id: UUID | None = None
     subject_id: UUID
     proficiency_level: int = 5
 
@@ -118,7 +118,7 @@ class AvailabilitySlot(CamelModel):
 class AvailabilityBulkSet(CamelModel):
     """Bulk-set availability slots for an instructor."""
 
-    instructor_id: UUID
+    instructor_id: UUID | None = None
     period_id: UUID | None = None
     slots: list[AvailabilitySlot]
 
@@ -140,7 +140,7 @@ class AvailabilityOut(CamelModel):
 class PreferenceCreate(CamelModel):
     """Payload to set an instructor preference."""
 
-    instructor_id: UUID
+    instructor_id: UUID | None = None
     period_id: UUID | None = None
     group_id: UUID | None = None
     subject_id: UUID | None = None

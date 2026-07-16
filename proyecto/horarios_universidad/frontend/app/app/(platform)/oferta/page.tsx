@@ -172,7 +172,7 @@ export default function OfertaPage() {
         <PageHeader
           title="Oferta Académica"
           description="Revisión y aprobación de ofertas por área"
-          action={<Button icon={Plus} onClick={() => setCreateModal(true)}>Nueva Oferta</Button>}
+          actions={<Button icon={<Plus className="size-4" />} onClick={() => setCreateModal(true)}>Nueva Oferta</Button>}
         />
 
         {loading ? (

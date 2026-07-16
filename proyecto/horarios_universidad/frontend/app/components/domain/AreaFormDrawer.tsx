@@ -29,6 +29,8 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
   const institutionId = user?.institutionId ?? ''
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({})
+  const [showPasswordStep, setShowPasswordStep] = useState(false)
   const [credentials, setCredentials] = useState<CreatedCredentials | null>(null)
 
   const [code, setCode] = useState(area?.code ?? '')
@@ -37,6 +39,8 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
 
   const [coordName, setCoordName] = useState('')
   const [coordEmail, setCoordEmail] = useState('')
+  const [coordPassword, setCoordPassword] = useState('')
+  const [coordPasswordConfirm, setCoordPasswordConfirm] = useState('')
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
@@ -44,7 +48,9 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
     const arr = new Uint8Array(12)
     crypto.getRandomValues(arr)
     for (const b of arr) pw += chars[b % chars.length]
-    return pw
+    setCoordPassword(pw)
+    setCoordPasswordConfirm(pw)
+    setPasswordErrors({})
   }
 
   const validate = () => {
@@ -60,36 +66,56 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
     return Object.keys(e).length === 0
   }
 
+  const validatePassword = () => {
+    const e: Record<string, string> = {}
+    if (coordPassword.length < 8) e.coordPassword = 'Mínimo 8 caracteres'
+    if (coordPassword !== coordPasswordConfirm) e.coordPasswordConfirm = 'Las contraseñas no coinciden'
+    setPasswordErrors(e)
+    return Object.keys(e).length === 0
+  }
+
   const handleSubmit = async () => {
     if (!validate()) return
-    setSaving(true)
-    try {
-      if (isEdit) {
+    if (isEdit) {
+      setSaving(true)
+      try {
         await areaService.update(area.id, { name, code, description })
         onSaved()
-      } else {
-        const tempPassword = generatePassword()
-        await areaService.create({
-          institutionId,
-          name,
-          code,
-          description: description || undefined,
-          coordinator: {
-            name: coordName,
-            email: coordEmail,
-            password: tempPassword,
-          },
-        })
-        setCredentials({
-          areaName: name,
-          coordName,
-          coordEmail,
-          coordPassword: tempPassword,
-          role: 'Coordinador',
-        })
+      } catch {
+        setErrors({ _form: 'Error al guardar. Verifica los datos e intenta de nuevo.' })
+      } finally {
+        setSaving(false)
       }
+      return
+    }
+    setShowPasswordStep(true)
+  }
+
+  const handleCreateCoordinator = async () => {
+    if (!validatePassword()) return
+    setSaving(true)
+    try {
+      await areaService.create({
+        institutionId,
+        name,
+        code,
+        description: description || undefined,
+        coordinator: {
+          name: coordName,
+          email: coordEmail,
+          password: coordPassword,
+        },
+      })
+      setShowPasswordStep(false)
+      setCredentials({
+        areaName: name,
+        coordName,
+        coordEmail,
+        coordPassword,
+        role: 'Coordinador',
+      })
     } catch {
-      setErrors({ _form: 'Error al guardar. Verifica los datos e intenta de nuevo.' })
+      setPasswordErrors({ _form: 'Error al crear el área. Verifica los datos e intenta de nuevo.' })
     } finally {
       setSaving(false)
     }
@@ -111,7 +137,7 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
           <Button loading={saving} onClick={handleSubmit}>
-            {isEdit ? 'Guardar cambios' : 'Crear área'}
+            {isEdit ? 'Guardar cambios' : 'Continuar'}
           </Button>
         </div>
       }
@@ -132,7 +158,7 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
           <>
             <hr className="border-border" />
             <h3 className="text-sm font-semibold text-foreground">Coordinador del Área</h3>
-            <p className="text-xs text-muted-foreground">Se creará automáticamente un usuario con rol Coordinador y una contraseña temporal</p>
+            <p className="text-xs text-muted-foreground">Se creará automáticamente un usuario con rol Coordinador. En el siguiente paso podrás definir su contraseña.</p>
 
             <Field label="Nombre completo" value={coordName} onChange={v => { setCoordName(v); setErrors(e => ({ ...e, coordName: '' })) }} placeholder="María López" error={errors.coordName} />
             <Field label="Correo electrónico" value={coordEmail} onChange={v => { setCoordEmail(v); setErrors(e => ({ ...e, coordEmail: '' })) }} placeholder="coordinador@universidad.edu" error={errors.coordEmail} />
@@ -140,6 +166,32 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
         )}
       </div>
     </Drawer>
+
+    {showPasswordStep && (
+      <Modal
+        open
+        onClose={() => setShowPasswordStep(false)}
+        title="Contraseña del Coordinador"
+        confirmLabel="Crear área"
+        onConfirm={handleCreateCoordinator}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Define la contraseña con la que <strong>{coordName}</strong> ({coordEmail}) iniciará sesión como coordinador del área.
+          </p>
+          {passwordErrors._form && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{passwordErrors._form}</p>}
+          <Field label="Contraseña" type="password" value={coordPassword}
+            onChange={v => { setCoordPassword(v); setPasswordErrors(e => ({ ...e, coordPassword: '' })) }}
+            placeholder="Mínimo 8 caracteres" error={passwordErrors.coordPassword} />
+          <Field label="Confirmar contraseña" type="password" value={coordPasswordConfirm}
+            onChange={v => { setCoordPasswordConfirm(v); setPasswordErrors(e => ({ ...e, coordPasswordConfirm: '' })) }}
+            placeholder="Repite la contraseña" error={passwordErrors.coordPasswordConfirm} />
+          <button type="button" onClick={generatePassword} className="text-xs font-medium text-primary hover:underline">
+            Generar contraseña segura automáticamente
+          </button>
+        </div>
+      </Modal>
+    )}
 
     {credentials && (
       <Modal
@@ -151,7 +203,7 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Se ha creado el área y su coordinador. El nuevo usuario puede iniciar sesión inmediatamente.
+            Se ha creado el área y su coordinador. El nuevo usuario puede iniciar sesión inmediatamente con la contraseña definida.
           </p>
           <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
             <div className="flex justify-between text-sm">

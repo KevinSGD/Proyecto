@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Play, CheckCircle, Zap, AlertTriangle } from 'lucide-react'
+import { Play, CheckCircle, Zap, AlertTriangle, CalendarPlus } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
+import { Field, NumberField } from '@/components/ui/Field'
 import { Table, THead, TH, TBody, TR, TD } from '@/components/ui/Table'
 import DataView from '@/components/ui/DataView'
 import PageHeader from '@/components/ui/PageHeader'
@@ -33,12 +34,31 @@ export default function GenerarHorariosPage() {
   const { user } = useAuthStore()
   const institutionId = user?.institutionId ?? ''
   const [generating, setGenerating] = useState(false)
+  const [creatingPeriod, setCreatingPeriod] = useState(false)
+  const currentYear = new Date().getFullYear()
+  const [periodName, setPeriodName] = useState(`${currentYear}-1`)
+  const [periodYear, setPeriodYear] = useState(currentYear)
+  const [periodNumber, setPeriodNumber] = useState(1)
 
-  const { data: periodData } = useApiQuery(
+  const { data: periodData, loading: periodLoading, refetch: periodRefetch } = useApiQuery(
     () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
     [institutionId],
   )
   const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
+
+  const handleCreatePeriod = async () => {
+    if (!institutionId || !periodName.trim()) return
+    setCreatingPeriod(true)
+    try {
+      await institutionService.createPeriod(institutionId, { name: periodName, year: periodYear, periodNumber })
+      addToast('success', 'Periodo académico creado y activado')
+      periodRefetch()
+    } catch {
+      addToast('error', 'Error al crear el periodo académico')
+    } finally {
+      setCreatingPeriod(false)
+    }
+  }
 
   const { data: runData, loading: runLoad, error: runErr, refetch: runRefetch } =
     useApiQuery(
@@ -78,12 +98,38 @@ export default function GenerarHorariosPage() {
         <PageHeader
           title="Generar Horarios"
           description="Ejecuta el solver de optimización para crear horarios académicos"
-          action={
+          actions={
             <Button icon={<Zap className="size-4" />} loading={generating} disabled={!periodId} onClick={handleGenerate}>
               Generar horario
             </Button>
           }
         />
+
+        {!periodLoading && !periodId && (
+          <Card>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="flex items-start gap-3 sm:flex-1">
+                <AlertTriangle className="size-5 shrink-0 text-warning" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">No hay un periodo académico activo</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Para poder generar horarios primero necesitas un periodo académico activo. Crea uno abajo para habilitar la ejecución del solver.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 sm:w-auto sm:min-w-[360px]">
+                <div className="col-span-3 sm:col-span-1">
+                  <Field label="Nombre" value={periodName} onChange={setPeriodName} placeholder="2026-1" />
+                </div>
+                <NumberField label="Año" value={periodYear} onChange={setPeriodYear} />
+                <NumberField label="Número" value={periodNumber} onChange={setPeriodNumber} />
+              </div>
+              <Button icon={<CalendarPlus className="size-4" />} loading={creatingPeriod} onClick={handleCreatePeriod}>
+                Crear y activar periodo
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {runLoad ? (
           <div className="grid gap-4 sm:grid-cols-4">{[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}</div>

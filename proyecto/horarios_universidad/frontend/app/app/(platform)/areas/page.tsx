@@ -84,7 +84,7 @@ export default function AreasPage() {
         <PageHeader
           title="Áreas Académicas"
           description="Gestión de áreas y coordinadores del sistema"
-          action={<Button icon={Plus} onClick={handleCreate}>Nueva Área</Button>}
+          actions={<Button icon={<Plus className="size-4" />} onClick={handleCreate}>Nueva Área</Button>}
         />
 
         {loading ? (
