@@ -24,29 +24,34 @@ class OfferingDataValidator(Validator[OfferingValidationData]):
     def validate(self, data: OfferingValidationData) -> ValidationResult:
         result = ValidationResult.ok()
 
-        subject_ids = {s.id for s in data.subjects}
+        subject_map = {s.id: s for s in data.subjects}
         schedule_type_ids = {st.id for st in data.schedule_types}
 
-        self._check_subject_references(data, subject_ids, result)
-        self._check_num_groups(data, result)
-        self._check_enrollment(data, result)
-        self._check_schedule_types(data, schedule_type_ids, result)
+        self._check_subject_references(data, subject_map, result)
+        self._check_num_groups(data, subject_map, result)
+        self._check_enrollment(data, subject_map, result)
+        self._check_schedule_types(data, schedule_type_ids, subject_map, result)
 
         return result
+
+    @staticmethod
+    def _subject_label(subject_map: dict, subject_id) -> str:
+        subject = subject_map.get(subject_id)
+        return f"{subject.name} ({subject.code})" if subject else str(subject_id)
 
     # ── V-D14 ────────────────────────────────────────────────────────
 
     @staticmethod
     def _check_subject_references(
         data: OfferingValidationData,
-        subject_ids: set[EntityId],
+        subject_map: dict,
         result: ValidationResult,
     ) -> None:
         for line in data.offering_lines:
-            if line.subject_id not in subject_ids:
+            if line.subject_id not in subject_map:
                 result.add_error(
-                    f"V-D14: Offering line {line.id} references "
-                    f"non-existent subject {line.subject_id}."
+                    f"V-D14: Una línea de oferta hace referencia a una "
+                    f"materia que ya no existe (código {line.subject_id})."
                 )
 
     # ── V-D15 ────────────────────────────────────────────────────────
@@ -54,13 +59,15 @@ class OfferingDataValidator(Validator[OfferingValidationData]):
     @staticmethod
     def _check_num_groups(
         data: OfferingValidationData,
+        subject_map: dict,
         result: ValidationResult,
     ) -> None:
         for line in data.offering_lines:
             if line.num_groups <= 0:
+                label = OfferingDataValidator._subject_label(subject_map, line.subject_id)
                 result.add_error(
-                    f"V-D15: Offering line {line.id} (subject "
-                    f"{line.subject_id}) has num_groups={line.num_groups}."
+                    f"V-D15: La línea de oferta de {label} tiene 0 grupos "
+                    f"configurados."
                 )
 
     # ── V-D16 ────────────────────────────────────────────────────────
@@ -68,15 +75,15 @@ class OfferingDataValidator(Validator[OfferingValidationData]):
     @staticmethod
     def _check_enrollment(
         data: OfferingValidationData,
+        subject_map: dict,
         result: ValidationResult,
     ) -> None:
         for line in data.offering_lines:
             if line.expected_enrollment_per_group <= 0:
+                label = OfferingDataValidator._subject_label(subject_map, line.subject_id)
                 result.add_error(
-                    f"V-D16: Offering line {line.id} (subject "
-                    f"{line.subject_id}) has "
-                    f"expected_enrollment_per_group="
-                    f"{line.expected_enrollment_per_group}."
+                    f"V-D16: La línea de oferta de {label} tiene 0 de cupo "
+                    f"esperado por grupo."
                 )
 
     # ── V-D17 ────────────────────────────────────────────────────────
@@ -85,16 +92,18 @@ class OfferingDataValidator(Validator[OfferingValidationData]):
     def _check_schedule_types(
         data: OfferingValidationData,
         schedule_type_ids: set[EntityId],
+        subject_map: dict,
         result: ValidationResult,
     ) -> None:
         for line in data.offering_lines:
+            label = OfferingDataValidator._subject_label(subject_map, line.subject_id)
             if line.schedule_type_id is None:
                 result.add_warning(
-                    f"V-D17: Offering line {line.id} (subject "
-                    f"{line.subject_id}) has no schedule type assigned."
+                    f"V-D17: La línea de oferta de {label} no tiene un tipo "
+                    f"de horario asignado."
                 )
             elif line.schedule_type_id not in schedule_type_ids:
                 result.add_error(
-                    f"V-D17: Offering line {line.id} references "
-                    f"non-existent schedule type {line.schedule_type_id}."
+                    f"V-D17: La línea de oferta de {label} hace referencia "
+                    f"a un tipo de horario que ya no existe."
                 )

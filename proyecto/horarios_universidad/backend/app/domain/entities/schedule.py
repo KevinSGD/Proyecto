@@ -39,6 +39,7 @@ class ScheduleRun:
     institution_id: EntityId = field(default_factory=generate_id)
     period_id: EntityId = field(default_factory=generate_id)
     config_id: EntityId | None = None
+    name: str = ""
     status: str = "pending"
     solver_config: dict[str, Any] = field(default_factory=dict)
     statistics: dict[str, Any] = field(default_factory=dict)

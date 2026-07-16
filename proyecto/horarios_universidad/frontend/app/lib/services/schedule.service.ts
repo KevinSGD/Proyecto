@@ -27,6 +27,10 @@ export const scheduleService = {
     return api.get<ApiResponse<ExecutionLogEntry[]>>(`${BASE}/schedule-runs/${runId}/logs`)
   },
 
+  exportExcel(runId: string) {
+    return api.getBlob(`${BASE}/schedule-runs/${runId}/export`)
+  },
+
   generate(data: { institutionId: string; periodId: string }) {
     return api.post<ApiResponse<ScheduleRun>>(`${BASE}/schedule/generate`, data)
   },

@@ -1,6 +1,7 @@
 import { api } from '@/lib/api/client'
 import type { ApiResponse } from '@/lib/types/common'
 import type { Subject } from '@/lib/types/academic'
+import type { Specialty } from '@/lib/types/personnel'
 
 const BASE = '/api/v1'
 
@@ -23,6 +24,10 @@ export const subjectService = {
 
   delete(id: string) {
     return api.delete(`${BASE}/subjects/${id}`)
+  },
+
+  listSpecialties(subjectId: string) {
+    return api.get<ApiResponse<Specialty[]>>(`${BASE}/subjects/${subjectId}/specialties`)
   },
 
   listResources(subjectId: string) {

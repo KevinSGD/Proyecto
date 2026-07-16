@@ -35,6 +35,10 @@ export const offeringService = {
     return api.post<ApiResponse<OfferingLine>>(`${BASE}/offerings/${offeringId}/lines`, data)
   },
 
+  updateLine(lineId: string, data: Partial<OfferingLine>) {
+    return api.put<ApiResponse<OfferingLine>>(`${BASE}/offering-lines/${lineId}`, data)
+  },
+
   generateGroups(offeringId: string) {
     return api.post<ApiResponse<Group[]>>(`${BASE}/offerings/${offeringId}/generate-groups`, {})
   },

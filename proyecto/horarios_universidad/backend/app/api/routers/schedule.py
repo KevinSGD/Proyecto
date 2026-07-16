@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Response
 
 from app.api.dependencies.auth import get_current_user, require_role
 from app.api.dependencies.database import get_uow
@@ -225,6 +225,48 @@ async def get_schedule_assignments(
     items_data = GetScheduleAssignments(uow).execute(run_id)
     items = [AssignmentDetailOut.model_validate(d) for d in items_data]
     return ApiResponse(data=items, message="Assignments retrieved")
+
+
+@router.get("/schedule-runs/{run_id}/export")
+async def export_schedule_run(
+    run_id: UUID,
+    uow: UnitOfWork = Depends(get_uow),
+) -> Response:
+    """Download a multi-sheet Excel workbook for a schedule run.
+
+    Includes the visual weekly grid plus flat sheets for assignments,
+    subjects, teachers, groups, and solver statistics.
+    """
+    from app.application.services.excel_export import build_schedule_workbook
+
+    with uow:
+        run = uow.schedule_runs.get_by_id(run_id)
+        if run is None:
+            raise ResourceNotFoundError("ScheduleRun", run_id)
+
+        assignments = uow.assignments.list_by_schedule_run(run_id)
+        session_blocks = uow.session_blocks.list_by_schedule_run(run_id)
+        groups = uow.groups.list_by_period(run.institution_id, run.period_id)
+        subjects = uow.subjects.list_by_institution(run.institution_id)
+        teachers = uow.instructors.list_by_institution(run.institution_id)
+        classrooms = uow.classrooms.list_by_institution(run.institution_id)
+
+    content = build_schedule_workbook(
+        run=run,
+        assignments=assignments,
+        session_blocks=session_blocks,
+        groups=groups,
+        subjects=subjects,
+        teachers=teachers,
+        classrooms=classrooms,
+    )
+
+    filename = f"{(run.name or 'horario').replace(' ', '_').replace('·', '-')}.xlsx"
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get(

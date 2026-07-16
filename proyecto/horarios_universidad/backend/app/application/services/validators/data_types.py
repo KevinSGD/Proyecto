@@ -41,6 +41,7 @@ class InstructorValidationData:
     contracts: list[InstructorContract] = field(default_factory=list)
     availabilities: list[InstructorAvailability] = field(default_factory=list)
     groups: list[Group] = field(default_factory=list)
+    subjects: list[Subject] = field(default_factory=list)
 
 
 @dataclass
@@ -61,6 +62,7 @@ class ClassroomValidationData:
     classrooms: list[Classroom] = field(default_factory=list)
     classroom_availabilities: list[ClassroomAvailability] = field(default_factory=list)
     groups: list[Group] = field(default_factory=list)
+    subjects: list[Subject] = field(default_factory=list)
 
 
 @dataclass

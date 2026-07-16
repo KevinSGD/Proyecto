@@ -19,6 +19,7 @@ import { useApiQuery } from '@/lib/hooks/useApiQuery'
 import { offeringService } from '@/lib/services/offering.service'
 import { areaService } from '@/lib/services/area.service'
 import { subjectService } from '@/lib/services/subject.service'
+import { teacherService } from '@/lib/services/teacher.service'
 import { institutionService } from '@/lib/services/institution.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import RoleGuard from '@/lib/guards/RoleGuard'
@@ -51,6 +52,7 @@ export default function OfertaPage() {
   const [lineModality, setLineModality] = useState('presential')
   const [linesDrawer, setLinesDrawer] = useState<Offering | null>(null)
   const [drawerLines, setDrawerLines] = useState<OfferingLine[]>([])
+  const [assignedTeachersBySubject, setAssignedTeachersBySubject] = useState<Record<string, string[]>>({})
 
   const { data: periodData } = useApiQuery(
     () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
@@ -144,9 +146,30 @@ export default function OfertaPage() {
 
   const handleViewLines = async (offering: Offering) => {
     setLinesDrawer(offering)
+    setAssignedTeachersBySubject({})
     try {
       const resp = await offeringService.listLines(offering.id)
-      setDrawerLines((resp as any)?.data ?? [])
+      const lines: OfferingLine[] = (resp as any)?.data ?? []
+      setDrawerLines(lines)
+
+      const uniqueSubjectIds = [...new Set(lines.map(l => l.subjectId))]
+      const entries = await Promise.all(uniqueSubjectIds.map(async (subjectId) => {
+        try {
+          const specResp = await subjectService.listSpecialties(subjectId)
+          const specs = (specResp as any)?.data ?? []
+          const names = await Promise.all(specs.map(async (s: { instructorId: string }) => {
+            try {
+              const tResp = await teacherService.getById(s.instructorId)
+              const t = (tResp as any)?.data
+              return t ? `${t.firstName} ${t.lastName}` : null
+            } catch { return null }
+          }))
+          return [subjectId, names.filter((n): n is string => !!n)] as const
+        } catch {
+          return [subjectId, []] as const
+        }
+      }))
+      setAssignedTeachersBySubject(Object.fromEntries(entries))
     } catch { setDrawerLines([]) }
   }
 
@@ -327,6 +350,7 @@ export default function OfertaPage() {
             ) : (
               drawerLines.map(line => {
                 const sub = subjectMap.get(line.subjectId)
+                const assignedTeachers = assignedTeachersBySubject[line.subjectId] ?? []
                 return (
                   <div key={line.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                     <div>
@@ -334,6 +358,11 @@ export default function OfertaPage() {
                       <p className="text-xs text-muted-foreground">
                         {sub?.code} — {line.numGroups} grupo(s) — {line.expectedEnrollmentPerGroup} cupo — {line.modality}
                       </p>
+                      {assignedTeachers.length > 0 ? (
+                        <p className="text-xs text-primary mt-1">Docente(s): {assignedTeachers.join(', ')}</p>
+                      ) : (
+                        <p className="text-xs text-warning mt-1">Sin docente asignado por el coordinador</p>
+                      )}
                     </div>
                     <button onClick={() => handleRemoveLine(line.id)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger">
                       <Trash2 className="size-4" />

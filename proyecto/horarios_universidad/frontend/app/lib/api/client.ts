@@ -133,6 +133,21 @@ class ApiClient {
   delete<T = void>(path: string) {
     return this.request<T>('DELETE', path)
   }
+
+  async getBlob(path: string): Promise<{ blob: Blob; filename: string | null }> {
+    const headers: Record<string, string> = {}
+    const { accessToken } = this.getAuthState()
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+    const res = await fetch(`${this.baseUrl}${path}`, { headers })
+    if (!res.ok) {
+      throw new ApiError(res.status, 'No se pudo descargar el archivo')
+    }
+
+    const disposition = res.headers.get('Content-Disposition') ?? ''
+    const match = /filename="?([^"]+)"?/.exec(disposition)
+    return { blob: await res.blob(), filename: match?.[1] ?? null }
+  }
 }
 
 export const api = new ApiClient()

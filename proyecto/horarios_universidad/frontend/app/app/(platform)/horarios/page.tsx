@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, Users, Building2, Save, RotateCcw, ShieldCheck, Lock, ClipboardCheck } from 'lucide-react'
+import { Calendar, Users, Building2, Save, RotateCcw, ShieldCheck, Lock, ClipboardCheck, Download } from 'lucide-react'
 import { FilterSelect, SelectField, NumberField } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import DataView from '@/components/ui/DataView'
@@ -40,6 +40,7 @@ export default function HorariosPage() {
   const [validationResult, setValidationResult] = useState<{ isValid: boolean; errors: string[]; warnings: string[] } | null>(null)
   const [validating, setValidating] = useState(false)
   const [blocking, setBlocking] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const { data: periodData } = useApiQuery(
     () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
@@ -145,6 +146,27 @@ export default function HorariosPage() {
     }
   }
 
+  const handleExportExcel = async () => {
+    if (!activeRunId) return
+    setExporting(true)
+    try {
+      const { blob, filename } = await scheduleService.exportExcel(activeRunId)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename ?? 'horario.xlsx'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      addToast('success', 'Excel descargado')
+    } catch {
+      addToast('error', 'Error al exportar el horario a Excel')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const handleRerun = async () => {
     if (!institutionId || !periodId) return
     try {
@@ -166,6 +188,7 @@ export default function HorariosPage() {
             <div className="flex gap-2">
               <Button variant="ghost" icon={<RotateCcw className="size-4" />} onClick={handleRerun} disabled={isLocked}>Re-ejecutar Solver</Button>
               <Button variant="outline" icon={<ShieldCheck className="size-4" />} onClick={handleValidate} loading={validating}>Verificar Integridad</Button>
+              <Button variant="outline" icon={<Download className="size-4" />} onClick={handleExportExcel} loading={exporting} disabled={!activeRunId}>Exportar Excel</Button>
               {!isLocked && (
                 <Button variant="outline" icon={<Lock className="size-4" />} onClick={handleBlock} loading={blocking} disabled={!activeRunId}>Confirmar Horario</Button>
               )}

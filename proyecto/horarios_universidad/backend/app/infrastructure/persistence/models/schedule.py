@@ -79,6 +79,9 @@ class ScheduleRunModel(Base):
         nullable=True,
         index=True,
     )
+    name: Mapped[str] = mapped_column(
+        String(200), nullable=False, default=""
+    )
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="pending"
     )

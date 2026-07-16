@@ -41,8 +41,8 @@ class SubjectDataValidator(Validator[SubjectValidationData]):
                 continue
             if subject.credit_hours <= 0:
                 result.add_error(
-                    f"V-D06: Subject {subject.id} ({subject.code}) "
-                    f"has credit_hours={subject.credit_hours}."
+                    f"V-D06: La materia {subject.name} ({subject.code}) "
+                    f"tiene 0 créditos configurados."
                 )
 
     # ── V-D07 ────────────────────────────────────────────────────────
@@ -62,8 +62,8 @@ class SubjectDataValidator(Validator[SubjectValidationData]):
         for sid in offered_subject_ids:
             if sid not in subjects_with_instructors:
                 subject = subject_map.get(sid)
-                code = subject.code if subject else "?"
+                label = f"{subject.name} ({subject.code})" if subject else str(sid)
                 result.add_error(
-                    f"V-D07: Offered subject {sid} ({code}) has no "
-                    f"qualified instructor."
+                    f"V-D07: La materia ofertada {label} no tiene ningún "
+                    f"docente calificado (especialidad) asignado."
                 )

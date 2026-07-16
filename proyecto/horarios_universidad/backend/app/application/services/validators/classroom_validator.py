@@ -28,11 +28,12 @@ class ClassroomDataValidator(Validator[ClassroomValidationData]):
         result = ValidationResult.ok()
 
         classroom_map = {c.id: c for c in data.classrooms}
+        subject_map = {s.id: s for s in data.subjects}
 
         self._check_capacity(data, result)
-        self._check_presential_groups(data, classroom_map, result)
+        self._check_presential_groups(data, subject_map, result)
         self._check_availability_coverage(data, result)
-        self._check_duplicate_availability(data, result)
+        self._check_duplicate_availability(data, classroom_map, result)
 
         return result
 
@@ -50,8 +51,8 @@ class ClassroomDataValidator(Validator[ClassroomValidationData]):
                 continue
             if classroom.capacity <= 0:
                 result.add_error(
-                    f"V-D10: Classroom {classroom.id} ({classroom.code}) "
-                    f"has capacity={classroom.capacity}."
+                    f"V-D10: El salón {classroom.name} ({classroom.code}) "
+                    f"tiene 0 de capacidad configurada."
                 )
 
     # ── V-D11 ────────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ class ClassroomDataValidator(Validator[ClassroomValidationData]):
     @staticmethod
     def _check_presential_groups(
         data: ClassroomValidationData,
-        classroom_map: dict,
+        subject_map: dict,
         result: ValidationResult,
     ) -> None:
         active_physical = [
@@ -77,10 +78,12 @@ class ClassroomDataValidator(Validator[ClassroomValidationData]):
             )
 
             if not compatible:
+                subject = subject_map.get(group.subject_id)
+                subject_label = subject.name if subject else str(group.subject_id)
                 result.add_error(
-                    f"V-D11: Presential group {group.id} "
-                    f"(enrollment={group.expected_enrollment}) has no "
-                    f"compatible classroom with sufficient capacity."
+                    f"V-D11: El grupo {group.group_number} de {subject_label} "
+                    f"(cupo={group.expected_enrollment}) no tiene ningún "
+                    f"salón presencial con capacidad suficiente."
                 )
 
     # ── V-D12 ────────────────────────────────────────────────────────
@@ -100,8 +103,9 @@ class ClassroomDataValidator(Validator[ClassroomValidationData]):
                 continue
             if classroom.id not in avail_days:
                 result.add_warning(
-                    f"V-D12: Classroom {classroom.id} ({classroom.code}) "
-                    f"has no availability entries for the active period."
+                    f"V-D12: El salón {classroom.name} ({classroom.code}) "
+                    f"no tiene horarios de disponibilidad registrados para "
+                    f"el período activo."
                 )
 
     # ── V-D13 ────────────────────────────────────────────────────────
@@ -109,16 +113,20 @@ class ClassroomDataValidator(Validator[ClassroomValidationData]):
     @staticmethod
     def _check_duplicate_availability(
         data: ClassroomValidationData,
+        classroom_map: dict,
         result: ValidationResult,
     ) -> None:
         seen: set[Tuple[EntityId, int, int]] = set()
+        day_names = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
         for avail in data.classroom_availabilities:
             key = (avail.classroom_id, avail.day_of_week, avail.period)
             if key in seen:
+                classroom = classroom_map.get(avail.classroom_id)
+                classroom_label = classroom.name if classroom else str(avail.classroom_id)
+                day_label = day_names[avail.day_of_week] if 0 <= avail.day_of_week < len(day_names) else str(avail.day_of_week)
                 result.add_error(
-                    f"V-D13: Duplicate availability entry for classroom "
-                    f"{avail.classroom_id} on day {avail.day_of_week}, "
-                    f"period {avail.period}."
+                    f"V-D13: El salón {classroom_label} tiene disponibilidad "
+                    f"duplicada el día {day_label}, período {avail.period}."
                 )
             seen.add(key)

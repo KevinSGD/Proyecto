@@ -43,7 +43,7 @@ class OfferingOut(CamelModel):
 
 
 class OfferingLineCreate(CamelModel):
-    offering_id: UUID
+    offering_id: UUID | None = None
     subject_id: UUID
     num_groups: int = Field(..., ge=1)
     expected_enrollment_per_group: int = Field(..., ge=1)

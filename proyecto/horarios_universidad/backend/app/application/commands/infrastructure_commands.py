@@ -68,7 +68,16 @@ class DeleteBuilding:
         self._uow = uow
 
     def execute(self, building_id: EntityId) -> bool:
+        from app.infrastructure.persistence.models.infrastructure_models import (
+            ClassroomModel,
+        )
+
         with self._uow:
+            session = self._uow._session
+            session.query(ClassroomModel).filter(
+                ClassroomModel.building_id == building_id,
+            ).update({"building_id": None}, synchronize_session=False)
+
             if not self._uow.buildings.delete(building_id):
                 raise ResourceNotFoundError("Building", building_id)
             self._uow.commit()
@@ -122,7 +131,26 @@ class DeleteClassroom:
         self._uow = uow
 
     def execute(self, classroom_id: EntityId) -> bool:
+        from app.infrastructure.persistence.models.infrastructure_models import (
+            ClassroomAvailabilityModel,
+            RoomResourceModel,
+        )
+        from app.infrastructure.persistence.models.schedule import (
+            SessionBlockModel,
+        )
+
         with self._uow:
+            session = self._uow._session
+            session.query(RoomResourceModel).filter(
+                RoomResourceModel.classroom_id == classroom_id,
+            ).delete(synchronize_session=False)
+            session.query(ClassroomAvailabilityModel).filter(
+                ClassroomAvailabilityModel.classroom_id == classroom_id,
+            ).delete(synchronize_session=False)
+            session.query(SessionBlockModel).filter(
+                SessionBlockModel.classroom_id == classroom_id,
+            ).delete(synchronize_session=False)
+
             if not self._uow.classrooms.delete(classroom_id):
                 raise ResourceNotFoundError("Classroom", classroom_id)
             self._uow.commit()
@@ -197,7 +225,20 @@ class DeleteResource:
         self._uow = uow
 
     def execute(self, resource_id: EntityId) -> bool:
+        from app.infrastructure.persistence.models.infrastructure_models import (
+            RoomResourceModel,
+            SubjectResourceRequirementModel,
+        )
+
         with self._uow:
+            session = self._uow._session
+            session.query(RoomResourceModel).filter(
+                RoomResourceModel.resource_id == resource_id,
+            ).delete(synchronize_session=False)
+            session.query(SubjectResourceRequirementModel).filter(
+                SubjectResourceRequirementModel.resource_id == resource_id,
+            ).delete(synchronize_session=False)
+
             if not self._uow.resources.delete(resource_id):
                 raise ResourceNotFoundError("Resource", resource_id)
             self._uow.commit()

@@ -90,7 +90,39 @@ class DeleteArea:
         self._uow = uow
 
     def execute(self, area_id: UUID) -> bool:
+        from app.application.services.cascade_delete import delete_offerings_cascade
+        from app.infrastructure.persistence.models.academic import (
+            SubjectModel,
+        )
+        from app.infrastructure.persistence.models.auth import UserAreaModel
+        from app.infrastructure.persistence.models.offering import (
+            AcademicOfferingModel,
+        )
+        from app.infrastructure.persistence.models.personnel import (
+            InstructorModel,
+        )
+
         with self._uow:
+            session = self._uow._session
+
+            offering_ids = [
+                row.id
+                for row in session.query(AcademicOfferingModel.id)
+                .filter(AcademicOfferingModel.area_id == area_id)
+                .all()
+            ]
+            delete_offerings_cascade(session, offering_ids)
+
+            session.query(SubjectModel).filter(
+                SubjectModel.area_id == area_id,
+            ).update({"area_id": None}, synchronize_session=False)
+            session.query(InstructorModel).filter(
+                InstructorModel.area_id == area_id,
+            ).update({"area_id": None}, synchronize_session=False)
+            session.query(UserAreaModel).filter(
+                UserAreaModel.area_id == area_id,
+            ).delete(synchronize_session=False)
+
             deleted = self._uow.academic_areas.delete(area_id)
             if not deleted:
                 raise ResourceNotFoundError("AcademicArea", area_id)
@@ -143,7 +175,37 @@ class DeleteSubject:
         self._uow = uow
 
     def execute(self, subject_id: UUID) -> bool:
+        from app.application.services.cascade_delete import (
+            delete_offering_lines_cascade,
+        )
+        from app.infrastructure.persistence.models.infrastructure_models import (
+            SubjectResourceRequirementModel,
+        )
+        from app.infrastructure.persistence.models.offering import (
+            OfferingLineModel,
+        )
+        from app.infrastructure.persistence.models.personnel import (
+            InstructorSpecialtyModel,
+        )
+
         with self._uow:
+            session = self._uow._session
+
+            line_ids = [
+                row.id
+                for row in session.query(OfferingLineModel.id)
+                .filter(OfferingLineModel.subject_id == subject_id)
+                .all()
+            ]
+            delete_offering_lines_cascade(session, line_ids)
+
+            session.query(SubjectResourceRequirementModel).filter(
+                SubjectResourceRequirementModel.subject_id == subject_id,
+            ).delete(synchronize_session=False)
+            session.query(InstructorSpecialtyModel).filter(
+                InstructorSpecialtyModel.subject_id == subject_id,
+            ).delete(synchronize_session=False)
+
             deleted = self._uow.subjects.delete(subject_id)
             if not deleted:
                 raise ResourceNotFoundError("Subject", subject_id)

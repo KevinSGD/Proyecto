@@ -94,6 +94,7 @@ class DomainValidationService:
                 contracts=contracts,
                 availabilities=availabilities,
                 groups=groups,
+                subjects=subjects,
             )
             subject_data = SubjectValidationData(
                 subjects=subjects,
@@ -106,6 +107,7 @@ class DomainValidationService:
                 classrooms=classrooms,
                 classroom_availabilities=classroom_avails,
                 groups=groups,
+                subjects=subjects,
             )
             offering_data = OfferingValidationData(
                 offerings=offerings,

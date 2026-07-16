@@ -8,7 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.auth import get_current_user, require_role
 from app.api.dependencies.database import get_uow
 from app.api.schemas.base import ApiResponse
 from app.application.services.auth_service import AuthService
@@ -76,13 +76,9 @@ def _ensure_area_access(uow: UnitOfWork, user: User, instructor_id: UUID) -> Non
 @router.post("/teachers", response_model=ApiResponse[InstructorOut], status_code=201)
 async def create_teacher(
     body: InstructorCreate,
-    user: User = Depends(get_current_user),
+    _user: User = Depends(require_role("director")),
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[InstructorOut]:
-    role = AuthService(uow).get_role_display_name(user)
-    if role == "coordinador":
-        area_id = _current_user_area_id(uow, user.id)
-        body.area_id = UUID(area_id) if area_id else None
     entity = CreateTeacher(uow).execute(body)
     return ApiResponse(
         data=InstructorOut.model_validate(asdict(entity)),
@@ -225,6 +221,16 @@ async def list_specialties(
     entities = GetTeacherSpecialties(uow).execute(teacher_id)
     items = [SpecialtyOut.model_validate(asdict(e)) for e in entities]
     return ApiResponse(data=items, message="Specialties retrieved")
+
+
+@router.get("/subjects/{subject_id}/specialties", response_model=ApiResponse[list[SpecialtyOut]])
+async def list_subject_specialties(
+    subject_id: UUID, uow: UnitOfWork = Depends(get_uow),
+) -> ApiResponse[list[SpecialtyOut]]:
+    with uow:
+        entities = uow.specialties.list_by_subject(subject_id)
+    items = [SpecialtyOut.model_validate(asdict(e)) for e in entities]
+    return ApiResponse(data=items, message="Subject specialties retrieved")
 
 
 @router.put("/teachers/{teacher_id}/availability", response_model=ApiResponse[int])

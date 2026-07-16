@@ -36,6 +36,7 @@ export default function MateriaFormDrawer({ subject, onClose, onSaved }: Props) 
   const isEdit = !!subject
   const { user } = useAuthStore()
   const institutionId = user?.institutionId ?? ''
+  const isCoordinador = user?.role === 'coordinador'
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -165,11 +166,15 @@ export default function MateriaFormDrawer({ subject, onClose, onSaved }: Props) 
           />
         </div>
 
-        <SelectField
-          label="Área académica" value={areaId} onChange={setAreaId}
-          options={['', ...areas.map(a => a.id)]}
-          labels={{ '': '— Sin asignar —', ...Object.fromEntries(areas.map(a => [a.id, a.name])) }}
-        />
+        {isCoordinador ? (
+          <p className="text-xs text-muted-foreground">Esta materia quedará asignada automáticamente a tu área.</p>
+        ) : (
+          <SelectField
+            label="Área académica" value={areaId} onChange={setAreaId}
+            options={['', ...areas.map(a => a.id)]}
+            labels={{ '': '— Sin asignar —', ...Object.fromEntries(areas.map(a => [a.id, a.name])) }}
+          />
+        )}
 
         {/* Resource requirements - multi-select */}
         <div className="space-y-2">

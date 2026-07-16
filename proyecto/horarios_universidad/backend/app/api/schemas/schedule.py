@@ -68,6 +68,7 @@ class ScheduleRunOut(CamelModel):
     id: UUID
     institution_id: UUID
     period_id: UUID
+    name: str = ""
     status: str
     solver_config: dict[str, Any] = Field(default_factory=dict)
     statistics: dict[str, Any] = Field(default_factory=dict)
@@ -126,6 +127,7 @@ class ScheduleRunDetailOut(CamelModel):
     id: UUID
     institution_id: UUID
     period_id: UUID
+    name: str = ""
     status: str
     solver_config: dict[str, Any] = Field(default_factory=dict)
     statistics: dict[str, Any] = Field(default_factory=dict)

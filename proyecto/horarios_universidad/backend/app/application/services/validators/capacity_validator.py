@@ -54,13 +54,14 @@ class CapacityValidator(Validator[CapacityValidationData]):
 
         if total_supply_hours <= 0 and total_demand_hours > 0:
             result.add_error(
-                "V-D18: No instructor capacity available but "
-                f"{total_demand_hours} weekly hours are demanded."
+                "V-D18: No hay capacidad docente disponible, pero se "
+                f"demandan {total_demand_hours} horas semanales."
             )
         elif total_demand_hours > total_supply_hours:
             result.add_error(
-                f"V-D18: Total weekly hours demanded ({total_demand_hours}) "
-                f"exceeds total instructor capacity ({total_supply_hours})."
+                f"V-D18: Las horas semanales demandadas ({total_demand_hours}) "
+                f"superan la capacidad docente total disponible "
+                f"({total_supply_hours})."
             )
 
     # ── V-D19 ────────────────────────────────────────────────────────
@@ -85,14 +86,15 @@ class CapacityValidator(Validator[CapacityValidationData]):
 
         if total_slots <= 0 and total_group_slots_needed > 0:
             result.add_error(
-                "V-D19: No classroom slots available but "
-                f"{total_group_slots_needed} group-slots are needed."
+                "V-D19: No hay bloques de salón disponibles, pero se "
+                f"necesitan {total_group_slots_needed} bloques de grupo."
             )
         elif total_group_slots_needed > total_slots:
             result.add_warning(
-                f"V-D19: Total group-slot demand ({total_group_slots_needed}) "
-                f"exceeds total classroom-slot supply ({total_slots}). "
-                f"The solver may struggle to find a feasible solution."
+                f"V-D19: La demanda de bloques de grupo ({total_group_slots_needed}) "
+                f"supera la oferta total de bloques de salón ({total_slots}). "
+                f"El solver podría tener dificultades para encontrar una "
+                f"solución factible."
             )
 
     # ── V-D20 ────────────────────────────────────────────────────────
@@ -132,8 +134,11 @@ class CapacityValidator(Validator[CapacityValidationData]):
             min_slots = min(instructor_slots, classroom_slots)
 
             if min_slots > 0 and avg_groups_per_day > min_slots:
+                day_names = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+                day_label = day_names[day] if 0 <= day < len(day_names) else str(day)
                 result.add_warning(
-                    f"V-D20: Day {day} may be overloaded. Available slots "
-                    f"({min_slots}) may be insufficient for average daily "
-                    f"demand (~{avg_groups_per_day:.0f} groups)."
+                    f"V-D20: El día {day_label} podría estar sobrecargado. "
+                    f"Los bloques disponibles ({min_slots}) podrían ser "
+                    f"insuficientes para la demanda diaria promedio "
+                    f"(~{avg_groups_per_day:.0f} grupos)."
                 )

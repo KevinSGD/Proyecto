@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Users, Plus, Eye, Pencil, Trash2, Mail, Phone } from 'lucide-react'
+import { Users, Plus, Eye, Pencil, Trash2, Mail, Phone, Search, Clock } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -13,13 +13,17 @@ import Pagination from '@/components/ui/Pagination'
 import DataView from '@/components/ui/DataView'
 import PageHeader from '@/components/ui/PageHeader'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
+import { BadgeStatus } from '@/components/coordinator/ui/BadgeStatus'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { teacherService } from '@/lib/services/teacher.service'
+import { subjectService } from '@/lib/services/subject.service'
 import { areaService } from '@/lib/services/area.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import { initials } from '@/lib/utils/format'
+import { cn } from '@/lib/utils/cn'
 import type { Instructor } from '@/lib/types/personnel'
+import type { Subject } from '@/lib/types/academic'
 import type { AcademicArea } from '@/lib/types/academic'
 import DocenteFormDrawer from '@/components/domain/DocenteFormDrawer'
 
@@ -29,6 +33,11 @@ const CONTRACT_LABELS: Record<string, string> = {
 }
 
 export default function DocentesPage() {
+  const { user } = useAuthStore()
+  return user?.role === 'coordinador' ? <CoordinadorDocentes /> : <DirectorDocentes />
+}
+
+function DirectorDocentes() {
   const [search, setSearch] = useState('')
   const [filterContract, setFilterContract] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -209,6 +218,158 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-start justify-between gap-4 border-b border-muted pb-3 last:border-0">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-foreground text-right">{value}</span>
+    </div>
+  )
+}
+
+// ── Coordinador: read-only view of the area's teachers ──────────────────────
+
+function iniciales(nombre: string) {
+  return nombre.split(' ').filter((_, i) => i < 2).map((n) => n[0]).join('').toUpperCase()
+}
+
+function CoordinadorDocentes() {
+  const { user } = useAuthStore()
+  const institutionId = user?.institutionId ?? ''
+  const [search, setSearch] = useState('')
+  const [filterContract, setFilterContract] = useState('')
+  const [subjectsByTeacher, setSubjectsByTeacher] = useState<Record<string, Subject[]>>({})
+
+  const { data, loading } = useApiQuery(
+    () => institutionId ? teacherService.list(institutionId) : Promise.resolve({ data: [] } as any),
+    [institutionId],
+  )
+  const teachers: Instructor[] = data?.data ?? []
+
+  const { data: subjectData } = useApiQuery(
+    () => institutionId ? subjectService.list(institutionId) : Promise.resolve({ data: [] } as any),
+    [institutionId],
+  )
+  const subjects: Subject[] = subjectData?.data ?? []
+  const subjectMap = useMemo(() => new Map(subjects.map(s => [s.id, s])), [subjects])
+
+  useEffect(() => {
+    if (teachers.length === 0) return
+    let cancelled = false
+    Promise.all(teachers.map(async (t) => {
+      try {
+        const resp = await teacherService.listSpecialties(t.id)
+        const specs = resp?.data ?? []
+        return [t.id, specs.map(s => subjectMap.get(s.subjectId)).filter((s): s is Subject => !!s)] as const
+      } catch {
+        return [t.id, []] as const
+      }
+    })).then((entries) => {
+      if (!cancelled) setSubjectsByTeacher(Object.fromEntries(entries))
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teachers.length, subjects.length])
+
+  const filtered = useMemo(() => {
+    return teachers.filter((t) => {
+      const fullName = `${t.firstName} ${t.lastName}`.toLowerCase()
+      const matchSearch = !search || fullName.includes(search.toLowerCase()) || t.email.toLowerCase().includes(search.toLowerCase())
+      const matchContract = !filterContract || t.contractType === filterContract
+      return matchSearch && matchContract
+    })
+  }, [teachers, search, filterContract])
+
+  return (
+    <div>
+      <div className="bg-accent border border-primary/10 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+          <Users className="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">Docentes asignados a tu área</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+            El director registra y asigna docentes a cada área. Aquí puedes ver los datos de los
+            docentes de tu área y, en "Asignación", vincularlos a las materias que dictarán.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <p className="text-muted-foreground text-sm">{filtered.length} docentes en el área</p>
+      </div>
+
+      <div className="bg-white rounded-xl border border-border p-4 shadow-sm mb-5 flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar docente..." className="w-full pl-9 pr-4 py-2 text-sm bg-muted rounded-lg border border-transparent focus:border-primary focus:bg-white outline-none transition-all" />
+        </div>
+        <select value={filterContract} onChange={(e) => setFilterContract(e.target.value)} className="px-3 py-2 text-sm bg-muted rounded-lg border border-transparent focus:border-primary focus:bg-white outline-none transition-all text-muted-foreground">
+          <option value="">Todos los contratos</option>
+          {Object.entries(CONTRACT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="py-16 text-center bg-white rounded-xl border border-border text-sm text-muted-foreground">Cargando...</div>
+      ) : filtered.length === 0 ? (
+        <div className="py-16 text-center bg-white rounded-xl border border-border">
+          <Users className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">No hay docentes en el área</p>
+          <p className="text-xs text-muted-foreground mt-1">El director aún no ha asignado docentes a esta área.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {filtered.map((t) => {
+            const fullName = `${t.firstName} ${t.lastName}`
+            const loadPercent = t.maxWeeklyHours ? Math.round(((t.assignedHours ?? 0) / t.maxWeeklyHours) * 100) : 0
+            const teacherSubjects = subjectsByTeacher[t.id] ?? []
+            return (
+              <div key={t.id} className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary font-bold text-sm">{iniciales(fullName)}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground truncate text-sm">{fullName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{t.email}</p>
+                    </div>
+                  </div>
+                  <BadgeStatus variant={t.isActive ? 'success' : 'neutral'} label={t.isActive ? 'Activo' : 'Inactivo'} />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <BadgeStatus
+                    variant={t.contractType === 'full-time' ? 'primary' : t.contractType === 'part-time' ? 'info' : 'neutral'}
+                    label={t.contractType ? (CONTRACT_LABELS[t.contractType] ?? t.contractType) : 'Sin contrato'}
+                    dot={false}
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="flex items-center gap-1 text-muted-foreground"><Clock className="w-3 h-3" /> Carga horaria</span>
+                    <span className="font-semibold text-foreground">{t.assignedHours ?? 0}/{t.maxWeeklyHours ?? '—'}h</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full transition-all', loadPercent >= 90 ? 'bg-red-500' : loadPercent >= 70 ? 'bg-amber-500' : 'bg-green-500')}
+                      style={{ width: `${Math.min(loadPercent, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {teacherSubjects.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Materias asignadas:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {teacherSubjects.map((s) => (
+                        <span key={s.id} className="text-xs bg-muted text-foreground rounded-lg px-2 py-0.5">{s.name}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

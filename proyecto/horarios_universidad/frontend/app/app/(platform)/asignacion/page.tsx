@@ -1,263 +1,264 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { Link2, Calendar, Users, Building2, Eye } from 'lucide-react'
-import { SkeletonCard } from '@/components/ui/Skeleton'
-import Card from '@/components/ui/Card'
-import Badge from '@/components/ui/Badge'
-import Drawer from '@/components/ui/Drawer'
-import { SearchInput, FilterSelect } from '@/components/ui/Field'
-import { Table, THead, TH, TBody, TR, TD } from '@/components/ui/Table'
-import Pagination from '@/components/ui/Pagination'
-import DataView from '@/components/ui/DataView'
-import PageHeader from '@/components/ui/PageHeader'
-import StatCard from '@/components/ui/StatCard'
+import { useState, useEffect, useCallback } from 'react'
+import { CheckCircle2, Users, Clock, BookOpen, ChevronRight } from 'lucide-react'
+import { BadgeStatus } from '@/components/coordinator/ui/BadgeStatus'
+import { ToastContainer, useToast } from '@/components/coordinator/ui/Toast'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
-import { useDebounce } from '@/lib/hooks/useDebounce'
-import { scheduleService } from '@/lib/services/schedule.service'
-import { teacherService } from '@/lib/services/teacher.service'
-import { classroomService } from '@/lib/services/classroom.service'
 import { subjectService } from '@/lib/services/subject.service'
-import { offeringService } from '@/lib/services/offering.service'
-import { institutionService } from '@/lib/services/institution.service'
+import { teacherService } from '@/lib/services/teacher.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
-import type { Assignment, Group } from '@/lib/types/scheduling'
+import RoleGuard from '@/lib/guards/RoleGuard'
+import { cn } from '@/lib/utils/cn'
 import type { Subject } from '@/lib/types/academic'
+import type { Instructor, Specialty } from '@/lib/types/personnel'
 
-const PAGE_SIZE = 15
-const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-
-interface EnrichedSession {
-  id: string
-  assignmentId: string
-  instructorId: string
-  groupId: string
-  classroomId: string
-  dayOfWeek: number
-  startPeriod: number
-  duration: number
-  blockIndex: number
-}
-
-function flattenAssignments(assignments: Assignment[]): EnrichedSession[] {
-  const rows: EnrichedSession[] = []
-  for (const a of assignments) {
-    for (const s of a.sessions ?? []) {
-      rows.push({
-        id: s.id,
-        assignmentId: a.id,
-        instructorId: a.instructorId,
-        groupId: a.groupId,
-        classroomId: s.classroomId,
-        dayOfWeek: s.dayOfWeek,
-        startPeriod: s.startPeriod,
-        duration: s.duration,
-        blockIndex: s.blockIndex,
-      })
-    }
-  }
-  return rows
+function iniciales(nombre: string) {
+  return nombre.split(' ').filter((_, i) => i < 2).map((n) => n[0]).join('').toUpperCase()
 }
 
 export default function AsignacionPage() {
-  const [search, setSearch] = useState('')
-  const [filterDay, setFilterDay] = useState('')
-  const [page, setPage] = useState(1)
-  const [selectedRunId, setSelectedRunId] = useState<string>('')
-  const [viewing, setViewing] = useState<EnrichedSession | null>(null)
-
-  const { user } = useAuthStore()
-  const institutionId = user?.institutionId ?? ''
-  const q = useDebounce(search)
-
-  const { data: periodData } = useApiQuery(
-    () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
-    [institutionId],
-  )
-  const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
-
-  const { data: runsData, loading: runsLoad } = useApiQuery(
-    () => (institutionId && periodId) ? scheduleService.listRuns(institutionId, periodId) : Promise.resolve({ data: [] } as any),
-    [institutionId, periodId],
-  )
-  const runs: { id: string; name: string; status: string }[] = runsData?.data ?? []
-
-  const activeRunId = selectedRunId || (runs.length > 0 ? runs[0].id : '')
-
-  const { data: assData, loading: assLoad, error: assErr, refetch: assRefetch } =
-    useApiQuery(
-      () => activeRunId ? scheduleService.getAssignments(activeRunId) : Promise.resolve({ data: [] as Assignment[] }),
-      [activeRunId],
-    )
-  const { data: tchData } = useApiQuery(
-    () => institutionId ? teacherService.list(institutionId) : Promise.resolve({ data: [] } as any),
-    [institutionId],
-  )
-  const { data: crData } = useApiQuery(
-    () => institutionId ? classroomService.listClassrooms(institutionId) : Promise.resolve({ data: [] } as any),
-    [institutionId],
-  )
-  const { data: subData } = useApiQuery(
-    () => institutionId ? subjectService.list(institutionId) : Promise.resolve({ data: [] } as any),
-    [institutionId],
-  )
-  const { data: grpData } = useApiQuery(
-    () => (institutionId && periodId) ? offeringService.listGroups(institutionId, periodId) : Promise.resolve({ data: [] } as any),
-    [institutionId, periodId],
-  )
-
-  const rawAssignments: Assignment[] = (assData as { data?: Assignment[] })?.data ?? []
-  const flat = useMemo(() => flattenAssignments(rawAssignments), [rawAssignments])
-  const teachers: { id: string; firstName: string; lastName: string }[] = tchData?.data ?? []
-  const classrooms: { id: string; name: string; code: string }[] = crData?.data ?? []
-  const subjects: Subject[] = subData?.data ?? []
-  const groups: Group[] = grpData?.data ?? []
-
-  const teacherMap = useMemo(() => new Map(teachers.map(t => [t.id, t])), [teachers])
-  const classroomMap = useMemo(() => new Map(classrooms.map(c => [c.id, c])), [classrooms])
-  const subjectMap = useMemo(() => new Map(subjects.map(s => [s.id, s])), [subjects])
-  const groupMap = useMemo(() => new Map(groups.map(g => [g.id, g])), [groups])
-
-  const teacherName = (id: string) => {
-    const t = teacherMap.get(id)
-    return t ? `${t.firstName} ${t.lastName}` : id.slice(0, 8)
-  }
-  const classroomName = (id: string) => classroomMap.get(id)?.name ?? id.slice(0, 8)
-  const subjectForGroup = (groupId: string) => {
-    const g = groupMap.get(groupId)
-    return g ? subjectMap.get(g.subjectId) : undefined
-  }
-  const groupLabel = (groupId: string) => {
-    const g = groupMap.get(groupId)
-    if (!g) return '—'
-    const sub = subjectMap.get(g.subjectId)
-    return sub ? `${sub.name} (G${g.groupNumber})` : `Grupo ${g.groupNumber}`
-  }
-
-  useEffect(() => { setPage(1) }, [q, filterDay])
-
-  const filtered = useMemo(() => {
-    let r = flat
-    if (q) {
-      const lq = q.toLowerCase()
-      r = r.filter(a => {
-        const tName = teacherName(a.instructorId).toLowerCase()
-        const cName = classroomName(a.classroomId).toLowerCase()
-        const sName = subjectForGroup(a.groupId)?.name?.toLowerCase() ?? ''
-        return tName.includes(lq) || cName.includes(lq) || sName.includes(lq)
-      })
-    }
-    if (filterDay) r = r.filter(a => String(a.dayOfWeek) === filterDay)
-    return r
-  }, [flat, q, filterDay, teacherMap, classroomMap, groupMap, subjectMap])
-
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
   return (
-    <div className="space-y-6">
-      <PageHeader title="Asignaciones" description="Vista de asignaciones docente–materia–salón generadas por el solver" />
-
-      {runsLoad ? (
-        <div className="grid gap-4 sm:grid-cols-4">{[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}</div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-4">
-          <StatCard title="Sesiones" value={flat.length} icon={Link2} subtitle="En la ejecución activa" />
-          <StatCard title="Docentes" value={teachers.length} icon={Users} subtitle="Disponibles" />
-          <StatCard title="Salones" value={classrooms.length} icon={Building2} subtitle="Disponibles" />
-          <StatCard title="Ejecuciones" value={runs.length} icon={Calendar} subtitle="Del solver" />
-        </div>
-      )}
-
-      {runs.length > 1 && (
-        <Card>
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">Ejecución:</span>
-            <FilterSelect value={activeRunId} onChange={setSelectedRunId} placeholder="Seleccionar"
-              options={runs.map(r => r.id)} labels={Object.fromEntries(runs.map(r => [r.id, r.name || `Run ${r.id.slice(0, 8)}`]))} />
-          </div>
-        </Card>
-      )}
-
-      <Card bodyClassName="p-0">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
-          <SearchInput value={search} onChange={setSearch} placeholder="Buscar docente, materia o salón..." />
-          <FilterSelect value={filterDay} onChange={setFilterDay} placeholder="Día"
-            options={['0', '1', '2', '3', '4', '5']}
-            labels={{ '0': 'Lunes', '1': 'Martes', '2': 'Miércoles', '3': 'Jueves', '4': 'Viernes', '5': 'Sábado' }} />
-        </div>
-        <DataView data={flat} loading={runsLoad || assLoad} error={assErr} onRetry={assRefetch}
-          emptyIcon={Link2} emptyTitle="Sin asignaciones"
-          emptyDescription="Las asignaciones se generan al ejecutar el solver de horarios">
-          {() => (
-            <Table footer={<Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />}>
-              <THead>
-                <TH>Materia / Grupo</TH>
-                <TH>Docente</TH>
-                <TH>Salón</TH>
-                <TH>Día</TH>
-                <TH>Período</TH>
-                <TH>Duración</TH>
-                <TH align="right">Acciones</TH>
-              </THead>
-              <TBody>
-                {paginated.map(a => (
-                  <TR key={a.id}>
-                    <TD>
-                      <div>
-                        <span className="font-medium text-foreground">{subjectForGroup(a.groupId)?.name ?? '—'}</span>
-                        <span className="ml-1.5 text-xs text-muted-foreground">G{groupMap.get(a.groupId)?.groupNumber ?? '?'}</span>
-                      </div>
-                    </TD>
-                    <TD><span className="font-medium">{teacherName(a.instructorId)}</span></TD>
-                    <TD><Badge variant="neutral">{classroomName(a.classroomId)}</Badge></TD>
-                    <TD>{DAYS[a.dayOfWeek] ?? `Día ${a.dayOfWeek}`}</TD>
-                    <TD><span className="font-mono text-xs">P{a.startPeriod}</span></TD>
-                    <TD><span className="font-mono text-xs">{a.duration}h</span></TD>
-                    <TD align="right">
-                      <button onClick={() => setViewing(a)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" aria-label="Ver detalle">
-                        <Eye className="size-4" />
-                      </button>
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
-          )}
-        </DataView>
-      </Card>
-
-      {/* Detail Drawer */}
-      <Drawer
-        open={!!viewing}
-        onClose={() => setViewing(null)}
-        title="Detalle de Asignación"
-        subtitle={viewing ? groupLabel(viewing.groupId) : undefined}
-      >
-        {viewing && (
-          <div className="space-y-4">
-            <DetailRow label="Materia" value={subjectForGroup(viewing.groupId)?.name ?? '—'} />
-            <DetailRow label="Código materia" value={subjectForGroup(viewing.groupId)?.code ?? '—'} />
-            <DetailRow label="Grupo" value={`#${groupMap.get(viewing.groupId)?.groupNumber ?? '?'}`} />
-            <DetailRow label="Docente" value={teacherName(viewing.instructorId)} />
-            <DetailRow label="Salón" value={classroomName(viewing.classroomId)} />
-            <DetailRow label="Día" value={DAYS[viewing.dayOfWeek] ?? `Día ${viewing.dayOfWeek}`} />
-            <DetailRow label="Período inicio" value={`P${viewing.startPeriod}`} />
-            <DetailRow label="Duración" value={`${viewing.duration} hora(s)`} />
-            <DetailRow label="Bloque" value={String(viewing.blockIndex)} />
-            <DetailRow label="Modalidad" value={groupMap.get(viewing.groupId)?.modality ?? '—'} />
-            <DetailRow label="Cupo esperado" value={String(groupMap.get(viewing.groupId)?.expectedEnrollment ?? '—')} />
-          </div>
-        )}
-      </Drawer>
-    </div>
+    <RoleGuard allowed={['coordinador']} fallback={<p className="text-muted-foreground">Sin acceso.</p>}>
+      <AsignacionContent />
+    </RoleGuard>
   )
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function AsignacionContent() {
+  const { user } = useAuthStore()
+  const institutionId = user?.institutionId ?? ''
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
+  const [specialtiesBySubject, setSpecialtiesBySubject] = useState<Record<string, Specialty[]>>({})
+  const [mutatingTeacherId, setMutatingTeacherId] = useState<string | null>(null)
+  const { toasts, addToast, removeToast } = useToast()
+
+  const { data: subjectData, loading: subjectsLoading } = useApiQuery(
+    () => institutionId ? subjectService.list(institutionId) : Promise.resolve({ data: [] } as any),
+    [institutionId],
+  )
+  const subjects: Subject[] = subjectData?.data ?? []
+
+  const { data: teacherData, loading: teachersLoading } = useApiQuery(
+    () => institutionId ? teacherService.list(institutionId) : Promise.resolve({ data: [] } as any),
+    [institutionId],
+  )
+  const teachers: Instructor[] = teacherData?.data ?? []
+
+  const loadSpecialties = useCallback(() => {
+    if (subjects.length === 0) return
+    Promise.all(subjects.map(async (s) => {
+      try {
+        const resp = await subjectService.listSpecialties(s.id)
+        return [s.id, resp?.data ?? []] as const
+      } catch {
+        return [s.id, []] as const
+      }
+    })).then((entries) => setSpecialtiesBySubject(Object.fromEntries(entries)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjects.length])
+
+  useEffect(() => { loadSpecialties() }, [loadSpecialties])
+
+  // Horas ya comprometidas por cada docente, sumando las materias que tiene asignadas.
+  const hoursAssignedByTeacher = (): Record<string, number> => {
+    const totals: Record<string, number> = {}
+    for (const subjectId of Object.keys(specialtiesBySubject)) {
+      const subject = subjects.find(s => s.id === subjectId)
+      if (!subject) continue
+      for (const spec of specialtiesBySubject[subjectId]) {
+        totals[spec.instructorId] = (totals[spec.instructorId] ?? 0) + subject.weeklyHours
+      }
+    }
+    return totals
+  }
+  const hoursByTeacher = hoursAssignedByTeacher()
+
+  const selectedSubject = subjects.find(s => s.id === selectedSubjectId) ?? null
+  const selectedSpecialties = selectedSubjectId ? (specialtiesBySubject[selectedSubjectId] ?? []) : []
+  const assignedTeacherIds = new Set(selectedSpecialties.map(s => s.instructorId))
+
+  const totalAssigned = subjects.filter(s => (specialtiesBySubject[s.id] ?? []).length > 0).length
+
+  const handleAssign = async (teacherId: string) => {
+    if (!selectedSubject) return
+    setMutatingTeacherId(teacherId)
+    try {
+      await teacherService.assignSpecialty(teacherId, { subjectId: selectedSubject.id })
+      const teacher = teachers.find(t => t.id === teacherId)
+      addToast('success', 'Docente asignado', `${teacher?.firstName} ${teacher?.lastName} asignado a ${selectedSubject.name}.`)
+      loadSpecialties()
+    } catch {
+      addToast('error', 'Error al asignar', 'No se pudo asignar el docente a la materia.')
+    } finally {
+      setMutatingTeacherId(null)
+    }
+  }
+
+  const handleRemove = async (teacherId: string) => {
+    if (!selectedSubject) return
+    const specialty = selectedSpecialties.find(s => s.instructorId === teacherId)
+    if (!specialty) return
+    setMutatingTeacherId(teacherId)
+    try {
+      await teacherService.removeSpecialty(specialty.id)
+      const teacher = teachers.find(t => t.id === teacherId)
+      addToast('info', 'Asignación removida', `${teacher?.firstName} ${teacher?.lastName} removido de ${selectedSubject.name}.`)
+      loadSpecialties()
+    } catch {
+      addToast('error', 'Error al remover', 'No se pudo remover la asignación.')
+    } finally {
+      setMutatingTeacherId(null)
+    }
+  }
+
+  const activeTeachers = teachers.filter(t => t.isActive)
+  const loading = subjectsLoading || teachersLoading
+
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-muted pb-3 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-foreground text-right">{value}</span>
+    <div>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Left: Materias */}
+        <div className="bg-white rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="font-bold text-foreground">Materias del área</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Selecciona una materia para asignar uno o varios docentes</p>
+          </div>
+          <div className="flex-1 overflow-y-auto divide-y divide-border max-h-[65vh]">
+            {loading ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Cargando...</p>
+            ) : subjects.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Tu área aún no tiene materias registradas.</p>
+            ) : subjects.map((s) => {
+              const specs = specialtiesBySubject[s.id] ?? []
+              const assignedNames = specs
+                .map(sp => teachers.find(t => t.id === sp.instructorId))
+                .filter((t): t is Instructor => !!t)
+                .map(t => `${t.firstName} ${t.lastName}`)
+              const isSelected = selectedSubjectId === s.id
+
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => setSelectedSubjectId(s.id)}
+                  className={cn(
+                    'flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors',
+                    isSelected ? 'bg-accent border-l-2 border-primary' : 'hover:bg-muted/40 border-l-2 border-transparent',
+                  )}
+                >
+                  <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0', isSelected ? 'bg-primary' : 'bg-muted')}>
+                    <BookOpen className={cn('w-4 h-4', isSelected ? 'text-white' : 'text-muted-foreground')} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{s.name}</p>
+                    <p className="text-xs text-muted-foreground">{s.code} · {s.weeklyHours}h/sem</p>
+                    {assignedNames.length > 0 && (
+                      <p className="text-xs text-primary mt-0.5 flex items-center gap-1">
+                        <Users className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{assignedNames.join(', ')}</span>
+                      </p>
+                    )}
+                  </div>
+                  {specs.length > 0 ? (
+                    <BadgeStatus variant="success" label={`${specs.length} docente${specs.length > 1 ? 's' : ''}`} dot={false} />
+                  ) : (
+                    <BadgeStatus variant="warning" label="Sin asignar" dot={false} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <div className="px-5 py-3 border-t border-border bg-muted/30">
+            <p className="text-xs text-muted-foreground">
+              {totalAssigned} de {subjects.length} materias con docente asignado
+            </p>
+          </div>
+        </div>
+
+        {/* Right: Docentes */}
+        <div className="bg-white rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="font-bold text-foreground">Docentes disponibles</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {selectedSubject
+                ? `Asignando docentes a: ${selectedSubject.name} · puedes asignar varios`
+                : 'Selecciona una materia primero'}
+            </p>
+          </div>
+
+          {!selectedSubject ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                <ChevronRight className="w-7 h-7 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">Selecciona una materia en el panel izquierdo</p>
+              <p className="text-xs text-muted-foreground">Podrás asignar uno o varios docentes a la materia seleccionada.</p>
+            </div>
+          ) : activeTeachers.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
+              <Users className="w-9 h-9 text-muted-foreground/40" />
+              <p className="text-sm font-medium text-muted-foreground">Tu área aún no tiene docentes activos</p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto divide-y divide-border max-h-[65vh]">
+              {activeTeachers.map((t) => {
+                const isAssigned = assignedTeacherIds.has(t.id)
+                const cargaActual = hoursByTeacher[t.id] ?? 0
+                const puedeTomar = !t.maxWeeklyHours || cargaActual + selectedSubject.weeklyHours <= t.maxWeeklyHours
+                const fullName = `${t.firstName} ${t.lastName}`
+                const isMutating = mutatingTeacherId === t.id
+
+                return (
+                  <div key={t.id} className={cn('px-5 py-4 transition-colors', isAssigned ? 'bg-green-50' : 'hover:bg-muted/30')}>
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-primary text-xs font-bold">{iniciales(fullName)}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{fullName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{t.email}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3" />
+                          {cargaActual}/{t.maxWeeklyHours ?? '—'}h asignadas · {t.contractType ?? 'sin contrato'}
+                        </p>
+                      </div>
+                      {isAssigned && (
+                        <div className="flex items-center gap-1 text-xs text-green-600 font-medium flex-shrink-0">
+                          <CheckCircle2 className="w-4 h-4" /> Asignado
+                        </div>
+                      )}
+                    </div>
+
+                    {isAssigned ? (
+                      <button
+                        onClick={() => handleRemove(t.id)}
+                        disabled={isMutating}
+                        className="w-full py-2 text-sm font-semibold rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60"
+                      >
+                        {isMutating ? 'Quitando...' : 'Quitar de la materia'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleAssign(t.id)}
+                        disabled={!puedeTomar || isMutating}
+                        className={cn(
+                          'w-full py-2 text-sm font-semibold rounded-lg transition-colors',
+                          !puedeTomar
+                            ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                            : 'bg-primary text-white hover:bg-primary-hover disabled:opacity-60',
+                        )}
+                      >
+                        {isMutating ? 'Asignando...' : !puedeTomar ? 'Carga máxima alcanzada' : 'Asignar docente'}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

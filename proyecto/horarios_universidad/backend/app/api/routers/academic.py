@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.api.dependencies.auth import get_current_user, require_role
 from app.api.dependencies.database import get_uow
@@ -33,9 +33,32 @@ from app.application.queries.academic_queries import (
     ListAreas,
     ListSubjects,
 )
+from app.application.services.auth_service import AuthService
+from app.domain.entities.auth import User
 from app.domain.interfaces.unit_of_work import UnitOfWork
 
 router = APIRouter(tags=["academic"])
+
+
+def _current_user_area_id(uow: UnitOfWork, user_id) -> str | None:
+    with uow:
+        areas = uow.user_areas.list_by_user(user_id)
+        return str(areas[0].area_id) if areas else None
+
+
+def _ensure_subject_area_access(uow: UnitOfWork, user: User, subject_id) -> None:
+    """Restrict area-coordinator users to subjects within their own area."""
+    role = AuthService(uow).get_role_display_name(user)
+    if role != "coordinador":
+        return
+    area_id = _current_user_area_id(uow, user.id)
+    with uow:
+        subject = uow.subjects.get_by_id(subject_id)
+    if subject is None or not area_id or str(subject.area_id) != area_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes acceso a esta materia",
+        )
 
 
 # ── Area ─────────────────────────────────────────────────────────────────────
@@ -106,9 +129,13 @@ async def delete_area(
 @router.post("/subjects", response_model=ApiResponse[SubjectOut], status_code=201)
 async def create_subject(
     body: SubjectCreate,
-    _user=Depends(get_current_user),
+    user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[SubjectOut]:
+    role = AuthService(uow).get_role_display_name(user)
+    if role == "coordinador":
+        area_id = _current_user_area_id(uow, user.id)
+        body.area_id = UUID(area_id) if area_id else None
     entity = CreateSubject(uow).execute(body)
     return ApiResponse(data=SubjectOut(**entity.__dict__), message="Subject created")
 
@@ -117,9 +144,13 @@ async def create_subject(
 async def list_subjects(
     institution_id: UUID,
     area_id: UUID | None = None,
-    _user=Depends(get_current_user),
+    user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[list[SubjectOut]]:
+    role = AuthService(uow).get_role_display_name(user)
+    if role == "coordinador":
+        own_area_id = _current_user_area_id(uow, user.id)
+        area_id = UUID(own_area_id) if own_area_id else None
     entities = ListSubjects(uow).execute(institution_id, area_id=area_id)
     return ApiResponse(
         data=[SubjectOut(**e.__dict__) for e in entities],
@@ -130,9 +161,10 @@ async def list_subjects(
 @router.get("/subjects/{subject_id}", response_model=ApiResponse[SubjectOut])
 async def get_subject(
     subject_id: UUID,
-    _user=Depends(get_current_user),
+    user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[SubjectOut]:
+    _ensure_subject_area_access(uow, user, subject_id)
     entity = GetSubject(uow).execute(subject_id)
     return ApiResponse(data=SubjectOut(**entity.__dict__), message="Subject retrieved")
 
@@ -141,9 +173,10 @@ async def get_subject(
 async def update_subject(
     subject_id: UUID,
     body: SubjectUpdate,
-    _user=Depends(get_current_user),
+    user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[SubjectOut]:
+    _ensure_subject_area_access(uow, user, subject_id)
     entity = UpdateSubject(uow).execute(subject_id, body)
     return ApiResponse(data=SubjectOut(**entity.__dict__), message="Subject updated")
 
@@ -151,9 +184,10 @@ async def update_subject(
 @router.delete("/subjects/{subject_id}", status_code=204)
 async def delete_subject(
     subject_id: UUID,
-    _user=Depends(get_current_user),
+    user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
 ) -> Response:
+    _ensure_subject_area_access(uow, user, subject_id)
     DeleteSubject(uow).execute(subject_id)
     return Response(status_code=204)
 

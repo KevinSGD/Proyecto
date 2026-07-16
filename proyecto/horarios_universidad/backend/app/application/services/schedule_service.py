@@ -203,17 +203,25 @@ class ScheduleGenerationService:
         created_by: EntityId | None,
     ) -> ScheduleRun:
         """Persist an initial ScheduleRun with status='running'."""
+        started_at = datetime.now(timezone.utc)
+        with self._uow:
+            existing = self._uow.schedule_runs.list_by_period(institution_id, period_id)
+            version = len(existing) + 1
+
+        name = f"Corrida v{version} · {started_at.strftime('%H:%M %d/%m/%Y')}"
+
         run = ScheduleRun(
             id=generate_id(),
             institution_id=institution_id,
             period_id=period_id,
+            name=name,
             status="running",
             solver_config={
                 "max_time_seconds": solver_config.max_time_seconds,
                 "num_workers": solver_config.num_workers,
                 "gap_tolerance": solver_config.gap_tolerance,
             },
-            started_at=datetime.now(timezone.utc),
+            started_at=started_at,
             created_by=created_by,
         )
         with self._uow:
