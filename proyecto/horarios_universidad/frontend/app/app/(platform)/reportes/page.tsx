@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   FileText, Users, BookOpen, Building2, Calendar, Download,
-  Upload, CheckCircle, Database,
+  Database,
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
-import Alert from '@/components/ui/Alert'
 import StatCard from '@/components/ui/StatCard'
 import PageHeader from '@/components/ui/PageHeader'
 import { SkeletonCard } from '@/components/ui/Skeleton'
@@ -26,15 +25,13 @@ interface ReportStats {
   subjects: number; teachers: number; classrooms: number; runs: number
 }
 
-type TabId = 'resumen' | 'exportar' | 'importar'
+type TabId = 'resumen' | 'exportar'
 
 export default function ReportesPage() {
   const [activeTab, setActiveTab] = useState<TabId>('resumen')
   const [stats, setStats] = useState<ReportStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
   const { toasts, addToast, removeToast } = useToast()
   const { user } = useAuthStore()
   const institutionId = user?.institutionId ?? ''
@@ -131,23 +128,15 @@ export default function ReportesPage() {
     } catch { addToast('error', 'Error al exportar dataset') }
   }
 
-  const handleFileUpload = () => {
-    const file = fileRef.current?.files?.[0]
-    if (!file) return
-    addToast('info', 'La importación masiva procesa el archivo CSV')
-    setImportResult({ success: 0, errors: 0 })
-  }
-
   const tabs: { id: TabId; label: string }[] = [
     { id: 'resumen', label: 'Resumen' },
     { id: 'exportar', label: 'Exportar' },
-    { id: 'importar', label: 'Importar' },
   ]
 
   return (
     <RoleGuard allowed={['director']} fallback={<p className="text-muted-foreground">Sin acceso.</p>}>
       <div className="space-y-6">
-        <PageHeader title="Reportes y Datos" description="Resumen, exportación e importación de datos académicos" />
+        <PageHeader title="Reportes y Datos" description="Resumen y exportación de datos académicos" />
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-lg border border-border bg-muted p-1">
@@ -209,32 +198,6 @@ export default function ReportesPage() {
               </div>
             </Card>
           </div>
-        )}
-
-        {/* Tab: Importar */}
-        {activeTab === 'importar' && (
-          <Card title="Importar datos" subtitle="Carga masiva desde archivo CSV">
-            <div className="space-y-4">
-              <Alert variant="warning">
-                La importación masiva requiere que el archivo CSV tenga las columnas correctas según la plantilla de exportación.
-              </Alert>
-              <div className="rounded-lg border-2 border-dashed border-border px-6 py-8 text-center">
-                <Upload className="mx-auto size-10 text-muted-foreground" />
-                <p className="mt-3 text-sm font-medium text-foreground">Arrastra un archivo CSV aquí</p>
-                <p className="mt-1 text-xs text-muted-foreground">o selecciona desde tu computador</p>
-                <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
-                <Button size="sm" variant="secondary" className="mt-4" onClick={() => fileRef.current?.click()}>
-                  Seleccionar archivo
-                </Button>
-              </div>
-              {importResult && (
-                <div className="flex items-center gap-4 rounded-lg bg-muted px-4 py-3">
-                  <CheckCircle className="size-5 text-success" />
-                  <span className="text-sm">Procesados: {importResult.success} exitosos, {importResult.errors} errores</span>
-                </div>
-              )}
-            </div>
-          </Card>
         )}
 
         <ToastContainer toasts={toasts} onRemove={removeToast} />

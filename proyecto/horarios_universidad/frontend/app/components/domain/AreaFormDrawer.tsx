@@ -37,7 +37,15 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
 
   const [coordName, setCoordName] = useState('')
   const [coordEmail, setCoordEmail] = useState('')
-  const [coordPassword, setCoordPassword] = useState('')
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+    let pw = ''
+    const arr = new Uint8Array(12)
+    crypto.getRandomValues(arr)
+    for (const b of arr) pw += chars[b % chars.length]
+    return pw
+  }
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -47,8 +55,6 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
       if (!coordName.trim()) e.coordName = 'El nombre del coordinador es obligatorio'
       if (!coordEmail.trim()) e.coordEmail = 'El correo es obligatorio'
       else if (!/\S+@\S+\.\S+/.test(coordEmail)) e.coordEmail = 'Correo inválido'
-      if (!coordPassword.trim()) e.coordPassword = 'La contraseña es obligatoria'
-      else if (coordPassword.length < 8) e.coordPassword = 'Mínimo 8 caracteres'
     }
     setErrors(e)
     return Object.keys(e).length === 0
@@ -62,6 +68,7 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
         await areaService.update(area.id, { name, code, description })
         onSaved()
       } else {
+        const tempPassword = generatePassword()
         await areaService.create({
           institutionId,
           name,
@@ -70,14 +77,14 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
           coordinator: {
             name: coordName,
             email: coordEmail,
-            password: coordPassword,
+            password: tempPassword,
           },
         })
         setCredentials({
           areaName: name,
           coordName,
           coordEmail,
-          coordPassword,
+          coordPassword: tempPassword,
           role: 'Coordinador',
         })
       }
@@ -125,11 +132,10 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
           <>
             <hr className="border-border" />
             <h3 className="text-sm font-semibold text-foreground">Coordinador del Área</h3>
-            <p className="text-xs text-muted-foreground">Se creará automáticamente un usuario con rol Coordinador</p>
+            <p className="text-xs text-muted-foreground">Se creará automáticamente un usuario con rol Coordinador y una contraseña temporal</p>
 
             <Field label="Nombre completo" value={coordName} onChange={v => { setCoordName(v); setErrors(e => ({ ...e, coordName: '' })) }} placeholder="María López" error={errors.coordName} />
             <Field label="Correo electrónico" value={coordEmail} onChange={v => { setCoordEmail(v); setErrors(e => ({ ...e, coordEmail: '' })) }} placeholder="coordinador@universidad.edu" error={errors.coordEmail} />
-            <Field label="Contraseña temporal" value={coordPassword} onChange={v => { setCoordPassword(v); setErrors(e => ({ ...e, coordPassword: '' })) }} placeholder="Mínimo 8 caracteres" error={errors.coordPassword} />
           </>
         )}
       </div>

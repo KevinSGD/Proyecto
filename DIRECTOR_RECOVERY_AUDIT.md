@@ -404,11 +404,11 @@ Los scripts de seed (`seed_auth.py`, `seed_demo.py`) usan UUIDs determinísticos
 10. ✅ Botones Verificar Integridad (modal con errores/warnings) + Confirmar Horario (POST /schedule/block)
 11. ✅ Bloqueo post-confirmación: edición bloqueada cuando status es blocked/published, PATCH endpoint valida estado
 
-### Fase 4: Limpieza
-12. Eliminar tab Importar
-13. Corregir conteos por área en drawer
-14. Generar contraseña temporal automática
-15. Actualizar documentación
+### Fase 4: Limpieza ✅ COMPLETADA
+12. ✅ Eliminado tab "Importar" de /reportes (solo quedan Resumen + Exportar). Eliminada página /importar-exportar (redirect).
+13. ✅ Corregido drawer de detalle de área: materias ahora se filtran por areaId del área visualizada. Docentes etiquetados como "(institución)" ya que no tienen relación directa con área.
+14. ✅ Contraseña temporal ahora se auto-genera (12 caracteres, crypto.getRandomValues). Se eliminó el campo manual del formulario. Se muestra en el modal de credenciales post-creación.
+15. ✅ Documentación actualizada.
 
 ---
 

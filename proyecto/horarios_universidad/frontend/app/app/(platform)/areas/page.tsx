@@ -207,12 +207,12 @@ export default function AreasPage() {
                 <h4 className="text-sm font-semibold text-foreground">Resumen del Área</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Docentes</p>
-                    <p className="text-lg font-semibold">{teachers.length}</p>
+                    <p className="text-muted-foreground">Materias</p>
+                    <p className="text-lg font-semibold">{subjects.filter(s => s.areaId === viewingArea.id).length}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Materias</p>
-                    <p className="text-lg font-semibold">{subjects.length}</p>
+                    <p className="text-muted-foreground">Docentes (institución)</p>
+                    <p className="text-lg font-semibold">{teachers.length}</p>
                   </div>
                 </div>
               </div>
