@@ -16,9 +16,11 @@ import { useToast, ToastContainer } from '@/components/ui/Toast'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { teacherService } from '@/lib/services/teacher.service'
+import { areaService } from '@/lib/services/area.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import { initials } from '@/lib/utils/format'
 import type { Instructor } from '@/lib/types/personnel'
+import type { AcademicArea } from '@/lib/types/academic'
 import DocenteFormDrawer from '@/components/domain/DocenteFormDrawer'
 
 const PAGE_SIZE = 10
@@ -38,12 +40,20 @@ export default function DocentesPage() {
 
   const { user } = useAuthStore()
   const institutionId = user?.institutionId ?? ''
+  const isDirector = user?.role === 'director'
   const q = useDebounce(search)
   const { data, loading, error, refetch } = useApiQuery(
     () => institutionId ? teacherService.list(institutionId) : Promise.resolve({ data: [] } as any),
     [institutionId],
   )
   const teachers: Instructor[] = data?.data ?? []
+
+  const { data: areaData } = useApiQuery(
+    () => (isDirector && institutionId) ? areaService.list(institutionId) : Promise.resolve({ data: [] } as any),
+    [isDirector, institutionId],
+  )
+  const areas: AcademicArea[] = areaData?.data ?? []
+  const areaNameById = useMemo(() => new Map(areas.map(a => [a.id, a.name])), [areas])
 
   useEffect(() => { setPage(1) }, [q, filterContract, filterStatus])
 
@@ -103,6 +113,7 @@ export default function DocentesPage() {
               <THead>
                 <TH>Docente</TH>
                 <TH>Correo</TH>
+                {isDirector && <TH>Área</TH>}
                 <TH>Contrato</TH>
                 <TH align="center">Horas máx.</TH>
                 <TH align="center">Horas asig.</TH>
@@ -121,6 +132,13 @@ export default function DocentesPage() {
                       </div>
                     </TD>
                     <TD><span className="text-muted-foreground">{t.email}</span></TD>
+                    {isDirector && (
+                      <TD>
+                        {t.areaId && areaNameById.get(t.areaId)
+                          ? <span className="text-sm">{areaNameById.get(t.areaId)}</span>
+                          : <span className="text-xs text-muted-foreground">Sin asignar</span>}
+                      </TD>
+                    )}
                     <TD><Badge variant="neutral">{t.contractType ? (CONTRACT_LABELS[t.contractType] ?? t.contractType) : '—'}</Badge></TD>
                     <TD align="center">{t.maxWeeklyHours ?? '—'}</TD>
                     <TD align="center">

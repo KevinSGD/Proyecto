@@ -165,6 +165,7 @@ class InstructorCreate(CamelModel):
     """Payload to register a new instructor."""
 
     institution_id: UUID
+    area_id: UUID | None = None
     employee_code: str
     first_name: str
     last_name: str
@@ -175,6 +176,7 @@ class InstructorCreate(CamelModel):
 class InstructorUpdate(CamelModel):
     """Partial update for an existing instructor."""
 
+    area_id: UUID | None = None
     employee_code: str | None = None
     first_name: str | None = None
     last_name: str | None = None
@@ -188,6 +190,7 @@ class InstructorOut(CamelModel):
 
     id: UUID
     institution_id: UUID
+    area_id: UUID | None = None
     employee_code: str
     first_name: str
     last_name: str

@@ -99,6 +99,17 @@ export default function HorariosPage() {
     addToast('success', 'Los cambios están guardados automáticamente')
   }
 
+  const handleMove = async (blockId: string, dayOfWeek: number, startPeriod: number) => {
+    if (isLocked) return
+    try {
+      await scheduleService.updateSessionBlock(blockId, { dayOfWeek: dayOfWeek - 1, startPeriod })
+      addToast('success', 'Clase movida. Usa "Verificar Integridad" para confirmar que no genera interferencias.')
+      refetch()
+    } catch {
+      addToast('error', 'Error al mover la clase')
+    }
+  }
+
   const handleValidate = async () => {
     if (!institutionId || !periodId) return
     setValidating(true)
@@ -204,6 +215,12 @@ export default function HorariosPage() {
 
         {legendItems.length > 0 && <ScheduleLegend items={legendItems} />}
 
+        {!isLocked && gridType === 'weekly' && assignments.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Arrastra una clase a otro día/hora para moverla, luego usa "Verificar Integridad" para confirmar que no genera interferencias.
+          </p>
+        )}
+
         <DataView
           data={assignments}
           loading={runsLoad || loading}
@@ -215,7 +232,14 @@ export default function HorariosPage() {
         >
           {() =>
             gridType === 'weekly' ? (
-              <ScheduleGrid assignments={assignments} viewMode={viewMode} zoom={zoom} onEdit={openEdit} />
+              <ScheduleGrid
+                assignments={assignments}
+                viewMode={viewMode}
+                zoom={zoom}
+                onEdit={openEdit}
+                onMove={handleMove}
+                movable={!isLocked}
+              />
             ) : (
               <GanttGrid assignments={assignments} viewMode={viewMode} zoom={zoom} onEdit={openEdit} />
             )

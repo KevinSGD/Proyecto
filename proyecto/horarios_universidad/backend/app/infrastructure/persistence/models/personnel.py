@@ -33,6 +33,12 @@ class InstructorModel(Base):
         nullable=False,
         index=True,
     )
+    area_id: Mapped[Any] = mapped_column(
+        Uuid,
+        ForeignKey("academic_areas.id"),
+        nullable=True,
+        index=True,
+    )
     employee_code: Mapped[str] = mapped_column(String(50), nullable=False)
     first_name: Mapped[str] = mapped_column(String(255), nullable=False)
     last_name: Mapped[str] = mapped_column(String(255), nullable=False)

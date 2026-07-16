@@ -23,6 +23,7 @@ class Instructor:
 
     id: EntityId = field(default_factory=generate_id)
     institution_id: EntityId = field(default_factory=generate_id)
+    area_id: EntityId | None = None
     employee_code: str = ""
     first_name: str = ""
     last_name: str = ""

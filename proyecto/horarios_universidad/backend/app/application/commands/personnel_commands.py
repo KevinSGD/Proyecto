@@ -52,6 +52,7 @@ class CreateTeacher:
             entity = Instructor(
                 id=generate_id(),
                 institution_id=data.institution_id,
+                area_id=data.area_id,
                 employee_code=data.employee_code,
                 first_name=data.first_name,
                 last_name=data.last_name,

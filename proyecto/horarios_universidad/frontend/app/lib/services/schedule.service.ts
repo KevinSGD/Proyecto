@@ -1,6 +1,6 @@
 import { api } from '@/lib/api/client'
 import type { ApiResponse } from '@/lib/types/common'
-import type { ScheduleRun, Assignment } from '@/lib/types/scheduling'
+import type { ScheduleRun, Assignment, ExecutionLogEntry } from '@/lib/types/scheduling'
 
 const BASE = '/api/v1'
 
@@ -24,7 +24,7 @@ export const scheduleService = {
   },
 
   getLogs(runId: string) {
-    return api.get<ApiResponse<unknown[]>>(`${BASE}/schedule-runs/${runId}/logs`)
+    return api.get<ApiResponse<ExecutionLogEntry[]>>(`${BASE}/schedule-runs/${runId}/logs`)
   },
 
   generate(data: { institutionId: string; periodId: string }) {

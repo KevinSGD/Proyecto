@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "GenerateSchedule",
+    "StartScheduleGeneration",
     "ValidateScheduleData",
     "PublishSchedule",
     "BlockSchedule",
@@ -25,7 +26,7 @@ __all__ = [
 
 
 class GenerateSchedule:
-    """Trigger a full schedule generation pipeline."""
+    """Trigger a full schedule generation pipeline (blocking)."""
 
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
@@ -49,6 +50,38 @@ class GenerateSchedule:
             config=solver_config,
             created_by=data.created_by,
         )
+
+
+class StartScheduleGeneration:
+    """Create the initial ``running`` ScheduleRun without solving yet.
+
+    The caller is expected to run ``ScheduleGenerationService.run_pipeline``
+    (e.g. as a FastAPI background task) with the returned run and config so
+    the HTTP response isn't blocked for the full solver duration.
+    """
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
+    def execute(self, data: ScheduleGenerateRequest):
+        from app.api.config.settings import get_settings
+        from app.application.services.schedule_service import (
+            ScheduleGenerationService,
+        )
+        from app.solver.config import SolverConfiguration
+
+        settings = get_settings()
+        solver_config = SolverConfiguration(
+            max_time_seconds=data.max_time_seconds or settings.solver_max_time_seconds,
+            num_workers=data.num_workers or settings.solver_num_workers,
+        )
+        run = ScheduleGenerationService(self._uow).start(
+            institution_id=data.institution_id,
+            period_id=data.period_id,
+            config=solver_config,
+            created_by=data.created_by,
+        )
+        return run, solver_config
 
 
 class ValidateScheduleData:

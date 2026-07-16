@@ -42,7 +42,7 @@ class ScheduleGenerationService:
         config: SolverConfiguration | None = None,
         created_by: EntityId | None = None,
     ) -> ScheduleRun:
-        """Run the end-to-end pipeline and return the completed ScheduleRun.
+        """Run the end-to-end pipeline synchronously and return the completed run.
 
         Stages tracked:
         1. Inicializando — create run record, configure solver.
@@ -58,10 +58,41 @@ class ScheduleGenerationService:
         from app.solver.config import SolverConfiguration as SolverCfg
 
         solver_config = config or SolverCfg()
+        run = self.start(institution_id, period_id, solver_config, created_by)
+        return self.run_pipeline(run, solver_config)
 
-        run = self._create_run(
+    def start(
+        self,
+        institution_id: EntityId,
+        period_id: EntityId,
+        config: SolverConfiguration | None = None,
+        created_by: EntityId | None = None,
+    ) -> ScheduleRun:
+        """Create the initial ``running`` ScheduleRun and return immediately.
+
+        Call ``run_pipeline`` afterwards (typically on a background thread)
+        to actually execute the solver and populate results.
+        """
+        from app.solver.config import SolverConfiguration as SolverCfg
+
+        solver_config = config or SolverCfg()
+        return self._create_run(
             institution_id, period_id, solver_config, created_by,
         )
+
+    def run_pipeline(
+        self,
+        run: ScheduleRun,
+        config: SolverConfiguration | None = None,
+    ) -> ScheduleRun:
+        """Execute the solver pipeline for an already-created run.
+
+        Persists execution-log entries at each stage transition so that
+        progress can be polled in real time via ``GET /schedule-runs/{id}/logs``.
+        """
+        from app.solver.config import SolverConfiguration as SolverCfg
+
+        solver_config = config or SolverCfg()
         tracker = ExecutionTracker(self._uow, run.id)
 
         try:
@@ -85,7 +116,7 @@ class ScheduleGenerationService:
             from app.application.services.dataset_builder import DatasetBuilder
 
             problem = DatasetBuilder(self._uow).build(
-                institution_id, period_id,
+                run.institution_id, run.period_id,
             )
             tracker.log_event(
                 "execution",

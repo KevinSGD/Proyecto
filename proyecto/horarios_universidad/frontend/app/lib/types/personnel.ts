@@ -4,6 +4,7 @@ export type InstructorStatus = 'active' | 'inactive'
 export interface Instructor {
   id: string
   institutionId: string
+  areaId?: string | null
   employeeCode: string
   firstName: string
   lastName: string

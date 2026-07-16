@@ -17,11 +17,11 @@ export const teacherService = {
     return api.get<ApiResponse<InstructorDetail>>(`${BASE}/teachers/${id}/detail`)
   },
 
-  create(data: { institutionId: string; employeeCode: string; firstName: string; lastName: string; email?: string; phone?: string }) {
+  create(data: { institutionId: string; areaId?: string; employeeCode: string; firstName: string; lastName: string; email?: string; phone?: string }) {
     return api.post<ApiResponse<Instructor>>(`${BASE}/teachers`, data)
   },
 
-  update(id: string, data: Partial<{ employeeCode: string; firstName: string; lastName: string; email: string; phone: string; isActive: boolean }>) {
+  update(id: string, data: Partial<{ areaId: string; employeeCode: string; firstName: string; lastName: string; email: string; phone: string; isActive: boolean }>) {
     return api.put<ApiResponse<Instructor>>(`${BASE}/teachers/${id}`, data)
   },
 

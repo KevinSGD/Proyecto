@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 
 from app.api.dependencies.auth import get_current_user, require_role
 from app.api.dependencies.database import get_uow
@@ -30,6 +30,7 @@ from app.application.commands.schedule_commands import (
     BlockSchedule,
     GenerateSchedule,
     PublishSchedule,
+    StartScheduleGeneration,
     ValidateScheduleData,
 )
 from app.application.queries.schedule_queries import (
@@ -51,17 +52,28 @@ router = APIRouter(tags=["schedule"], dependencies=[Depends(get_current_user)])
 @router.post(
     "/schedule/generate",
     response_model=ApiResponse[ScheduleRunOut],
-    status_code=201,
+    status_code=202,
 )
 async def generate_schedule(
     body: ScheduleGenerateRequest,
+    background_tasks: BackgroundTasks,
     _user=Depends(require_role("director")),
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[ScheduleRunOut]:
-    run = GenerateSchedule(uow).execute(body)
+    """Start a schedule generation run and return immediately.
+
+    The solver pipeline executes in a background task so the client can
+    poll ``GET /schedule-runs/{id}`` and ``GET /schedule-runs/{id}/logs``
+    for real-time progress instead of blocking on the full solve duration.
+    """
+    from app.application.services.schedule_service import ScheduleGenerationService
+
+    run, solver_config = StartScheduleGeneration(uow).execute(body)
+    service = ScheduleGenerationService(uow)
+    background_tasks.add_task(service.run_pipeline, run, solver_config)
     return ApiResponse(
         data=ScheduleRunOut.model_validate(asdict(run)),
-        message="Schedule generation completed",
+        message="Schedule generation started",
     )
 
 
@@ -131,13 +143,13 @@ async def update_session_block(
     )
 
     with uow:
-        block = uow._session.get(SessionBlockModel, str(block_id))
+        block = uow._session.get(SessionBlockModel, block_id)
         if not block:
             raise ResourceNotFoundError("SessionBlock", block_id)
 
-        assignment = uow._session.get(AssignmentModel, str(block.assignment_id))
+        assignment = uow._session.get(AssignmentModel, block.assignment_id)
         if assignment:
-            run = uow._session.get(ScheduleRunModel, str(assignment.schedule_run_id))
+            run = uow._session.get(ScheduleRunModel, assignment.schedule_run_id)
             if run and run.status in ("blocked", "published"):
                 raise BusinessRuleError(
                     f"Cannot edit a session block in a '{run.status}' schedule. "
@@ -151,10 +163,10 @@ async def update_session_block(
         if body.duration is not None:
             block.duration = body.duration
         if body.classroom_id is not None:
-            block.classroom_id = str(body.classroom_id)
+            block.classroom_id = body.classroom_id
 
         if body.instructor_id is not None and assignment:
-            assignment.instructor_id = str(body.instructor_id)
+            assignment.instructor_id = body.instructor_id
 
         uow.commit()
 

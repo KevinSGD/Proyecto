@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import EventBlock from './EventBlock'
 import { DAY_LABELS, WEEKDAYS } from './types'
 import type { EnrichedAssignment, ViewMode, ScheduleEntity } from './types'
@@ -12,6 +12,8 @@ interface ScheduleGridProps {
   startHour?: number
   endHour?: number
   onEdit?: (assignment: EnrichedAssignment) => void
+  onMove?: (assignmentId: string, dayOfWeek: number, startPeriod: number) => void
+  movable?: boolean
 }
 
 function groupByEntity(assignments: EnrichedAssignment[], viewMode: ViewMode): ScheduleEntity[] {
@@ -49,10 +51,11 @@ function parseMinutes(time: string): number {
   return h * 60 + (m || 0)
 }
 
-export default function ScheduleGrid({ assignments, viewMode, zoom = 1, startHour = 7, endHour = 21, onEdit }: ScheduleGridProps) {
+export default function ScheduleGrid({ assignments, viewMode, zoom = 1, startHour = 7, endHour = 21, onEdit, onMove, movable = false }: ScheduleGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const entities = useMemo(() => groupByEntity(assignments, viewMode), [assignments, viewMode])
   const hours = useMemo(() => Array.from({ length: endHour - startHour }, (_, i) => i + startHour), [startHour, endHour])
+  const [dragOverCell, setDragOverCell] = useState<string | null>(null)
 
   const cellHeight = Math.round(56 * zoom)
   const hourColWidth = Math.round(72 * zoom)
@@ -111,11 +114,24 @@ export default function ScheduleGrid({ assignments, viewMode, zoom = 1, startHou
                     const cellAssignments = entity.assignments.filter(
                       a => a.dayOfWeek === day && parseHour(a.startTime) === h,
                     )
+                    const cellKey = `${day}-${h}`
+                    const isDragOver = dragOverCell === cellKey
+                    const startPeriod = h - startHour + 1
                     return (
                       <div
                         key={day}
-                        className="border-b border-r border-border p-1 last:border-r-0 transition-colors hover:bg-muted/30"
+                        className={`border-b border-r border-border p-1 last:border-r-0 transition-colors ${isDragOver ? 'bg-primary-soft' : 'hover:bg-muted/30'}`}
                         style={{ minHeight: cellHeight }}
+                        onDragOver={e => { if (movable) e.preventDefault() }}
+                        onDragEnter={e => { if (movable) { e.preventDefault(); setDragOverCell(cellKey) } }}
+                        onDragLeave={() => setDragOverCell(prev => (prev === cellKey ? null : prev))}
+                        onDrop={e => {
+                          if (!movable) return
+                          e.preventDefault()
+                          setDragOverCell(null)
+                          const assignmentId = e.dataTransfer.getData('text/plain')
+                          if (assignmentId) onMove?.(assignmentId, day, startPeriod)
+                        }}
                       >
                         {cellAssignments.map(a => (
                           <EventBlock
@@ -126,6 +142,7 @@ export default function ScheduleGrid({ assignments, viewMode, zoom = 1, startHou
                             showSubject={showSubject}
                             compact={zoom < 1}
                             onEdit={onEdit}
+                            draggable={movable}
                           />
                         ))}
                       </div>

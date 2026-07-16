@@ -13,6 +13,15 @@ export interface ScheduleRun {
   score?: number
 }
 
+export interface ExecutionLogEntry {
+  id: string
+  scheduleRunId: string
+  eventType: string
+  message: string
+  timestamp?: string
+  metadata?: Record<string, unknown>
+}
+
 export interface AssignmentSession {
   id: string
   assignmentId: string

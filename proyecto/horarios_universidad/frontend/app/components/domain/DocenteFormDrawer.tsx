@@ -8,10 +8,11 @@ import Badge from '@/components/ui/Badge'
 import { Field, NumberField, SelectField } from '@/components/ui/Field'
 import { teacherService } from '@/lib/services/teacher.service'
 import { subjectService } from '@/lib/services/subject.service'
+import { areaService } from '@/lib/services/area.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
 import type { Instructor, InstructorDetail, Contract, Specialty } from '@/lib/types/personnel'
-import type { Subject } from '@/lib/types/academic'
+import type { Subject, AcademicArea } from '@/lib/types/academic'
 
 interface Props {
   instructor?: Instructor
@@ -28,6 +29,7 @@ export default function DocenteFormDrawer({ instructor, onClose, onSaved }: Prop
   const isEdit = !!instructor
   const { user } = useAuthStore()
   const institutionId = user?.institutionId ?? ''
+  const isDirector = user?.role === 'director'
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState<'general' | 'contract' | 'specialties'>('general')
@@ -39,6 +41,13 @@ export default function DocenteFormDrawer({ instructor, onClose, onSaved }: Prop
   const [email, setEmail] = useState(instructor?.email ?? '')
   const [phone, setPhone] = useState(instructor?.phone ?? '')
   const [isActive, setIsActive] = useState(instructor?.isActive ?? true)
+  const [areaId, setAreaId] = useState(instructor?.areaId ?? '')
+
+  const { data: areaData } = useApiQuery(
+    () => (isDirector && institutionId) ? areaService.list(institutionId) : Promise.resolve({ data: [] } as any),
+    [isDirector, institutionId],
+  )
+  const areas: AcademicArea[] = areaData?.data ?? []
 
   // Contract fields
   const [contractType, setContractType] = useState<string>(instructor?.contractType ?? 'full-time')
@@ -96,14 +105,20 @@ export default function DocenteFormDrawer({ instructor, onClose, onSaved }: Prop
     setSaving(true)
     try {
       if (isEdit && instructor) {
-        await teacherService.update(instructor.id, { employeeCode, firstName, lastName, email, phone, isActive })
+        await teacherService.update(instructor.id, {
+          employeeCode, firstName, lastName, email, phone, isActive,
+          ...(isDirector ? { areaId } : {}),
+        })
         if (existingContract) {
           await teacherService.updateContract(existingContract.id, { contractType, maxDailyPeriods, maxWeeklyPeriods, minWeeklyPeriods, maxDays })
         } else {
           await teacherService.createContract(instructor.id, { contractType, maxDailyPeriods, maxWeeklyPeriods, minWeeklyPeriods, maxDays })
         }
       } else {
-        const resp = await teacherService.create({ institutionId, employeeCode, firstName, lastName, email, phone })
+        const resp = await teacherService.create({
+          institutionId, employeeCode, firstName, lastName, email, phone,
+          ...(isDirector && areaId ? { areaId } : {}),
+        })
         const newId = (resp.data as any)?.id
         if (newId) {
           await teacherService.createContract(newId, { contractType, maxDailyPeriods, maxWeeklyPeriods, minWeeklyPeriods, maxDays })
@@ -173,6 +188,11 @@ export default function DocenteFormDrawer({ instructor, onClose, onSaved }: Prop
             </div>
             <Field label="Correo electrónico" value={email} onChange={setEmail} placeholder="juan@universidad.edu" type="email" />
             <Field label="Teléfono" value={phone} onChange={setPhone} placeholder="+57 300 000 0000" />
+            {isDirector && (
+              <SelectField label="Área académica" value={areaId} onChange={setAreaId}
+                options={['', ...areas.map(a => a.id)]}
+                labels={{ '': '— Sin asignar —', ...Object.fromEntries(areas.map(a => [a.id, a.name])) }} />
+            )}
             {isEdit && (
               <SelectField label="Estado" value={isActive ? 'active' : 'inactive'} onChange={v => setIsActive(v === 'active')}
                 options={['active', 'inactive']} labels={{ active: 'Activo', inactive: 'Inactivo' }} />

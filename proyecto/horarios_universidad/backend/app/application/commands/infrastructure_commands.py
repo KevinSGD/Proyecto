@@ -214,13 +214,23 @@ class AssignResourceToClassroom:
         resource_id: EntityId,
         quantity: int = 1,
     ) -> RoomResource:
+        from app.infrastructure.persistence.models.infrastructure_models import (
+            RoomResourceModel,
+        )
+
+        entity = RoomResource(
+            id=generate_id(),
+            classroom_id=classroom_id,
+            resource_id=resource_id,
+            quantity=quantity,
+        )
         with self._uow:
-            entity = RoomResource(
-                id=generate_id(),
-                classroom_id=classroom_id,
-                resource_id=resource_id,
-                quantity=quantity,
+            model = RoomResourceModel(
+                id=entity.id,
+                classroom_id=entity.classroom_id,
+                resource_id=entity.resource_id,
+                quantity=entity.quantity,
             )
-            saved = self._uow.resources.save(entity)
+            self._uow._session.add(model)
             self._uow.commit()
-            return saved
+            return entity

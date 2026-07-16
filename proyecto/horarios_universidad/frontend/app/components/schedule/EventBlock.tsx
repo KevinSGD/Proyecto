@@ -11,20 +11,37 @@ interface EventBlockProps {
   showSubject?: boolean
   compact?: boolean
   onEdit?: (assignment: EnrichedAssignment) => void
+  draggable?: boolean
+  onDragStart?: (assignment: EnrichedAssignment) => void
+  onDragEnd?: () => void
 }
 
-export default function EventBlock({ assignment, showTeacher = true, showClassroom = true, showSubject = true, compact, onEdit }: EventBlockProps) {
+export default function EventBlock({
+  assignment, showTeacher = true, showClassroom = true, showSubject = true, compact, onEdit,
+  draggable, onDragStart, onDragEnd,
+}: EventBlockProps) {
   const [hovered, setHovered] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const color = getBlockColor(assignment.colorIndex)
 
   return (
     <div
-      className="relative rounded-md px-2 py-1.5 text-xs mb-1 last:mb-0 cursor-pointer select-none transition-shadow"
+      className={`relative rounded-md px-2 py-1.5 text-xs mb-1 last:mb-0 select-none transition-shadow ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
       onClick={() => onEdit?.(assignment)}
+      draggable={draggable}
+      onDragStart={e => {
+        if (!draggable) return
+        e.dataTransfer.setData('text/plain', assignment.id)
+        e.dataTransfer.effectAllowed = 'move'
+        setDragging(true)
+        onDragStart?.(assignment)
+      }}
+      onDragEnd={() => { setDragging(false); onDragEnd?.() }}
       style={{
         backgroundColor: color.bg,
         borderLeft: `3px solid ${color.fg}`,
         boxShadow: hovered ? `0 4px 12px ${color.border}80` : 'none',
+        opacity: dragging ? 0.4 : 1,
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

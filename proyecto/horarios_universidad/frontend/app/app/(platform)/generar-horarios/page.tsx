@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Play, CheckCircle, Zap, AlertTriangle, CalendarPlus } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -12,12 +12,15 @@ import PageHeader from '@/components/ui/PageHeader'
 import StatCard from '@/components/ui/StatCard'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
+import GenerationProgress from '@/components/domain/GenerationProgress'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
 import { scheduleService } from '@/lib/services/schedule.service'
 import { institutionService } from '@/lib/services/institution.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import RoleGuard from '@/lib/guards/RoleGuard'
-import type { ScheduleRun } from '@/lib/types/scheduling'
+import type { ScheduleRun, ExecutionLogEntry } from '@/lib/types/scheduling'
+
+const RUN_IN_PROGRESS = ['running', 'pending']
 
 const STATUS_MAP: Record<string, { label: string; variant: 'neutral' | 'warning' | 'success' | 'danger' | 'info' }> = {
   pending: { label: 'Pendiente', variant: 'neutral' },
@@ -33,7 +36,10 @@ export default function GenerarHorariosPage() {
   const { toasts, addToast, removeToast } = useToast()
   const { user } = useAuthStore()
   const institutionId = user?.institutionId ?? ''
-  const [generating, setGenerating] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [activeRunId, setActiveRunId] = useState<string | null>(null)
+  const [activeStatus, setActiveStatus] = useState<string>('running')
+  const [logs, setLogs] = useState<ExecutionLogEntry[]>([])
   const [creatingPeriod, setCreatingPeriod] = useState(false)
   const currentYear = new Date().getFullYear()
   const [periodName, setPeriodName] = useState(`${currentYear}-1`)
@@ -72,17 +78,59 @@ export default function GenerarHorariosPage() {
 
   const handleGenerate = async () => {
     if (!institutionId || !periodId) return
-    setGenerating(true)
+    setSubmitting(true)
     try {
-      await scheduleService.generate({ institutionId, periodId })
-      addToast('success', 'Horario generado exitosamente')
-      runRefetch()
+      const resp = await scheduleService.generate({ institutionId, periodId })
+      const newRunId = (resp.data as any)?.id as string | undefined
+      if (newRunId) {
+        setLogs([])
+        setActiveStatus('running')
+        setActiveRunId(newRunId)
+      }
     } catch {
       addToast('error', 'Error al generar el horario. Verifica que exista oferta académica con grupos.')
     } finally {
-      setGenerating(false)
+      setSubmitting(false)
     }
   }
+
+  // Poll the run status and execution logs while a generation is in progress.
+  useEffect(() => {
+    if (!activeRunId) return
+    let cancelled = false
+    let timeoutId: ReturnType<typeof setTimeout>
+
+    const tick = async () => {
+      try {
+        const [runResp, logResp] = await Promise.all([
+          scheduleService.getRun(activeRunId),
+          scheduleService.getLogs(activeRunId),
+        ])
+        if (cancelled) return
+        const run = (runResp as any)?.data
+        const logEntries = (logResp as any)?.data ?? []
+        setLogs(logEntries)
+        const st = run?.status as string | undefined
+        if (st) setActiveStatus(st)
+
+        if (st && RUN_IN_PROGRESS.includes(st)) {
+          timeoutId = setTimeout(tick, 1200)
+        } else {
+          runRefetch()
+          if (st === 'error') addToast('error', 'La generación falló. Revisa el detalle en el panel de ejecución.')
+          else if (st) addToast('success', 'Horario generado exitosamente')
+        }
+      } catch {
+        if (!cancelled) timeoutId = setTimeout(tick, 1500)
+      }
+    }
+
+    tick()
+    return () => { cancelled = true; clearTimeout(timeoutId) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRunId])
+
+  const isGenerating = submitting || (!!activeRunId && RUN_IN_PROGRESS.includes(activeStatus))
 
   const handlePublish = async (run: ScheduleRun) => {
     try {
@@ -99,11 +147,19 @@ export default function GenerarHorariosPage() {
           title="Generar Horarios"
           description="Ejecuta el solver de optimización para crear horarios académicos"
           actions={
-            <Button icon={<Zap className="size-4" />} loading={generating} disabled={!periodId} onClick={handleGenerate}>
+            <Button icon={<Zap className="size-4" />} loading={isGenerating} disabled={!periodId || isGenerating} onClick={handleGenerate}>
               Generar horario
             </Button>
           }
         />
+
+        {activeRunId && (
+          <GenerationProgress
+            status={activeStatus}
+            logs={logs}
+            onDismiss={() => setActiveRunId(null)}
+          />
+        )}
 
         {!periodLoading && !periodId && (
           <Card>

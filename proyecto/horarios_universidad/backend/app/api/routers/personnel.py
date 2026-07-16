@@ -6,11 +6,13 @@ from dataclasses import asdict
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.database import get_uow
 from app.api.schemas.base import ApiResponse
+from app.application.services.auth_service import AuthService
+from app.domain.entities.auth import User
 from app.api.schemas.personnel import (
     AvailabilityBulkSet,
     AvailabilityOut,
@@ -50,10 +52,37 @@ from app.domain.interfaces.unit_of_work import UnitOfWork
 router = APIRouter(tags=["teachers"], dependencies=[Depends(get_current_user)])
 
 
+def _current_user_area_id(uow: UnitOfWork, user_id) -> str | None:
+    with uow:
+        areas = uow.user_areas.list_by_user(user_id)
+        return str(areas[0].area_id) if areas else None
+
+
+def _ensure_area_access(uow: UnitOfWork, user: User, instructor_id: UUID) -> None:
+    """Restrict area-coordinator users to instructors within their own area."""
+    role = AuthService(uow).get_role_display_name(user)
+    if role != "coordinador":
+        return
+    area_id = _current_user_area_id(uow, user.id)
+    with uow:
+        instructor = uow.instructors.get_by_id(instructor_id)
+    if instructor is None or not area_id or str(instructor.area_id) != area_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes acceso a este docente",
+        )
+
+
 @router.post("/teachers", response_model=ApiResponse[InstructorOut], status_code=201)
 async def create_teacher(
-    body: InstructorCreate, uow: UnitOfWork = Depends(get_uow),
+    body: InstructorCreate,
+    user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[InstructorOut]:
+    role = AuthService(uow).get_role_display_name(user)
+    if role == "coordinador":
+        area_id = _current_user_area_id(uow, user.id)
+        body.area_id = UUID(area_id) if area_id else None
     entity = CreateTeacher(uow).execute(body)
     return ApiResponse(
         data=InstructorOut.model_validate(asdict(entity)),
@@ -63,9 +92,17 @@ async def create_teacher(
 
 @router.get("/institutions/{institution_id}/teachers", response_model=ApiResponse[list[InstructorOut]])
 async def list_teachers(
-    institution_id: UUID, uow: UnitOfWork = Depends(get_uow),
+    institution_id: UUID,
+    user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[list[InstructorOut]]:
     entities = ListTeachers(uow).execute(institution_id)
+
+    role = AuthService(uow).get_role_display_name(user)
+    if role == "coordinador":
+        area_id = _current_user_area_id(uow, user.id)
+        entities = [e for e in entities if area_id and str(e.area_id) == area_id]
+
     with uow:
         contracts = uow.contracts.list_all()
     contract_map: dict[str, Any] = {}
@@ -86,8 +123,11 @@ async def list_teachers(
 
 @router.get("/teachers/{teacher_id}", response_model=ApiResponse[InstructorOut])
 async def get_teacher(
-    teacher_id: UUID, uow: UnitOfWork = Depends(get_uow),
+    teacher_id: UUID,
+    user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[InstructorOut]:
+    _ensure_area_access(uow, user, teacher_id)
     entity = GetTeacher(uow).execute(teacher_id)
     return ApiResponse(
         data=InstructorOut.model_validate(asdict(entity)),
@@ -97,8 +137,11 @@ async def get_teacher(
 
 @router.get("/teachers/{teacher_id}/detail", response_model=ApiResponse[InstructorDetail])
 async def get_teacher_detail(
-    teacher_id: UUID, uow: UnitOfWork = Depends(get_uow),
+    teacher_id: UUID,
+    user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[InstructorDetail]:
+    _ensure_area_access(uow, user, teacher_id)
     detail = GetTeacherDetail(uow).execute(teacher_id)
     return ApiResponse(
         data=InstructorDetail.model_validate(detail),
@@ -108,8 +151,12 @@ async def get_teacher_detail(
 
 @router.put("/teachers/{teacher_id}", response_model=ApiResponse[InstructorOut])
 async def update_teacher(
-    teacher_id: UUID, body: InstructorUpdate, uow: UnitOfWork = Depends(get_uow),
+    teacher_id: UUID,
+    body: InstructorUpdate,
+    user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[InstructorOut]:
+    _ensure_area_access(uow, user, teacher_id)
     entity = UpdateTeacher(uow).execute(teacher_id, body)
     return ApiResponse(
         data=InstructorOut.model_validate(asdict(entity)),
@@ -119,8 +166,11 @@ async def update_teacher(
 
 @router.delete("/teachers/{teacher_id}", response_model=ApiResponse[None])
 async def delete_teacher(
-    teacher_id: UUID, uow: UnitOfWork = Depends(get_uow),
+    teacher_id: UUID,
+    user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[None]:
+    _ensure_area_access(uow, user, teacher_id)
     DeleteTeacher(uow).execute(teacher_id)
     return ApiResponse(message="Teacher deleted")
 
