@@ -51,6 +51,7 @@ export interface AreaCreatePayload {
 export interface Subject {
   id: string
   institutionId: string
+  areaId?: string | null
   code: string
   name: string
   creditHours: number

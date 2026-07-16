@@ -38,8 +38,12 @@ class ListSubjects:
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 
-    def execute(self, institution_id: UUID) -> list[Subject]:
+    def execute(
+        self, institution_id: UUID, *, area_id: UUID | None = None,
+    ) -> list[Subject]:
         with self._uow:
+            if area_id is not None:
+                return self._uow.subjects.list_by_area(area_id)
             return self._uow.subjects.list_by_institution(institution_id)
 
 

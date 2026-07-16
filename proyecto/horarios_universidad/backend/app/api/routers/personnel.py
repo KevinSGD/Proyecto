@@ -8,6 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
+from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.database import get_uow
 from app.api.schemas.base import ApiResponse
 from app.api.schemas.personnel import (
@@ -46,7 +47,7 @@ from app.application.queries.personnel_queries import (
 )
 from app.domain.interfaces.unit_of_work import UnitOfWork
 
-router = APIRouter(tags=["teachers"])
+router = APIRouter(tags=["teachers"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/teachers", response_model=ApiResponse[InstructorOut], status_code=201)

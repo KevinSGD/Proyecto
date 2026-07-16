@@ -30,6 +30,7 @@ class Subject:
 
     id: EntityId = field(default_factory=generate_id)
     institution_id: EntityId = field(default_factory=generate_id)
+    area_id: EntityId | None = None
     code: str = ""
     name: str = ""
     credit_hours: int = 0

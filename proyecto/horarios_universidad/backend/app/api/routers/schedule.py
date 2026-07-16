@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.api.dependencies.auth import get_current_user, require_role
 from app.api.dependencies.database import get_uow
 from app.api.schemas.base import ApiResponse
 from app.api.schemas.schedule import (
@@ -37,7 +38,7 @@ from app.application.queries.schedule_queries import (
 )
 from app.domain.interfaces.unit_of_work import UnitOfWork
 
-router = APIRouter(tags=["schedule"])
+router = APIRouter(tags=["schedule"], dependencies=[Depends(get_current_user)])
 
 
 # ── Commands ────────────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ router = APIRouter(tags=["schedule"])
 )
 async def generate_schedule(
     body: ScheduleGenerateRequest,
+    _user=Depends(require_role("director")),
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[ScheduleRunOut]:
     run = GenerateSchedule(uow).execute(body)
@@ -82,6 +84,7 @@ async def validate_schedule_data(
 )
 async def publish_schedule(
     body: SchedulePublishRequest,
+    _user=Depends(require_role("director")),
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[ScheduleRunOut]:
     run = PublishSchedule(uow).execute(body.schedule_run_id)
@@ -97,6 +100,7 @@ async def publish_schedule(
 )
 async def block_schedule(
     body: ScheduleBlockRequest,
+    _user=Depends(require_role("director")),
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[ScheduleRunOut]:
     run = BlockSchedule(uow).execute(body.schedule_run_id)

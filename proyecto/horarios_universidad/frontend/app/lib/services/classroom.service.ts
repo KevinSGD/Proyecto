@@ -71,4 +71,8 @@ export const classroomService = {
   listClassroomResources(classroomId: string) {
     return api.get<ApiResponse<Resource[]>>(`${BASE}/classrooms/${classroomId}/resources`)
   },
+
+  unassignResourceFromClassroom(classroomId: string, resourceId: string) {
+    return api.delete(`${BASE}/classrooms/${classroomId}/resources/${resourceId}`)
+  },
 }

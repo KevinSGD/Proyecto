@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
+from app.api.dependencies.auth import get_current_user, require_role
 from app.api.dependencies.database import get_uow
 from app.api.schemas.base import ApiResponse
 from app.api.schemas.infrastructure import (
@@ -23,6 +24,7 @@ from app.api.schemas.infrastructure import (
     ResourceUpdate,
     RoomResourceOut,
 )
+from app.application.exceptions import ResourceNotFoundError
 from app.application.commands.infrastructure_commands import (
     AssignResourceToClassroom,
     CreateBuilding,
@@ -48,7 +50,7 @@ from app.application.queries.infrastructure_queries import (
 )
 from app.domain.interfaces.unit_of_work import UnitOfWork
 
-router = APIRouter(tags=["infrastructure"])
+router = APIRouter(tags=["infrastructure"], dependencies=[Depends(get_current_user)])
 
 
 # ── Buildings ───────────────────────────────────────────────────────────────
@@ -247,3 +249,32 @@ async def list_classroom_resources(
 ) -> ApiResponse[list[ResourceOut]]:
     entities = ListClassroomResources(uow).execute(classroom_id)
     return ApiResponse(data=[ResourceOut.model_validate(e.__dict__) for e in entities])
+
+
+@router.delete(
+    "/classrooms/{classroom_id}/resources/{resource_id}",
+    response_model=ApiResponse[dict],
+)
+async def unassign_resource_from_classroom(
+    classroom_id: UUID,
+    resource_id: UUID,
+    uow: UnitOfWork = Depends(get_uow),
+) -> ApiResponse[dict]:
+    from app.infrastructure.persistence.models.infrastructure_models import (
+        RoomResourceModel,
+    )
+
+    with uow:
+        row = (
+            uow._session.query(RoomResourceModel)
+            .filter(
+                RoomResourceModel.classroom_id == classroom_id,
+                RoomResourceModel.resource_id == resource_id,
+            )
+            .first()
+        )
+        if row is None:
+            raise ResourceNotFoundError("RoomResource", f"{classroom_id}/{resource_id}")
+        uow._session.delete(row)
+        uow.commit()
+    return ApiResponse(message="Resource unassigned", data={"deleted": True})

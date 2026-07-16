@@ -140,6 +140,9 @@ class SubjectRepository(Repository["Subject"]):
     @abstractmethod
     def list_by_institution(self, institution_id: EntityId) -> "list[Subject]": ...
 
+    @abstractmethod
+    def list_by_area(self, area_id: EntityId) -> "list[Subject]": ...
+
 
 # ── personnel ─────────────────────────────────────────────────────────────────
 

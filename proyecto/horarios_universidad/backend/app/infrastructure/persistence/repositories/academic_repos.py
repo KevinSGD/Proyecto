@@ -60,3 +60,11 @@ class SqlSubjectRepository(
             .all()
         )
         return [self._to_entity(m) for m in models]
+
+    def list_by_area(self, area_id: EntityId) -> list[Subject]:
+        models = (
+            self._query()
+            .filter(self._model_cls.area_id == area_id)
+            .all()
+        )
+        return [self._to_entity(m) for m in models]

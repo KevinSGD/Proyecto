@@ -20,9 +20,9 @@ interface Props {
   onSaved: () => void
 }
 
-const MODALITY_OPTIONS = ['presential', 'virtual', 'hybrid']
+const MODALITY_OPTIONS = ['presential', 'virtual']
 const MODALITY_LABELS: Record<string, string> = {
-  presential: 'Presencial', virtual: 'Virtual', hybrid: 'Híbrida',
+  presential: 'Presencial', virtual: 'Virtual',
 }
 
 interface SubjectResourceReq {
@@ -56,7 +56,7 @@ export default function MateriaFormDrawer({ subject, onClose, onSaved }: Props) 
     [institutionId],
   )
   const areas: AcademicArea[] = areaData?.data ?? []
-  const [areaId, setAreaId] = useState('')
+  const [areaId, setAreaId] = useState(subject?.areaId ?? '')
 
   // Load global resources catalog
   const { data: resourceData } = useApiQuery(
@@ -90,7 +90,10 @@ export default function MateriaFormDrawer({ subject, onClose, onSaved }: Props) 
     if (!validate()) return
     setSaving(true)
     try {
-      const data = { code, name, creditHours, weeklyHours, modalityDefault, isActive: true }
+      const data = {
+        code, name, creditHours, weeklyHours, modalityDefault, isActive: true,
+        areaId: areaId || null,
+      }
       let subjectId = subject?.id ?? ''
 
       if (isEdit) {

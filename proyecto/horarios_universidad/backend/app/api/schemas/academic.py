@@ -54,6 +54,7 @@ class AreaOut(CamelModel):
 
 class SubjectCreate(CamelModel):
     institution_id: UUID
+    area_id: UUID | None = None
     code: str = Field(..., min_length=1, max_length=20)
     name: str = Field(..., min_length=1, max_length=200)
     credit_hours: int = Field(..., ge=0)
@@ -62,6 +63,7 @@ class SubjectCreate(CamelModel):
 
 
 class SubjectUpdate(CamelModel):
+    area_id: UUID | None = None
     code: str | None = None
     name: str | None = None
     credit_hours: int | None = None
@@ -73,6 +75,7 @@ class SubjectUpdate(CamelModel):
 class SubjectOut(CamelModel):
     id: UUID
     institution_id: UUID
+    area_id: UUID | None = None
     code: str
     name: str
     credit_hours: int

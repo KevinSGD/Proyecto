@@ -40,7 +40,9 @@ class CreateArea:
             )
             self._uow.academic_areas.save(area)
 
-            role = self._uow.roles.get_by_name(RoleName.AREA_COORDINATOR.value)
+            role = self._uow.roles.get_by_name(
+                RoleName.AREA_COORDINATOR.value, data.institution_id,
+            )
             if role is None:
                 raise ResourceNotFoundError(
                     "Role", RoleName.AREA_COORDINATOR.value,
@@ -108,6 +110,7 @@ class CreateSubject:
             entity = Subject(
                 id=generate_id(),
                 institution_id=data.institution_id,
+                area_id=data.area_id,
                 code=data.code,
                 name=data.name,
                 credit_hours=data.credit_hours,

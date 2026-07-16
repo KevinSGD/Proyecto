@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Integer, String, UniqueConstraint, Uuid
+from sqlalchemy import Boolean, ForeignKey, Integer, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.persistence.database import Base
@@ -43,6 +43,12 @@ class SubjectModel(Base):
     institution_id: Mapped[Any] = mapped_column(
         Uuid,
         nullable=False,
+        index=True,
+    )
+    area_id: Mapped[Any] = mapped_column(
+        Uuid,
+        ForeignKey("academic_areas.id"),
+        nullable=True,
         index=True,
     )
     code: Mapped[str] = mapped_column(String(50), nullable=False)

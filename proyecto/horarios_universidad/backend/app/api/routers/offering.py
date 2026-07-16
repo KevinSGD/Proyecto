@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
+from app.api.dependencies.auth import get_current_user
 from app.api.dependencies.database import get_uow
 from app.api.schemas.base import ApiResponse
 from app.api.schemas.offering import (
@@ -55,7 +56,7 @@ from app.application.queries.offering_queries import (
 )
 from app.domain.interfaces.unit_of_work import UnitOfWork
 
-router = APIRouter(tags=["offerings"])
+router = APIRouter(tags=["offerings"], dependencies=[Depends(get_current_user)])
 
 _Uow = Depends(get_uow)
 
