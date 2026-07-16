@@ -25,6 +25,10 @@ class OfferingUpdate(CamelModel):
     observations: str | None = None
 
 
+class OfferingRejectBody(CamelModel):
+    observations: str = ""
+
+
 class OfferingOut(CamelModel):
     id: UUID
     institution_id: UUID

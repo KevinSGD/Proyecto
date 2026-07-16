@@ -207,6 +207,104 @@ class DeleteGroup:
             return True
 
 
+VALID_TRANSITIONS: dict[str, list[str]] = {
+    "draft": ["submitted"],
+    "submitted": ["approved", "rejected"],
+    "rejected": ["draft"],
+    "approved": [],
+}
+
+
+class SubmitOffering:
+    """Transition offering from draft → submitted."""
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
+    def execute(self, offering_id: UUID) -> AcademicOffering:
+        with self._uow:
+            entity = self._uow.offerings.get_by_id(offering_id)
+            if entity is None:
+                raise ResourceNotFoundError("AcademicOffering", offering_id)
+            if "submitted" not in VALID_TRANSITIONS.get(entity.status, []):
+                raise BusinessRuleError(
+                    f"Cannot submit an offering with status '{entity.status}'. "
+                    "Only draft offerings can be submitted.",
+                )
+            entity.status = "submitted"
+            self._uow.offerings.save(entity)
+            self._uow.commit()
+            return entity
+
+
+class ApproveOffering:
+    """Transition offering from submitted → approved."""
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
+    def execute(self, offering_id: UUID) -> AcademicOffering:
+        with self._uow:
+            entity = self._uow.offerings.get_by_id(offering_id)
+            if entity is None:
+                raise ResourceNotFoundError("AcademicOffering", offering_id)
+            if "approved" not in VALID_TRANSITIONS.get(entity.status, []):
+                raise BusinessRuleError(
+                    f"Cannot approve an offering with status '{entity.status}'. "
+                    "Only submitted offerings can be approved.",
+                )
+            entity.status = "approved"
+            self._uow.offerings.save(entity)
+            self._uow.commit()
+            return entity
+
+
+class RejectOffering:
+    """Transition offering from submitted → rejected (with observations)."""
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
+    def execute(self, offering_id: UUID, observations: str = "") -> AcademicOffering:
+        with self._uow:
+            entity = self._uow.offerings.get_by_id(offering_id)
+            if entity is None:
+                raise ResourceNotFoundError("AcademicOffering", offering_id)
+            if "rejected" not in VALID_TRANSITIONS.get(entity.status, []):
+                raise BusinessRuleError(
+                    f"Cannot reject an offering with status '{entity.status}'. "
+                    "Only submitted offerings can be rejected.",
+                )
+            entity.status = "rejected"
+            entity.observations = observations
+            self._uow.offerings.save(entity)
+            self._uow.commit()
+            return entity
+
+
+class ResubmitOffering:
+    """Transition offering from rejected → draft (allows resubmission)."""
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
+    def execute(self, offering_id: UUID) -> AcademicOffering:
+        with self._uow:
+            entity = self._uow.offerings.get_by_id(offering_id)
+            if entity is None:
+                raise ResourceNotFoundError("AcademicOffering", offering_id)
+            if "draft" not in VALID_TRANSITIONS.get(entity.status, []):
+                raise BusinessRuleError(
+                    f"Cannot resubmit an offering with status '{entity.status}'. "
+                    "Only rejected offerings can be returned to draft.",
+                )
+            entity.status = "draft"
+            entity.observations = ""
+            self._uow.offerings.save(entity)
+            self._uow.commit()
+            return entity
+
+
 class GenerateGroupsFromOffering:
     """Auto-create groups from every line in an offering."""
 

@@ -398,11 +398,11 @@ Los scripts de seed (`seed_auth.py`, `seed_demo.py`) usan UUIDs determinísticos
 6. Endpoint desasignar recurso de aula
 7. Eliminar modalidad hybrid
 
-### Fase 3: Flujo de Negocio (Oferta + Horarios)
-8. Endpoints approve/reject/submit con máquina de estados
-9. Conectar botón Guardar a PATCH
-10. Agregar botones Verificar Integridad + Confirmar Horario
-11. Re-validación post-edición manual
+### Fase 3: Flujo de Negocio (Oferta + Horarios) ✅ COMPLETADA
+8. ✅ Endpoints approve/reject/submit/resubmit con máquina de estados (draft→submitted→approved|rejected→draft)
+9. ✅ Botón Guardar corregido (muestra "Los cambios están guardados automáticamente" + refetch)
+10. ✅ Botones Verificar Integridad (modal con errores/warnings) + Confirmar Horario (POST /schedule/block)
+11. ✅ Bloqueo post-confirmación: edición bloqueada cuando status es blocked/published, PATCH endpoint valida estado
 
 ### Fase 4: Limpieza
 12. Eliminar tab Importar

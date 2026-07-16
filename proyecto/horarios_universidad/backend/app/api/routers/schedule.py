@@ -5,10 +5,14 @@ from __future__ import annotations
 from dataclasses import asdict
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.api.dependencies.auth import get_current_user, require_role
 from app.api.dependencies.database import get_uow
+from app.application.exceptions.application_exceptions import (
+    BusinessRuleError,
+    ResourceNotFoundError,
+)
 from app.api.schemas.base import ApiResponse
 from app.api.schemas.schedule import (
     AssignmentDetailOut,
@@ -120,32 +124,39 @@ async def update_session_block(
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[dict]:
     """Manually edit a session block (day, period, classroom, instructor)."""
-    from sqlalchemy import select
     from app.infrastructure.persistence.models.schedule import (
         SessionBlockModel,
         AssignmentModel,
+        ScheduleRunModel,
     )
 
-    session = uow._session
-    block = session.get(SessionBlockModel, str(block_id))
-    if not block:
-        raise HTTPException(status_code=404, detail="Session block not found")
+    with uow:
+        block = uow._session.get(SessionBlockModel, str(block_id))
+        if not block:
+            raise ResourceNotFoundError("SessionBlock", block_id)
 
-    if body.day_of_week is not None:
-        block.day_of_week = body.day_of_week
-    if body.start_period is not None:
-        block.start_period = body.start_period
-    if body.duration is not None:
-        block.duration = body.duration
-    if body.classroom_id is not None:
-        block.classroom_id = str(body.classroom_id)
-
-    if body.instructor_id is not None:
-        assignment = session.get(AssignmentModel, str(block.assignment_id))
+        assignment = uow._session.get(AssignmentModel, str(block.assignment_id))
         if assignment:
+            run = uow._session.get(ScheduleRunModel, str(assignment.schedule_run_id))
+            if run and run.status in ("blocked", "published"):
+                raise BusinessRuleError(
+                    f"Cannot edit a session block in a '{run.status}' schedule. "
+                    "The schedule must be in an editable state.",
+                )
+
+        if body.day_of_week is not None:
+            block.day_of_week = body.day_of_week
+        if body.start_period is not None:
+            block.start_period = body.start_period
+        if body.duration is not None:
+            block.duration = body.duration
+        if body.classroom_id is not None:
+            block.classroom_id = str(body.classroom_id)
+
+        if body.instructor_id is not None and assignment:
             assignment.instructor_id = str(body.instructor_id)
 
-    session.commit()
+        uow.commit()
 
     return ApiResponse(
         data={

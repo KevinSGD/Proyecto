@@ -100,21 +100,21 @@ export default function OfertaPage() {
 
   const handleApprove = async (offering: Offering) => {
     try {
-      await offeringService.update(offering.id, { status: 'approved' })
+      await offeringService.approve(offering.id)
       addToast('success', 'Oferta aprobada')
       refetch()
-    } catch { addToast('error', 'Error al aprobar') }
+    } catch { addToast('error', 'Error al aprobar. Solo ofertas enviadas pueden aprobarse.') }
   }
 
   const handleReject = async () => {
     if (!rejectModal) return
     try {
-      await offeringService.update(rejectModal.id, { status: 'rejected', observations: rejectObs })
+      await offeringService.reject(rejectModal.id, rejectObs)
       addToast('success', 'Oferta rechazada')
       setRejectModal(null)
       setRejectObs('')
       refetch()
-    } catch { addToast('error', 'Error al rechazar') }
+    } catch { addToast('error', 'Error al rechazar. Solo ofertas enviadas pueden rechazarse.') }
   }
 
   const handleDelete = async (offering: Offering) => {
@@ -253,7 +253,7 @@ export default function OfertaPage() {
                                 </div>
                               )}
 
-                              {(offering.status === 'submitted' || offering.status === 'draft' || offering.status === 'pending') && (
+                              {offering.status === 'submitted' && (
                                 <div className="flex gap-2 pt-1">
                                   <Button size="sm" onClick={() => handleApprove(offering)} icon={<Check className="size-3.5" />}>
                                     Aprobar
@@ -262,6 +262,14 @@ export default function OfertaPage() {
                                     Rechazar
                                   </Button>
                                 </div>
+                              )}
+
+                              {(offering.status === 'draft' || offering.status === 'pending') && (
+                                <p className="text-xs text-muted-foreground pt-1">Esperando envío del coordinador</p>
+                              )}
+
+                              {offering.status === 'rejected' && (
+                                <p className="text-xs text-muted-foreground pt-1">Rechazada — el coordinador puede corregir y reenviar</p>
                               )}
                             </div>
                           ))

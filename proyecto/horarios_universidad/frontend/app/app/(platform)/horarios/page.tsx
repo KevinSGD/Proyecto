@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, Users, Building2, Save, RotateCcw } from 'lucide-react'
+import { Calendar, Users, Building2, Save, RotateCcw, ShieldCheck, Lock, ClipboardCheck } from 'lucide-react'
 import { FilterSelect, SelectField, NumberField } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import DataView from '@/components/ui/DataView'
@@ -36,23 +36,34 @@ export default function HorariosPage() {
   const [editTeacher, setEditTeacher] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const [validationModal, setValidationModal] = useState(false)
+  const [validationResult, setValidationResult] = useState<{ isValid: boolean; errors: string[]; warnings: string[] } | null>(null)
+  const [validating, setValidating] = useState(false)
+  const [blocking, setBlocking] = useState(false)
+
   const { data: periodData } = useApiQuery(
     () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
     [institutionId],
   )
   const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
 
-  const { data: runsData, loading: runsLoad } = useApiQuery(
+  const { data: runsData, loading: runsLoad, refetch: runsRefetch } = useApiQuery(
     () => (institutionId && periodId) ? scheduleService.listRuns(institutionId, periodId) : Promise.resolve({ data: [] } as any),
     [institutionId, periodId],
   )
   const runs: ScheduleRun[] = runsData?.data ?? []
   const activeRunId = selectedRunId || runs[0]?.id || ''
+  const activeRun = runs.find(r => r.id === activeRunId)
+  const isLocked = activeRun?.status === 'blocked' || activeRun?.status === 'published'
 
   const { assignments, loading, error, refetch, teachers, classrooms, legendItems } =
     useScheduleData(activeRunId)
 
   const openEdit = (a: EnrichedAssignment) => {
+    if (isLocked) {
+      addToast('warning', 'El horario está confirmado. No se permite edición.')
+      return
+    }
     setEditModal(a)
     setEditDay(a.dayOfWeek)
     const startHour = parseInt(a.startTime.split(':')[0], 10)
@@ -83,6 +94,46 @@ export default function HorariosPage() {
     }
   }
 
+  const handleSave = async () => {
+    refetch()
+    addToast('success', 'Los cambios están guardados automáticamente')
+  }
+
+  const handleValidate = async () => {
+    if (!institutionId || !periodId) return
+    setValidating(true)
+    try {
+      const resp = await scheduleService.validate(institutionId, periodId)
+      const data = (resp as any)?.data
+      const extractMessages = (items: unknown[]): string[] =>
+        (items ?? []).map((i: any) => typeof i === 'string' ? i : i?.message ?? JSON.stringify(i))
+      setValidationResult({
+        isValid: data?.summary?.isValid ?? data?.summary?.is_valid ?? data?.isValid ?? true,
+        errors: extractMessages(data?.errors),
+        warnings: extractMessages(data?.warnings),
+      })
+      setValidationModal(true)
+    } catch {
+      addToast('error', 'Error al verificar integridad')
+    } finally {
+      setValidating(false)
+    }
+  }
+
+  const handleBlock = async () => {
+    if (!activeRunId) return
+    setBlocking(true)
+    try {
+      await scheduleService.block(activeRunId)
+      addToast('success', 'Horario confirmado. La edición ha sido bloqueada.')
+      runsRefetch()
+    } catch {
+      addToast('error', 'Error al confirmar horario')
+    } finally {
+      setBlocking(false)
+    }
+  }
+
   const handleRerun = async () => {
     if (!institutionId || !periodId) return
     try {
@@ -100,13 +151,26 @@ export default function HorariosPage() {
         <PageHeader
           title="Horarios"
           description="Visualización y edición manual de horarios generados"
-          action={
+          actions={
             <div className="flex gap-2">
-              <Button variant="ghost" icon={<RotateCcw className="size-4" />} onClick={handleRerun}>Re-ejecutar Solver</Button>
-              <Button icon={<Save className="size-4" />} onClick={() => addToast('success', 'Horario guardado')}>Guardar</Button>
+              <Button variant="ghost" icon={<RotateCcw className="size-4" />} onClick={handleRerun} disabled={isLocked}>Re-ejecutar Solver</Button>
+              <Button variant="outline" icon={<ShieldCheck className="size-4" />} onClick={handleValidate} loading={validating}>Verificar Integridad</Button>
+              {!isLocked && (
+                <Button variant="outline" icon={<Lock className="size-4" />} onClick={handleBlock} loading={blocking} disabled={!activeRunId}>Confirmar Horario</Button>
+              )}
+              <Button icon={<Save className="size-4" />} onClick={handleSave} disabled={isLocked}>Guardar</Button>
             </div>
           }
         />
+
+        {isLocked && (
+          <div className="rounded-lg border border-info bg-info-soft px-4 py-3 flex items-center gap-2">
+            <ClipboardCheck className="size-4 text-info" />
+            <p className="text-sm text-foreground">
+              Este horario está <strong>{activeRun?.status === 'published' ? 'publicado' : 'confirmado'}</strong>. La edición está bloqueada.
+            </p>
+          </div>
+        )}
 
         {(runsLoad || loading) ? (
           <div className="grid gap-4 sm:grid-cols-3">{[1, 2, 3].map(i => <SkeletonCard key={i} />)}</div>
@@ -202,6 +266,47 @@ export default function HorariosPage() {
                 options={teachers.map(t => t.id)}
                 labels={Object.fromEntries(teachers.map(t => [t.id, `${t.firstName} ${t.lastName}`]))}
               />
+            </div>
+          )}
+        </Modal>
+
+        {/* Validation result modal */}
+        <Modal
+          open={validationModal}
+          onClose={() => setValidationModal(false)}
+          title="Verificación de Integridad"
+          confirmLabel="Cerrar"
+          onConfirm={() => setValidationModal(false)}
+        >
+          {validationResult && (
+            <div className="space-y-4">
+              <div className={`rounded-lg px-4 py-3 ${validationResult.isValid ? 'bg-success-soft border border-success' : 'bg-danger-soft border border-danger'}`}>
+                <p className={`text-sm font-medium ${validationResult.isValid ? 'text-success' : 'text-danger'}`}>
+                  {validationResult.isValid ? 'Sin errores de integridad' : 'Se encontraron problemas'}
+                </p>
+              </div>
+
+              {validationResult.errors.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-danger mb-2">Errores ({validationResult.errors.length})</p>
+                  <ul className="space-y-1">
+                    {validationResult.errors.map((e, i) => (
+                      <li key={i} className="text-xs text-foreground bg-danger-soft rounded px-2 py-1">{String(e)}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {validationResult.warnings.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-warning mb-2">Advertencias ({validationResult.warnings.length})</p>
+                  <ul className="space-y-1">
+                    {validationResult.warnings.map((w, i) => (
+                      <li key={i} className="text-xs text-foreground bg-warning-soft rounded px-2 py-1">{String(w)}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </Modal>

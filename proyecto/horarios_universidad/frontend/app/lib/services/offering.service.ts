@@ -56,4 +56,20 @@ export const offeringService = {
   removeLine(lineId: string) {
     return api.delete(`${BASE}/offering-lines/${lineId}`)
   },
+
+  submit(offeringId: string) {
+    return api.post<ApiResponse<Offering>>(`${BASE}/offerings/${offeringId}/submit`, {})
+  },
+
+  approve(offeringId: string) {
+    return api.post<ApiResponse<Offering>>(`${BASE}/offerings/${offeringId}/approve`, {})
+  },
+
+  reject(offeringId: string, observations: string) {
+    return api.post<ApiResponse<Offering>>(`${BASE}/offerings/${offeringId}/reject`, { observations })
+  },
+
+  resubmit(offeringId: string) {
+    return api.post<ApiResponse<Offering>>(`${BASE}/offerings/${offeringId}/resubmit`, {})
+  },
 }

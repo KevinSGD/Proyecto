@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.auth import get_current_user, require_role
 from app.api.dependencies.database import get_uow
 from app.api.schemas.base import ApiResponse
 from app.api.schemas.offering import (
@@ -18,6 +18,7 @@ from app.api.schemas.offering import (
     OfferingLineOut,
     OfferingLineUpdate,
     OfferingOut,
+    OfferingRejectBody,
     OfferingUpdate,
     ScheduleTypeCreate,
     ScheduleTypeOut,
@@ -25,6 +26,7 @@ from app.api.schemas.offering import (
 )
 from app.application.commands.offering_commands import (
     AddOfferingLine,
+    ApproveOffering,
     CreateGroup,
     CreateOffering,
     CreateScheduleType,
@@ -32,7 +34,10 @@ from app.application.commands.offering_commands import (
     DeleteOffering,
     DeleteScheduleType,
     GenerateGroupsFromOffering,
+    RejectOffering,
     RemoveOfferingLine,
+    ResubmitOffering,
+    SubmitOffering,
     UpdateOffering,
     UpdateOfferingLine,
     UpdateScheduleType,
@@ -98,6 +103,41 @@ def update_offering(offering_id: UUID, body: OfferingUpdate, uow: UnitOfWork = _
 def delete_offering(offering_id: UUID, uow: UnitOfWork = _Uow):
     DeleteOffering(uow).execute(offering_id)
     return ApiResponse(message="Offering deleted", data=True)
+
+
+# ── Offering workflow (state machine) ──────────────────────────────────────
+
+
+@router.post("/offerings/{offering_id}/submit", response_model=ApiResponse[OfferingOut])
+def submit_offering(offering_id: UUID, uow: UnitOfWork = _Uow):
+    entity = SubmitOffering(uow).execute(offering_id)
+    return ApiResponse(message="Offering submitted", data=OfferingOut(**offering_to_dict(entity)))
+
+
+@router.post(
+    "/offerings/{offering_id}/approve",
+    response_model=ApiResponse[OfferingOut],
+    dependencies=[Depends(require_role("director"))],
+)
+def approve_offering(offering_id: UUID, uow: UnitOfWork = _Uow):
+    entity = ApproveOffering(uow).execute(offering_id)
+    return ApiResponse(message="Offering approved", data=OfferingOut(**offering_to_dict(entity)))
+
+
+@router.post(
+    "/offerings/{offering_id}/reject",
+    response_model=ApiResponse[OfferingOut],
+    dependencies=[Depends(require_role("director"))],
+)
+def reject_offering(offering_id: UUID, body: OfferingRejectBody, uow: UnitOfWork = _Uow):
+    entity = RejectOffering(uow).execute(offering_id, body.observations)
+    return ApiResponse(message="Offering rejected", data=OfferingOut(**offering_to_dict(entity)))
+
+
+@router.post("/offerings/{offering_id}/resubmit", response_model=ApiResponse[OfferingOut])
+def resubmit_offering(offering_id: UUID, uow: UnitOfWork = _Uow):
+    entity = ResubmitOffering(uow).execute(offering_id)
+    return ApiResponse(message="Offering returned to draft", data=OfferingOut(**offering_to_dict(entity)))
 
 
 @router.post("/offerings/{offering_id}/lines", response_model=ApiResponse[OfferingLineOut])
