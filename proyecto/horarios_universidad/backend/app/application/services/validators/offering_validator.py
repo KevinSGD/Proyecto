@@ -67,7 +67,8 @@ class OfferingDataValidator(Validator[OfferingValidationData]):
                 label = OfferingDataValidator._subject_label(subject_map, line.subject_id)
                 result.add_error(
                     f"V-D15: La línea de oferta de {label} tiene 0 grupos "
-                    f"configurados."
+                    f"configurados.",
+                    entity_type="subject", entity_id=line.subject_id, entity_label=label,
                 )
 
     # ── V-D16 ────────────────────────────────────────────────────────
@@ -83,7 +84,8 @@ class OfferingDataValidator(Validator[OfferingValidationData]):
                 label = OfferingDataValidator._subject_label(subject_map, line.subject_id)
                 result.add_error(
                     f"V-D16: La línea de oferta de {label} tiene 0 de cupo "
-                    f"esperado por grupo."
+                    f"esperado por grupo.",
+                    entity_type="subject", entity_id=line.subject_id, entity_label=label,
                 )
 
     # ── V-D17 ────────────────────────────────────────────────────────
@@ -100,10 +102,12 @@ class OfferingDataValidator(Validator[OfferingValidationData]):
             if line.schedule_type_id is None:
                 result.add_warning(
                     f"V-D17: La línea de oferta de {label} no tiene un tipo "
-                    f"de horario asignado."
+                    f"de horario asignado.",
+                    entity_type="subject", entity_id=line.subject_id, entity_label=label,
                 )
             elif line.schedule_type_id not in schedule_type_ids:
                 result.add_error(
                     f"V-D17: La línea de oferta de {label} hace referencia "
-                    f"a un tipo de horario que ya no existe."
+                    f"a un tipo de horario que ya no existe.",
+                    entity_type="subject", entity_id=line.subject_id, entity_label=label,
                 )

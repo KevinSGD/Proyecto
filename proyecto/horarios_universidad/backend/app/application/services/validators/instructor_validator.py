@@ -60,7 +60,8 @@ class InstructorDataValidator(Validator[InstructorValidationData]):
                 name = InstructorDataValidator._name(instructor_map, iid)
                 result.add_error(
                     f"V-D01: El docente {name} no tiene ninguna materia "
-                    f"(especialidad) asignada."
+                    f"(especialidad) asignada.",
+                    entity_type="instructor", entity_id=iid, entity_label=name,
                 )
 
     # ── V-D02 ────────────────────────────────────────────────────────
@@ -82,7 +83,8 @@ class InstructorDataValidator(Validator[InstructorValidationData]):
             active_contracts = contracts_by_instructor[iid]
             if not active_contracts:
                 result.add_error(
-                    f"V-D02: El docente {name} no tiene un contrato activo."
+                    f"V-D02: El docente {name} no tiene un contrato activo.",
+                    entity_type="instructor", entity_id=iid, entity_label=name,
                 )
                 continue
 
@@ -90,7 +92,8 @@ class InstructorDataValidator(Validator[InstructorValidationData]):
                 if contract.max_weekly_periods <= 0:
                     result.add_error(
                         f"V-D02: El contrato del docente {name} tiene "
-                        f"0 horas semanales máximas configuradas."
+                        f"0 horas semanales máximas configuradas.",
+                        entity_type="instructor", entity_id=iid, entity_label=name,
                     )
 
     # ── V-D03 ────────────────────────────────────────────────────────
@@ -112,7 +115,8 @@ class InstructorDataValidator(Validator[InstructorValidationData]):
                 name = InstructorDataValidator._name(instructor_map, iid)
                 result.add_error(
                     f"V-D03: El docente {name} no tiene horarios de "
-                    f"disponibilidad registrados para el período activo."
+                    f"disponibilidad registrados para el período activo.",
+                    entity_type="instructor", entity_id=iid, entity_label=name,
                 )
 
     # ── V-D04 ────────────────────────────────────────────────────────
@@ -137,7 +141,8 @@ class InstructorDataValidator(Validator[InstructorValidationData]):
                 result.add_error(
                     f"V-D04: El contrato del docente {name} tiene un máximo "
                     f"diario ({contract.max_daily_periods}h) mayor que el "
-                    f"máximo semanal ({contract.max_weekly_periods}h)."
+                    f"máximo semanal ({contract.max_weekly_periods}h).",
+                    entity_type="instructor", entity_id=contract.instructor_id, entity_label=name,
                 )
 
     # ── V-D05 ────────────────────────────────────────────────────────
@@ -168,5 +173,6 @@ class InstructorDataValidator(Validator[InstructorValidationData]):
                 result.add_warning(
                     f"V-D05: El grupo {group.group_number} de {subject_label} "
                     f"no tiene ningún docente activo con esa especialidad "
-                    f"asignada."
+                    f"asignada.",
+                    entity_type="subject", entity_id=group.subject_id, entity_label=subject_label,
                 )

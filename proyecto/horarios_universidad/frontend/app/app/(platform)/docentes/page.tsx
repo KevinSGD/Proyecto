@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Users, Plus, Eye, Pencil, Trash2, Mail, Phone, Search, Clock } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -38,7 +39,8 @@ export default function DocentesPage() {
 }
 
 function DirectorDocentes() {
-  const [search, setSearch] = useState('')
+  const searchParams = useSearchParams()
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '')
   const [filterContract, setFilterContract] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [page, setPage] = useState(1)

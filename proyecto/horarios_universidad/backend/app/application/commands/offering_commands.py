@@ -321,9 +321,22 @@ class GenerateGroupsFromOffering:
                 raise BusinessRuleError(
                     "Offering has no lines to generate groups from."
                 )
+
+            default_schedule_type_id: UUID | None = None
+            if any(line.schedule_type_id is None for line in lines):
+                existing_types = self._uow.schedule_types.list_by_institution(
+                    offering.institution_id,
+                )
+                if not existing_types:
+                    raise BusinessRuleError(
+                        "No hay ningún tipo de horario (ScheduleType) configurado "
+                        "para esta institución. Crea uno antes de generar grupos."
+                    )
+                default_schedule_type_id = existing_types[0].id
+
             created: list[Group] = []
             for line in lines:
-                st_id = line.schedule_type_id or generate_id()
+                st_id = line.schedule_type_id or default_schedule_type_id
                 for num in range(1, line.num_groups + 1):
                     group = Group(
                         id=generate_id(),

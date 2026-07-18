@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Building2, Plus, Eye, Pencil, Trash2, DoorOpen, Package, X } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -28,8 +29,9 @@ const PAGE_SIZE = 10
 type Tab = 'classrooms' | 'buildings' | 'resources'
 
 export default function AulasPage() {
+  const searchParams = useSearchParams()
   const [tab, setTab] = useState<Tab>('classrooms')
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '')
   const [page, setPage] = useState(1)
   const [viewing, setViewing] = useState<Classroom | null>(null)
   const [editing, setEditing] = useState<Classroom | null | 'new'>(null)

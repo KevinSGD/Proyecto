@@ -208,7 +208,7 @@ export default function AreasPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-muted-foreground">Materias</p>
-                    <p className="text-lg font-semibold">{subjects.filter(s => s.areaId === viewingArea.id).length}</p>
+                    <p className="text-lg font-semibold">{subjects.filter((s: { areaId?: string }) => s.areaId === viewingArea.id).length}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Docentes (institución)</p>

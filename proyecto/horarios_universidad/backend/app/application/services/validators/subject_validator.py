@@ -40,9 +40,10 @@ class SubjectDataValidator(Validator[SubjectValidationData]):
             if not subject.is_active:
                 continue
             if subject.credit_hours <= 0:
+                label = f"{subject.name} ({subject.code})"
                 result.add_error(
-                    f"V-D06: La materia {subject.name} ({subject.code}) "
-                    f"tiene 0 créditos configurados."
+                    f"V-D06: La materia {label} tiene 0 créditos configurados.",
+                    entity_type="subject", entity_id=subject.id, entity_label=label,
                 )
 
     # ── V-D07 ────────────────────────────────────────────────────────
@@ -65,5 +66,6 @@ class SubjectDataValidator(Validator[SubjectValidationData]):
                 label = f"{subject.name} ({subject.code})" if subject else str(sid)
                 result.add_error(
                     f"V-D07: La materia ofertada {label} no tiene ningún "
-                    f"docente calificado (especialidad) asignado."
+                    f"docente calificado (especialidad) asignado.",
+                    entity_type="subject", entity_id=sid, entity_label=label,
                 )

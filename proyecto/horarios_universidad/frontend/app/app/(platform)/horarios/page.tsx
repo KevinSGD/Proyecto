@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, Users, Building2, Save, RotateCcw, ShieldCheck, Lock, ClipboardCheck, Download } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Calendar, Users, Building2, Save, RotateCcw, ShieldCheck, Lock, ClipboardCheck, Download, ArrowRight } from 'lucide-react'
 import { FilterSelect, SelectField, NumberField } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import DataView from '@/components/ui/DataView'
@@ -20,7 +21,21 @@ import { useAuthStore } from '@/lib/stores/auth.store'
 import type { ScheduleRun } from '@/lib/types/scheduling'
 import RoleGuard from '@/lib/guards/RoleGuard'
 
+type ValidationIssue = {
+  message: string
+  entityType: 'instructor' | 'subject' | 'classroom' | null
+  entityId: string | null
+  entityLabel: string | null
+}
+
+const ENTITY_ROUTES: Record<string, string> = {
+  instructor: '/docentes',
+  subject: '/materias',
+  classroom: '/aulas',
+}
+
 export default function HorariosPage() {
+  const router = useRouter()
   const [selectedRunId, setSelectedRunId] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('global')
   const [gridType, setGridType] = useState<GridType>('weekly')
@@ -37,7 +52,7 @@ export default function HorariosPage() {
   const [saving, setSaving] = useState(false)
 
   const [validationModal, setValidationModal] = useState(false)
-  const [validationResult, setValidationResult] = useState<{ isValid: boolean; errors: string[]; warnings: string[] } | null>(null)
+  const [validationResult, setValidationResult] = useState<{ isValid: boolean; errors: ValidationIssue[]; warnings: ValidationIssue[] } | null>(null)
   const [validating, setValidating] = useState(false)
   const [blocking, setBlocking] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -117,12 +132,19 @@ export default function HorariosPage() {
     try {
       const resp = await scheduleService.validate(institutionId, periodId)
       const data = (resp as any)?.data
-      const extractMessages = (items: unknown[]): string[] =>
-        (items ?? []).map((i: any) => typeof i === 'string' ? i : i?.message ?? JSON.stringify(i))
+      const extractIssues = (items: unknown[]): ValidationIssue[] =>
+        (items ?? []).map((i: any) => typeof i === 'string'
+          ? { message: i, entityType: null, entityId: null, entityLabel: null }
+          : {
+              message: i?.message ?? JSON.stringify(i),
+              entityType: i?.entityType ?? null,
+              entityId: i?.entityId ?? null,
+              entityLabel: i?.entityLabel ?? null,
+            })
       setValidationResult({
         isValid: data?.summary?.isValid ?? data?.summary?.is_valid ?? data?.isValid ?? true,
-        errors: extractMessages(data?.errors),
-        warnings: extractMessages(data?.warnings),
+        errors: extractIssues(data?.errors),
+        warnings: extractIssues(data?.warnings),
       })
       setValidationModal(true)
     } catch {
@@ -165,6 +187,14 @@ export default function HorariosPage() {
     } finally {
       setExporting(false)
     }
+  }
+
+  const handleGoToIssue = (issue: ValidationIssue) => {
+    if (!issue.entityType) return
+    const route = ENTITY_ROUTES[issue.entityType]
+    if (!route) return
+    setValidationModal(false)
+    router.push(`${route}?q=${encodeURIComponent(issue.entityLabel ?? '')}`)
   }
 
   const handleRerun = async () => {
@@ -338,7 +368,20 @@ export default function HorariosPage() {
                   <p className="text-sm font-medium text-danger mb-2">Errores ({validationResult.errors.length})</p>
                   <ul className="space-y-1">
                     {validationResult.errors.map((e, i) => (
-                      <li key={i} className="text-xs text-foreground bg-danger-soft rounded px-2 py-1">{String(e)}</li>
+                      <li key={i}>
+                        {e.entityType ? (
+                          <button
+                            type="button"
+                            onClick={() => handleGoToIssue(e)}
+                            className="w-full flex items-center justify-between gap-2 text-left text-xs text-foreground bg-danger-soft hover:brightness-95 rounded px-2 py-1.5 transition"
+                          >
+                            <span>{e.message}</span>
+                            <ArrowRight className="size-3.5 shrink-0 text-danger" />
+                          </button>
+                        ) : (
+                          <p className="text-xs text-foreground bg-danger-soft rounded px-2 py-1">{e.message}</p>
+                        )}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -349,7 +392,20 @@ export default function HorariosPage() {
                   <p className="text-sm font-medium text-warning mb-2">Advertencias ({validationResult.warnings.length})</p>
                   <ul className="space-y-1">
                     {validationResult.warnings.map((w, i) => (
-                      <li key={i} className="text-xs text-foreground bg-warning-soft rounded px-2 py-1">{String(w)}</li>
+                      <li key={i}>
+                        {w.entityType ? (
+                          <button
+                            type="button"
+                            onClick={() => handleGoToIssue(w)}
+                            className="w-full flex items-center justify-between gap-2 text-left text-xs text-foreground bg-warning-soft hover:brightness-95 rounded px-2 py-1.5 transition"
+                          >
+                            <span>{w.message}</span>
+                            <ArrowRight className="size-3.5 shrink-0 text-warning" />
+                          </button>
+                        ) : (
+                          <p className="text-xs text-foreground bg-warning-soft rounded px-2 py-1">{w.message}</p>
+                        )}
+                      </li>
                     ))}
                   </ul>
                 </div>

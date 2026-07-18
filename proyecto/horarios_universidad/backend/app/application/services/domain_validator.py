@@ -62,6 +62,9 @@ class DomainValidationService:
                         instructor.id, period_id,
                     ),
                 )
+                active_contract = self._uow.contracts.get_active(instructor.id)
+                if active_contract is not None:
+                    contracts.append(active_contract)
 
             subjects = self._uow.subjects.list_by_institution(institution_id)
             classrooms = self._uow.classrooms.list_by_institution(
@@ -143,10 +146,22 @@ class DomainValidationService:
                 report_type="pre_optimization",
                 status="passed" if merged.is_valid else "failed",
                 errors=[
-                    {"message": e} for e in merged.errors
+                    {
+                        "message": e.message,
+                        "entityType": e.entity_type,
+                        "entityId": e.entity_id,
+                        "entityLabel": e.entity_label,
+                    }
+                    for e in merged.errors
                 ],
                 warnings=[
-                    {"message": w} for w in merged.warnings
+                    {
+                        "message": w.message,
+                        "entityType": w.entity_type,
+                        "entityId": w.entity_id,
+                        "entityLabel": w.entity_label,
+                    }
+                    for w in merged.warnings
                 ],
                 summary={
                     "total_errors": len(merged.errors),

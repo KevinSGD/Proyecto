@@ -211,6 +211,7 @@ export default function OfertaPage() {
         <DataView
           data={areas}
           loading={loading}
+          error={null}
           emptyIcon={FileText}
           emptyTitle="Sin áreas registradas"
           emptyDescription="Crea áreas académicas primero"

@@ -50,9 +50,10 @@ class ClassroomDataValidator(Validator[ClassroomValidationData]):
             if classroom.is_virtual:
                 continue
             if classroom.capacity <= 0:
+                label = f"{classroom.name} ({classroom.code})"
                 result.add_error(
-                    f"V-D10: El salón {classroom.name} ({classroom.code}) "
-                    f"tiene 0 de capacidad configurada."
+                    f"V-D10: El salón {label} tiene 0 de capacidad configurada.",
+                    entity_type="classroom", entity_id=classroom.id, entity_label=label,
                 )
 
     # ── V-D11 ────────────────────────────────────────────────────────
@@ -83,7 +84,8 @@ class ClassroomDataValidator(Validator[ClassroomValidationData]):
                 result.add_error(
                     f"V-D11: El grupo {group.group_number} de {subject_label} "
                     f"(cupo={group.expected_enrollment}) no tiene ningún "
-                    f"salón presencial con capacidad suficiente."
+                    f"salón presencial con capacidad suficiente.",
+                    entity_type="subject", entity_id=group.subject_id, entity_label=subject_label,
                 )
 
     # ── V-D12 ────────────────────────────────────────────────────────
@@ -102,10 +104,11 @@ class ClassroomDataValidator(Validator[ClassroomValidationData]):
             if not classroom.is_active or classroom.is_virtual:
                 continue
             if classroom.id not in avail_days:
+                label = f"{classroom.name} ({classroom.code})"
                 result.add_warning(
-                    f"V-D12: El salón {classroom.name} ({classroom.code}) "
-                    f"no tiene horarios de disponibilidad registrados para "
-                    f"el período activo."
+                    f"V-D12: El salón {label} no tiene horarios de "
+                    f"disponibilidad registrados para el período activo.",
+                    entity_type="classroom", entity_id=classroom.id, entity_label=label,
                 )
 
     # ── V-D13 ────────────────────────────────────────────────────────
@@ -127,6 +130,7 @@ class ClassroomDataValidator(Validator[ClassroomValidationData]):
                 day_label = day_names[avail.day_of_week] if 0 <= avail.day_of_week < len(day_names) else str(avail.day_of_week)
                 result.add_error(
                     f"V-D13: El salón {classroom_label} tiene disponibilidad "
-                    f"duplicada el día {day_label}, período {avail.period}."
+                    f"duplicada el día {day_label}, período {avail.period}.",
+                    entity_type="classroom", entity_id=avail.classroom_id, entity_label=classroom_label,
                 )
             seen.add(key)

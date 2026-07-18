@@ -92,7 +92,7 @@ function DirectorDashboard() {
     const hasTeachersWithoutHours = data.teacherList.some(t => t.assignedHours === 0)
     if (data.teachers > 0 && hasTeachersWithoutHours) items.push({ label: 'Asignar carga horaria a docentes', priority: 'media' })
     if (data.scheduleRuns === 0 && data.subjects > 0) items.push({ label: 'Ejecutar el solver de horarios', priority: 'baja' })
-    const hasCompleted = data.runs.some(r => r.status === 'completed')
+    const hasCompleted = data.runs.some(r => r.status === 'optimal' || r.status === 'feasible')
     if (hasCompleted) items.push({ label: 'Publicar horarios completados', priority: 'alta' })
     if (items.length === 0) items.push({ label: 'Sistema configurado correctamente', priority: 'baja' })
     return items
