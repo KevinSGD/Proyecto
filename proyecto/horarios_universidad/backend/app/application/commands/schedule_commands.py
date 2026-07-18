@@ -22,6 +22,7 @@ __all__ = [
     "ValidateScheduleData",
     "PublishSchedule",
     "BlockSchedule",
+    "DeleteScheduleRun",
 ]
 
 
@@ -144,3 +145,50 @@ class BlockSchedule:
             self._uow.schedule_runs.save(run)
             self._uow.commit()
             return run
+
+
+class DeleteScheduleRun:
+    """Permanently delete a schedule run and everything it produced.
+
+    Cascades: session blocks -> assignments -> execution log entries ->
+    the run itself, so nothing is left orphaned when the run history is
+    cleaned up from the UI.
+    """
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
+    def execute(self, run_id) -> bool:
+        from app.infrastructure.persistence.models.schedule import (
+            AssignmentModel,
+            ExecutionLogModel,
+            SessionBlockModel,
+        )
+
+        with self._uow:
+            run = self._uow.schedule_runs.get_by_id(run_id)
+            if run is None:
+                raise ResourceNotFoundError("ScheduleRun", run_id)
+
+            session = self._uow._session
+            assignment_ids = [
+                row.id
+                for row in session.query(AssignmentModel.id)
+                .filter(AssignmentModel.schedule_run_id == run_id)
+                .all()
+            ]
+            if assignment_ids:
+                session.query(SessionBlockModel).filter(
+                    SessionBlockModel.assignment_id.in_(assignment_ids),
+                ).delete(synchronize_session=False)
+                session.query(AssignmentModel).filter(
+                    AssignmentModel.id.in_(assignment_ids),
+                ).delete(synchronize_session=False)
+
+            session.query(ExecutionLogModel).filter(
+                ExecutionLogModel.schedule_run_id == run_id,
+            ).delete(synchronize_session=False)
+
+            deleted = self._uow.schedule_runs.delete(run_id)
+            self._uow.commit()
+            return deleted

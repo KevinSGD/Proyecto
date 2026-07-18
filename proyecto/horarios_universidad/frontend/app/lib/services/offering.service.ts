@@ -76,4 +76,29 @@ export const offeringService = {
   resubmit(offeringId: string) {
     return api.post<ApiResponse<Offering>>(`${BASE}/offerings/${offeringId}/resubmit`, {})
   },
+
+  // Schedule types (institution-wide time-block configuration)
+  listScheduleTypes(institutionId: string) {
+    return api.get<ApiResponse<ScheduleTypeDto[]>>(`${BASE}/institutions/${institutionId}/schedule-types`)
+  },
+
+  createScheduleType(data: Partial<ScheduleTypeDto> & { institutionId: string }) {
+    return api.post<ApiResponse<ScheduleTypeDto>>(`${BASE}/schedule-types`, data)
+  },
+
+  updateScheduleType(id: string, data: Partial<ScheduleTypeDto>) {
+    return api.put<ApiResponse<ScheduleTypeDto>>(`${BASE}/schedule-types/${id}`, data)
+  },
+}
+
+export interface ScheduleTypeDto {
+  id: string
+  institutionId: string
+  name: string
+  scheduleType: string
+  activeDays: number[]
+  startPeriod: number
+  endPeriod: number
+  slotDurationMinutes: number
+  startHour: number
 }

@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Users, Building2, Save, RotateCcw, ShieldCheck, Lock, ClipboardCheck, Download, ArrowRight } from 'lucide-react'
+import { Calendar, Users, Building2, Save, RotateCcw, ShieldCheck, Lock, ClipboardCheck, Download, ArrowRight, ListTree, Trash2 } from 'lucide-react'
 import { FilterSelect, SelectField, NumberField } from '@/components/ui/Field'
+import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import DataView from '@/components/ui/DataView'
 import Modal from '@/components/ui/Modal'
@@ -44,6 +45,10 @@ export default function HorariosPage() {
   const institutionId = user?.institutionId ?? ''
   const { toasts, addToast, removeToast } = useToast()
 
+  const [manageRunsOpen, setManageRunsOpen] = useState(false)
+  const [deleteRunTarget, setDeleteRunTarget] = useState<ScheduleRun | null>(null)
+  const [deletingRun, setDeletingRun] = useState(false)
+
   const [editModal, setEditModal] = useState<EnrichedAssignment | null>(null)
   const [editDay, setEditDay] = useState(1)
   const [editPeriod, setEditPeriod] = useState(1)
@@ -72,8 +77,9 @@ export default function HorariosPage() {
   const activeRun = runs.find(r => r.id === activeRunId)
   const isLocked = activeRun?.status === 'blocked' || activeRun?.status === 'published'
 
-  const { assignments, loading, error, refetch, teachers, classrooms, legendItems } =
+  const { assignments, loading, error, refetch, teachers, classrooms, legendItems, scheduleConfig } =
     useScheduleData(activeRunId)
+  const gridEndHour = scheduleConfig.startHour + Math.ceil((scheduleConfig.endPeriod - scheduleConfig.startPeriod + 1) * scheduleConfig.slotDurationMinutes / 60)
 
   const openEdit = (a: EnrichedAssignment) => {
     if (isLocked) {
@@ -168,6 +174,22 @@ export default function HorariosPage() {
     }
   }
 
+  const handleDeleteRun = async () => {
+    if (!deleteRunTarget) return
+    setDeletingRun(true)
+    try {
+      await scheduleService.deleteRun(deleteRunTarget.id)
+      addToast('success', `Corrida "${deleteRunTarget.name || deleteRunTarget.id.slice(0, 8)}" eliminada`)
+      if (selectedRunId === deleteRunTarget.id) setSelectedRunId('')
+      setDeleteRunTarget(null)
+      runsRefetch()
+    } catch {
+      addToast('error', 'Error al eliminar la corrida')
+    } finally {
+      setDeletingRun(false)
+    }
+  }
+
   const handleExportExcel = async () => {
     if (!activeRunId) return
     setExporting(true)
@@ -216,6 +238,7 @@ export default function HorariosPage() {
           description="Visualización y edición manual de horarios generados"
           actions={
             <div className="flex gap-2">
+              <Button variant="ghost" icon={<ListTree className="size-4" />} onClick={() => setManageRunsOpen(true)}>Gestionar corridas</Button>
               <Button variant="ghost" icon={<RotateCcw className="size-4" />} onClick={handleRerun} disabled={isLocked}>Re-ejecutar Solver</Button>
               <Button variant="outline" icon={<ShieldCheck className="size-4" />} onClick={handleValidate} loading={validating}>Verificar Integridad</Button>
               <Button variant="outline" icon={<Download className="size-4" />} onClick={handleExportExcel} loading={exporting} disabled={!activeRunId}>Exportar Excel</Button>
@@ -289,12 +312,14 @@ export default function HorariosPage() {
                 assignments={assignments}
                 viewMode={viewMode}
                 zoom={zoom}
+                startHour={scheduleConfig.startHour}
+                endHour={gridEndHour}
                 onEdit={openEdit}
                 onMove={handleMove}
                 movable={!isLocked}
               />
             ) : (
-              <GanttGrid assignments={assignments} viewMode={viewMode} zoom={zoom} onEdit={openEdit} />
+              <GanttGrid assignments={assignments} viewMode={viewMode} zoom={zoom} startHour={scheduleConfig.startHour} endHour={gridEndHour} onEdit={openEdit} />
             )
           }
         </DataView>
@@ -323,7 +348,7 @@ export default function HorariosPage() {
               />
 
               <NumberField
-                label="Período (bloque horario)"
+                label="Hora de clase (bloque)"
                 value={editPeriod}
                 onChange={setEditPeriod}
               />
@@ -412,6 +437,57 @@ export default function HorariosPage() {
               )}
             </div>
           )}
+        </Modal>
+
+        {/* Manage schedule runs modal */}
+        <Modal
+          open={manageRunsOpen}
+          onClose={() => setManageRunsOpen(false)}
+          title="Gestionar corridas del solver"
+          confirmLabel="Cerrar"
+          onConfirm={() => setManageRunsOpen(false)}
+        >
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {runs.length === 0 && (
+              <p className="text-sm text-muted-foreground">No hay corridas todavía.</p>
+            )}
+            {[...runs].reverse().map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{r.name || r.id.slice(0, 8)}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Badge variant={
+                      r.status === 'published' ? 'success' :
+                      r.status === 'blocked' ? 'info' :
+                      r.status === 'infeasible' || r.status === 'error' ? 'danger' :
+                      r.status === 'optimal' || r.status === 'feasible' ? 'brand' : 'neutral'
+                    }>{r.status}</Badge>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDeleteRunTarget(r)}
+                  title="Eliminar corrida"
+                  className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-danger-soft hover:text-danger transition-colors"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </Modal>
+
+        <Modal
+          open={!!deleteRunTarget}
+          onClose={() => { if (!deletingRun) setDeleteRunTarget(null) }}
+          title="Eliminar corrida"
+          confirmLabel={deletingRun ? 'Eliminando...' : 'Eliminar'}
+          onConfirm={handleDeleteRun}
+          destructive
+        >
+          <p>
+            ¿Eliminar la corrida <strong>{deleteRunTarget?.name || deleteRunTarget?.id.slice(0, 8)}</strong>?
+            Se borrarán sus asignaciones y bloques de horario. Esta acción no se puede deshacer.
+          </p>
         </Modal>
 
         <ToastContainer toasts={toasts} onRemove={removeToast} />

@@ -135,7 +135,12 @@ async def create_subject(
     role = AuthService(uow).get_role_display_name(user)
     if role == "coordinador":
         area_id = _current_user_area_id(uow, user.id)
-        body.area_id = UUID(area_id) if area_id else None
+        if area_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tu usuario no está vinculado a ningún área académica.",
+            )
+        body.area_id = UUID(area_id)
     entity = CreateSubject(uow).execute(body)
     return ApiResponse(data=SubjectOut(**entity.__dict__), message="Subject created")
 
@@ -150,7 +155,12 @@ async def list_subjects(
     role = AuthService(uow).get_role_display_name(user)
     if role == "coordinador":
         own_area_id = _current_user_area_id(uow, user.id)
-        area_id = UUID(own_area_id) if own_area_id else None
+        if own_area_id is None:
+            # A coordinador with no area link must never fall back to an
+            # unfiltered institution-wide list — that would leak every
+            # other area's subjects.
+            return ApiResponse(data=[], message="Subjects retrieved")
+        area_id = UUID(own_area_id)
     entities = ListSubjects(uow).execute(institution_id, area_id=area_id)
     return ApiResponse(
         data=[SubjectOut(**e.__dict__) for e in entities],

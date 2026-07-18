@@ -28,6 +28,7 @@ from app.api.schemas.schedule import (
 )
 from app.application.commands.schedule_commands import (
     BlockSchedule,
+    DeleteScheduleRun,
     GenerateSchedule,
     PublishSchedule,
     StartScheduleGeneration,
@@ -124,6 +125,19 @@ async def block_schedule(
         data=ScheduleRunOut.model_validate(asdict(run)),
         message="Schedule blocked",
     )
+
+
+@router.delete(
+    "/schedule-runs/{run_id}",
+    status_code=204,
+)
+async def delete_schedule_run(
+    run_id: UUID,
+    _user=Depends(require_role("director")),
+    uow: UnitOfWork = Depends(get_uow),
+) -> Response:
+    DeleteScheduleRun(uow).execute(run_id)
+    return Response(status_code=204)
 
 
 @router.patch(

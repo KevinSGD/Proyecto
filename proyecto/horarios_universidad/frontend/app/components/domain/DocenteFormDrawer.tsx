@@ -206,11 +206,11 @@ export default function DocenteFormDrawer({ instructor, onClose, onSaved }: Prop
             <SelectField label="Tipo de contrato" value={contractType} onChange={setContractType}
               options={CONTRACT_OPTIONS} labels={CONTRACT_LABELS} />
             <div className="grid gap-4 sm:grid-cols-2">
-              <NumberField label="Máx. periodos/día" value={maxDailyPeriods} onChange={setMaxDailyPeriods} />
-              <NumberField label="Máx. periodos/semana" value={maxWeeklyPeriods} onChange={setMaxWeeklyPeriods} error={errors.maxWeeklyPeriods} />
+              <NumberField label="Máx. horas/día" value={maxDailyPeriods} onChange={setMaxDailyPeriods} />
+              <NumberField label="Máx. horas/semana" value={maxWeeklyPeriods} onChange={setMaxWeeklyPeriods} error={errors.maxWeeklyPeriods} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <NumberField label="Mín. periodos/semana" value={minWeeklyPeriods} onChange={setMinWeeklyPeriods} />
+              <NumberField label="Mín. horas/semana" value={minWeeklyPeriods} onChange={setMinWeeklyPeriods} />
               <NumberField label="Máx. días/semana" value={maxDays} onChange={setMaxDays} />
             </div>
             {existingContract && (

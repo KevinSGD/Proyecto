@@ -24,6 +24,7 @@ class ScheduleType:
     start_period: int = 0
     end_period: int = 0
     slot_duration_minutes: int = 60
+    start_hour: int = 7
 
 
 @dataclass

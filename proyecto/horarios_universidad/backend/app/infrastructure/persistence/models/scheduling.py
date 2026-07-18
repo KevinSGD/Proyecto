@@ -39,6 +39,7 @@ class ScheduleTypeModel(Base):
     slot_duration_minutes: Mapped[int] = mapped_column(
         Integer, default=60
     )
+    start_hour: Mapped[int] = mapped_column(Integer, default=7)
 
     __table_args__ = (
         UniqueConstraint(

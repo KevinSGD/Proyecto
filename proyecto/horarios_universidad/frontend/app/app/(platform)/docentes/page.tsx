@@ -29,6 +29,7 @@ import type { Subject } from '@/lib/types/academic'
 import type { AcademicArea } from '@/lib/types/academic'
 import DocenteFormDrawer from '@/components/domain/DocenteFormDrawer'
 import AvailabilityGrid, { type AvailabilitySlot } from '@/components/domain/AvailabilityGrid'
+import { useScheduleType } from '@/lib/hooks/useScheduleType'
 
 const PAGE_SIZE = 10
 const CONTRACT_LABELS: Record<string, string> = {
@@ -70,6 +71,7 @@ function DirectorDocentes() {
     [institutionId],
   )
   const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
+  const { config: scheduleConfig } = useScheduleType()
 
   const openAvailability = async (t: Instructor) => {
     setAvailabilityTarget(t)
@@ -263,6 +265,11 @@ function DirectorDocentes() {
             initialSlots={availabilitySlots}
             onSave={handleSaveAvailability}
             saving={savingAvailability}
+            startPeriod={scheduleConfig.startPeriod}
+            endPeriod={scheduleConfig.endPeriod}
+            startHour={scheduleConfig.startHour}
+            slotDurationMinutes={scheduleConfig.slotDurationMinutes}
+            activeDays={scheduleConfig.activeDays}
           />
         )}
       </Drawer>

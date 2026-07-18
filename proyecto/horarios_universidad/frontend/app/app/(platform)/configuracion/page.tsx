@@ -12,12 +12,14 @@ import { SkeletonCard } from '@/components/ui/Skeleton'
 import ErrorState from '@/components/ui/ErrorState'
 import RoleGuard from '@/lib/guards/RoleGuard'
 import { institutionService } from '@/lib/services/institution.service'
+import { offeringService } from '@/lib/services/offering.service'
 
 export default function ConfiguracionPage() {
   const { toasts, addToast, removeToast } = useToast()
   const { data, loading, error, refetch } = useApiQuery(() => institutionService.list(), [])
   const institutions = data?.data ?? []
   const institution = institutions[0] ?? null
+  const institutionId = institution?.id ?? ''
 
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
@@ -27,10 +29,17 @@ export default function ConfiguracionPage() {
   const [address, setAddress] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const { data: stData, loading: stLoading, refetch: stRefetch } = useApiQuery(
+    () => institutionId ? offeringService.listScheduleTypes(institutionId) : Promise.resolve({ data: [] } as any),
+    [institutionId],
+  )
+  const scheduleType = (stData?.data ?? [])[0] ?? null
+
   const [slotDuration, setSlotDuration] = useState(60)
-  const [startHour, setStartHour] = useState('07:00')
-  const [endHour, setEndHour] = useState('21:00')
-  const [workDays, setWorkDays] = useState(6)
+  const [startHour, setStartHour] = useState(7)
+  const [blocksPerDay, setBlocksPerDay] = useState(12)
+  const [workDays, setWorkDays] = useState(5)
+  const [savingSchedule, setSavingSchedule] = useState(false)
 
   useEffect(() => {
     if (institution) {
@@ -42,6 +51,15 @@ export default function ConfiguracionPage() {
       setAddress(institution.address ?? '')
     }
   }, [institution])
+
+  useEffect(() => {
+    if (scheduleType) {
+      setSlotDuration(scheduleType.slotDurationMinutes)
+      setStartHour(scheduleType.startHour)
+      setBlocksPerDay(scheduleType.endPeriod - scheduleType.startPeriod + 1)
+      setWorkDays(scheduleType.activeDays.length)
+    }
+  }, [scheduleType])
 
   const handleSaveInstitution = async () => {
     setSaving(true)
@@ -57,9 +75,44 @@ export default function ConfiguracionPage() {
     finally { setSaving(false) }
   }
 
-  const handleSaveScheduleParams = () => {
-    addToast('info', 'Los parámetros del solver se guardan al lanzar una ejecución')
+  const handleSaveScheduleParams = async () => {
+    if (!institutionId) return
+    setSavingSchedule(true)
+    const activeDays = Array.from({ length: Math.min(Math.max(workDays, 1), 7) }, (_, i) => i)
+    const endPeriod = Math.max(blocksPerDay, 1)
+    try {
+      if (scheduleType) {
+        await offeringService.updateScheduleType(scheduleType.id, {
+          slotDurationMinutes: slotDuration,
+          startHour,
+          startPeriod: 1,
+          endPeriod,
+          activeDays,
+        })
+      } else {
+        await offeringService.createScheduleType({
+          institutionId,
+          name: 'Diurno',
+          scheduleType: 'regular',
+          slotDurationMinutes: slotDuration,
+          startHour,
+          startPeriod: 1,
+          endPeriod,
+          activeDays,
+        })
+      }
+      addToast('success', 'Parámetros de horario guardados')
+      stRefetch()
+    } catch {
+      addToast('error', 'Error al guardar los parámetros de horario')
+    } finally {
+      setSavingSchedule(false)
+    }
   }
+
+  const endHourPreview = startHour + (blocksPerDay * slotDuration) / 60
+  const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+  const activeDayPreview = dayNames.slice(0, Math.min(Math.max(workDays, 1), 7)).join(', ')
 
   return (
     <RoleGuard allowed={['director']} fallback={<p className="text-muted-foreground">Sin acceso.</p>}>
@@ -88,15 +141,20 @@ export default function ConfiguracionPage() {
               </div>
             </Card>
 
-            <Card title="Parámetros de horarios" subtitle="Configuración del solver"
-              actions={<Button size="sm" variant="secondary" icon={<Save className="size-4" />} onClick={handleSaveScheduleParams}>Aplicar</Button>}>
+            <Card title="Parámetros de horarios" subtitle="Jornada y bloques de hora que usa el solver"
+              actions={<Button size="sm" variant="secondary" icon={<Save className="size-4" />} loading={savingSchedule} disabled={stLoading} onClick={handleSaveScheduleParams}>Guardar</Button>}>
               <div className="space-y-4">
                 <NumberField label="Duración del bloque (minutos)" value={slotDuration} onChange={setSlotDuration} />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Hora inicio jornada" value={startHour} onChange={setStartHour} placeholder="07:00" />
-                  <Field label="Hora fin jornada" value={endHour} onChange={setEndHour} placeholder="21:00" />
+                  <NumberField label="Hora de inicio de jornada (0-23)" value={startHour} onChange={setStartHour} />
+                  <NumberField label="Horas de clase por día" value={blocksPerDay} onChange={setBlocksPerDay} />
                 </div>
                 <NumberField label="Días laborales por semana" value={workDays} onChange={setWorkDays} />
+                <p className="text-xs text-muted-foreground">
+                  Jornada resultante: {String(startHour).padStart(2, '0')}:00 – {String(Math.round(endHourPreview) % 24).padStart(2, '0')}:00,
+                  {' '}{activeDayPreview || 'sin días activos'}.
+                  {' '}Esto define cuántas "horas" aparecen en la disponibilidad de docentes y aulas, y en la grilla de horarios.
+                </p>
               </div>
             </Card>
           </div>

@@ -85,6 +85,7 @@ class ScheduleTypeCreate(CamelModel):
     start_period: int = Field(..., ge=0)
     end_period: int = Field(..., ge=0)
     slot_duration_minutes: int | None = None
+    start_hour: int | None = Field(default=None, ge=0, le=23)
 
 
 class ScheduleTypeUpdate(CamelModel):
@@ -94,6 +95,7 @@ class ScheduleTypeUpdate(CamelModel):
     start_period: int | None = Field(default=None, ge=0)
     end_period: int | None = Field(default=None, ge=0)
     slot_duration_minutes: int | None = None
+    start_hour: int | None = Field(default=None, ge=0, le=23)
 
 
 class ScheduleTypeOut(CamelModel):
@@ -105,6 +107,7 @@ class ScheduleTypeOut(CamelModel):
     start_period: int
     end_period: int
     slot_duration_minutes: int
+    start_hour: int
 
 
 # -- Group -------------------------------------------------------------------

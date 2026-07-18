@@ -1,4 +1,4 @@
-export type RunStatus = 'pending' | 'running' | 'optimal' | 'feasible' | 'published' | 'error' | 'blocked'
+export type RunStatus = 'pending' | 'running' | 'optimal' | 'feasible' | 'infeasible' | 'published' | 'error' | 'blocked'
 
 export interface ScheduleRun {
   id: string

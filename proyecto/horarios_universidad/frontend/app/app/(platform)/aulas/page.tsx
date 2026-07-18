@@ -24,6 +24,7 @@ import type { Classroom, Building, Resource } from '@/lib/types/infrastructure'
 import RoleGuard from '@/lib/guards/RoleGuard'
 import AulaFormDrawer from '@/components/domain/AulaFormDrawer'
 import AvailabilityGrid, { type AvailabilitySlot } from '@/components/domain/AvailabilityGrid'
+import { useScheduleType } from '@/lib/hooks/useScheduleType'
 
 const PAGE_SIZE = 10
 
@@ -82,6 +83,7 @@ export default function AulasPage() {
     [institutionId],
   )
   const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
+  const { config: scheduleConfig } = useScheduleType()
 
   const openAvailability = async (c: Classroom) => {
     setAvailabilityTarget(c)
@@ -512,6 +514,11 @@ export default function AulasPage() {
               initialSlots={availabilitySlots}
               onSave={handleSaveAvailability}
               saving={savingAvailability}
+              startPeriod={scheduleConfig.startPeriod}
+              endPeriod={scheduleConfig.endPeriod}
+              startHour={scheduleConfig.startHour}
+              slotDurationMinutes={scheduleConfig.slotDurationMinutes}
+              activeDays={scheduleConfig.activeDays}
             />
           )}
         </Drawer>

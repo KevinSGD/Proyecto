@@ -92,57 +92,16 @@ class DeleteTeacher:
         self._uow = uow
 
     def execute(self, instructor_id) -> bool:
-        from app.infrastructure.persistence.models.personnel import (
-            InstructorAvailabilityModel,
-            InstructorContractModel,
-            InstructorPreferenceModel,
-            InstructorQualificationModel,
-            InstructorSpecialtyModel,
-        )
-        from app.infrastructure.persistence.models.schedule import (
-            AssignmentModel,
-            SessionBlockModel,
-        )
+        from app.application.services.cascade_delete import delete_instructor_cascade
 
         with self._uow:
             existing = self._uow.instructors.get_by_id(instructor_id)
             if existing is None:
                 raise ResourceNotFoundError("Instructor", instructor_id)
 
-            session = self._uow._session
-            assignment_ids = [
-                row.id
-                for row in session.query(AssignmentModel.id)
-                .filter(AssignmentModel.instructor_id == instructor_id)
-                .all()
-            ]
-            if assignment_ids:
-                session.query(SessionBlockModel).filter(
-                    SessionBlockModel.assignment_id.in_(assignment_ids),
-                ).delete(synchronize_session=False)
-                session.query(AssignmentModel).filter(
-                    AssignmentModel.id.in_(assignment_ids),
-                ).delete(synchronize_session=False)
-
-            session.query(InstructorContractModel).filter(
-                InstructorContractModel.instructor_id == instructor_id,
-            ).delete(synchronize_session=False)
-            session.query(InstructorSpecialtyModel).filter(
-                InstructorSpecialtyModel.instructor_id == instructor_id,
-            ).delete(synchronize_session=False)
-            session.query(InstructorQualificationModel).filter(
-                InstructorQualificationModel.instructor_id == instructor_id,
-            ).delete(synchronize_session=False)
-            session.query(InstructorAvailabilityModel).filter(
-                InstructorAvailabilityModel.instructor_id == instructor_id,
-            ).delete(synchronize_session=False)
-            session.query(InstructorPreferenceModel).filter(
-                InstructorPreferenceModel.instructor_id == instructor_id,
-            ).delete(synchronize_session=False)
-
-            result = self._uow.instructors.delete(instructor_id)
+            delete_instructor_cascade(self._uow._session, instructor_id)
             self._uow.commit()
-            return result
+            return True
 
 
 class CreateTeacherContract:

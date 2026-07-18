@@ -22,6 +22,8 @@ __all__ = [
     "delete_groups_cascade",
     "delete_offering_lines_cascade",
     "delete_offerings_cascade",
+    "delete_subject_cascade",
+    "delete_instructor_cascade",
 ]
 
 
@@ -103,4 +105,96 @@ def delete_offerings_cascade(session: Session, offering_ids: list[EntityId]) -> 
 
     session.query(AcademicOfferingModel).filter(
         AcademicOfferingModel.id.in_(offering_ids),
+    ).delete(synchronize_session=False)
+
+
+def delete_subject_cascade(session: Session, subject_id: EntityId) -> None:
+    """Delete every row referencing a subject, then the subject itself.
+
+    Covers offering lines (cascading down to groups/assignments/session
+    blocks), resource requirements, instructor specialties, and standalone
+    instructor preferences that reference the subject directly (not just
+    through a group) — a gap that let ``DeleteSubject``/``DeleteArea`` raise
+    a raw FK ``IntegrityError`` if any such preference existed.
+    """
+    from app.infrastructure.persistence.models.academic import SubjectModel
+    from app.infrastructure.persistence.models.infrastructure_models import (
+        SubjectResourceRequirementModel,
+    )
+    from app.infrastructure.persistence.models.offering import OfferingLineModel
+    from app.infrastructure.persistence.models.personnel import (
+        InstructorPreferenceModel,
+        InstructorSpecialtyModel,
+    )
+
+    line_ids = [
+        row.id
+        for row in session.query(OfferingLineModel.id)
+        .filter(OfferingLineModel.subject_id == subject_id)
+        .all()
+    ]
+    delete_offering_lines_cascade(session, line_ids)
+
+    session.query(SubjectResourceRequirementModel).filter(
+        SubjectResourceRequirementModel.subject_id == subject_id,
+    ).delete(synchronize_session=False)
+    session.query(InstructorSpecialtyModel).filter(
+        InstructorSpecialtyModel.subject_id == subject_id,
+    ).delete(synchronize_session=False)
+    session.query(InstructorPreferenceModel).filter(
+        InstructorPreferenceModel.subject_id == subject_id,
+    ).delete(synchronize_session=False)
+
+    session.query(SubjectModel).filter(
+        SubjectModel.id == subject_id,
+    ).delete(synchronize_session=False)
+
+
+def delete_instructor_cascade(session: Session, instructor_id: EntityId) -> None:
+    """Delete every row referencing an instructor, then the instructor itself."""
+    from app.infrastructure.persistence.models.personnel import (
+        InstructorAvailabilityModel,
+        InstructorContractModel,
+        InstructorModel,
+        InstructorPreferenceModel,
+        InstructorQualificationModel,
+        InstructorSpecialtyModel,
+    )
+    from app.infrastructure.persistence.models.schedule import (
+        AssignmentModel,
+        SessionBlockModel,
+    )
+
+    assignment_ids = [
+        row.id
+        for row in session.query(AssignmentModel.id)
+        .filter(AssignmentModel.instructor_id == instructor_id)
+        .all()
+    ]
+    if assignment_ids:
+        session.query(SessionBlockModel).filter(
+            SessionBlockModel.assignment_id.in_(assignment_ids),
+        ).delete(synchronize_session=False)
+        session.query(AssignmentModel).filter(
+            AssignmentModel.id.in_(assignment_ids),
+        ).delete(synchronize_session=False)
+
+    session.query(InstructorContractModel).filter(
+        InstructorContractModel.instructor_id == instructor_id,
+    ).delete(synchronize_session=False)
+    session.query(InstructorSpecialtyModel).filter(
+        InstructorSpecialtyModel.instructor_id == instructor_id,
+    ).delete(synchronize_session=False)
+    session.query(InstructorQualificationModel).filter(
+        InstructorQualificationModel.instructor_id == instructor_id,
+    ).delete(synchronize_session=False)
+    session.query(InstructorAvailabilityModel).filter(
+        InstructorAvailabilityModel.instructor_id == instructor_id,
+    ).delete(synchronize_session=False)
+    session.query(InstructorPreferenceModel).filter(
+        InstructorPreferenceModel.instructor_id == instructor_id,
+    ).delete(synchronize_session=False)
+
+    session.query(InstructorModel).filter(
+        InstructorModel.id == instructor_id,
     ).delete(synchronize_session=False)

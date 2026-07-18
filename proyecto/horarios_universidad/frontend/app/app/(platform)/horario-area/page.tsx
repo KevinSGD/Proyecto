@@ -15,23 +15,17 @@ import type { ScheduleRun } from '@/lib/types/scheduling'
 import type { EnrichedAssignment } from '@/components/schedule/types'
 import RoleGuard from '@/lib/guards/RoleGuard'
 
-const HORA_START = 7
-const HORA_END = 21
 const HORA_WIDTH = 96
 const LANE_HEIGHT = 92
 const DAY_LABEL_WIDTH = 112
 
-const TOTAL_HORAS = HORA_END - HORA_START
-const TRACK_WIDTH = TOTAL_HORAS * HORA_WIDTH
-const HOUR_SLOTS = Array.from({ length: TOTAL_HORAS }, (_, i) => HORA_START + i)
-
 const parseHora = (h: string) => parseInt(h.split(':')[0], 10)
 
-function getBlockStyle(a: EnrichedAssignment): { left: number; width: number } {
+function getBlockStyle(a: EnrichedAssignment, horaStart: number): { left: number; width: number } {
   const start = parseHora(a.startTime)
   const end = parseHora(a.endTime)
   return {
-    left: (start - HORA_START) * HORA_WIDTH,
+    left: (start - horaStart) * HORA_WIDTH,
     width: (end - start) * HORA_WIDTH,
   }
 }
@@ -54,8 +48,8 @@ function asignarCarriles(bloques: EnrichedAssignment[]): { asignados: { bloque: 
   return { asignados, carriles: Math.max(1, finPorCarril.length) }
 }
 
-function BloqueCard({ a, carril, onClick }: { a: EnrichedAssignment; carril: number; onClick: () => void }) {
-  const { left, width } = getBlockStyle(a)
+function BloqueCard({ a, carril, onClick, horaStart }: { a: EnrichedAssignment; carril: number; onClick: () => void; horaStart: number }) {
+  const { left, width } = getBlockStyle(a, horaStart)
   const color = getBlockColor(a.colorIndex)
 
   return (
@@ -117,7 +111,13 @@ function HorarioAreaContent() {
     return published[0]?.id ?? ''
   }, [runs])
 
-  const { assignments: allAssignments, loading, teachers: allTeachers, subjects: allSubjects } = useScheduleData(activeRunId)
+  const { assignments: allAssignments, loading, teachers: allTeachers, subjects: allSubjects, scheduleConfig } = useScheduleData(activeRunId)
+
+  const HORA_START = scheduleConfig.startHour
+  const HORA_END = scheduleConfig.startHour + Math.ceil((scheduleConfig.endPeriod - scheduleConfig.startPeriod + 1) * scheduleConfig.slotDurationMinutes / 60)
+  const TOTAL_HORAS = HORA_END - HORA_START
+  const TRACK_WIDTH = TOTAL_HORAS * HORA_WIDTH
+  const HOUR_SLOTS = Array.from({ length: TOTAL_HORAS }, (_, i) => HORA_START + i)
 
   // Area scoping: a coordinador must only ever see their own area's
   // subjects, teachers, and sessions — never other areas' data.
@@ -309,7 +309,7 @@ function HorarioAreaContent() {
                       <div key={h} className="absolute top-0 bottom-0 border-l border-border/50" style={{ left: (h - HORA_START) * HORA_WIDTH }} />
                     ))}
                     {asignados.map(({ bloque, carril }) => (
-                      <BloqueCard key={bloque.id} a={bloque} carril={carril} onClick={() => setSelectedBloque(bloque)} />
+                      <BloqueCard key={bloque.id} a={bloque} carril={carril} onClick={() => setSelectedBloque(bloque)} horaStart={HORA_START} />
                     ))}
                     {bloquesDia.length === 0 && (
                       <div className="absolute inset-0 flex items-center justify-center">

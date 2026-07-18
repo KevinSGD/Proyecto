@@ -18,6 +18,8 @@ import {
 import { cn } from '@/lib/utils/cn'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import { useUiStore } from '@/lib/stores/ui.store'
+import { areaService } from '@/lib/services/area.service'
+import { useApiQuery } from '@/lib/hooks/useApiQuery'
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -32,8 +34,15 @@ const NAV_ITEMS = [
 export default function CoordinatorSidebar() {
   const pathname = usePathname()
   const logout = useAuthStore((s) => s.logout)
+  const areaId = useAuthStore((s) => s.user?.areaId)
   const mobileSidebarOpen = useUiStore((s) => s.mobileSidebarOpen)
   const closeMobileSidebar = useUiStore((s) => s.closeMobileSidebar)
+
+  const { data: areaData } = useApiQuery(
+    () => areaId ? areaService.getById(areaId) : Promise.resolve({ data: null } as any),
+    [areaId],
+  )
+  const areaName = (areaData?.data as { name: string } | null)?.name ?? 'Coordinación de área'
 
   const sidebar = (
     <aside className="flex h-full w-64 flex-col bg-white border-r border-border shadow-sm">
@@ -44,7 +53,7 @@ export default function CoordinatorSidebar() {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold text-foreground leading-tight truncate">HorarioIA</p>
-            <p className="text-xs text-muted-foreground leading-tight truncate">Coordinación de área</p>
+            <p className="text-xs text-muted-foreground leading-tight truncate" title={areaName}>{areaName}</p>
           </div>
         </div>
         <button

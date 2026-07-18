@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Button from '@/components/ui/Button'
 
 export interface AvailabilitySlot {
@@ -9,22 +9,50 @@ export interface AvailabilitySlot {
   isAvailable: boolean
 }
 
-const DAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
-const PERIODS = Array.from({ length: 12 }, (_, i) => i + 1)
+const ALL_DAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
 function keyOf(day: number, period: number) {
   return `${day}-${period}`
+}
+
+function formatHour(hour: number) {
+  const h = ((hour % 24) + 24) % 24
+  return `${String(h).padStart(2, '0')}:00`
 }
 
 export default function AvailabilityGrid({
   initialSlots,
   onSave,
   saving = false,
+  startPeriod = 1,
+  endPeriod = 12,
+  startHour = 7,
+  slotDurationMinutes = 60,
+  activeDays = [0, 1, 2, 3, 4],
 }: {
   initialSlots: AvailabilitySlot[]
   onSave: (slots: AvailabilitySlot[]) => void
   saving?: boolean
+  startPeriod?: number
+  endPeriod?: number
+  startHour?: number
+  slotDurationMinutes?: number
+  activeDays?: number[]
 }) {
+  const days = useMemo(
+    () => [...activeDays].sort((a, b) => a - b).map(d => ({ index: d, label: ALL_DAY_LABELS[d] ?? `Día ${d}` })),
+    [activeDays],
+  )
+  const hours = useMemo(
+    () => Array.from({ length: Math.max(endPeriod - startPeriod + 1, 0) }, (_, i) => startPeriod + i),
+    [startPeriod, endPeriod],
+  )
+  const clockLabel = (period: number) => {
+    const from = startHour + ((period - startPeriod) * slotDurationMinutes) / 60
+    const to = from + slotDurationMinutes / 60
+    return `${formatHour(from)}–${formatHour(to)}`
+  }
+
   const [active, setActive] = useState<Set<string>>(
     () => new Set(initialSlots.filter(s => s.isAvailable).map(s => keyOf(s.dayOfWeek, s.period))),
   )
@@ -43,13 +71,13 @@ export default function AvailabilityGrid({
     })
   }
 
-  const selectAll = () => setActive(new Set(DAY_LABELS.flatMap((_, d) => PERIODS.map(p => keyOf(d, p)))))
+  const selectAll = () => setActive(new Set(days.flatMap(({ index: d }) => hours.map(p => keyOf(d, p)))))
   const clearAll = () => setActive(new Set())
 
   const handleSave = () => {
     const slots: AvailabilitySlot[] = []
-    for (let d = 0; d < DAY_LABELS.length; d++) {
-      for (const p of PERIODS) {
+    for (const { index: d } of days) {
+      for (const p of hours) {
         slots.push({ dayOfWeek: d, period: p, isAvailable: active.has(keyOf(d, p)) })
       }
     }
@@ -59,7 +87,9 @@ export default function AvailabilityGrid({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">Haz clic en los bloques para marcar disponibilidad (Lunes a Viernes, periodos 1–12).</p>
+        <p className="text-xs text-muted-foreground">
+          Haz clic en los bloques para marcar disponibilidad ({days[0]?.label ?? ''} a {days[days.length - 1]?.label ?? ''}, horas de clase {formatHour(startHour)}–{formatHour(startHour + hours.length * slotDurationMinutes / 60)}).
+        </p>
         <div className="flex gap-3 shrink-0">
           <button type="button" onClick={selectAll} className="text-xs font-medium text-primary hover:underline">Seleccionar todo</button>
           <button type="button" onClick={clearAll} className="text-xs font-medium text-muted-foreground hover:underline">Limpiar</button>
@@ -70,14 +100,19 @@ export default function AvailabilityGrid({
           <thead>
             <tr className="bg-muted/50">
               <th className="p-1.5 text-left text-muted-foreground font-medium w-20">Día</th>
-              {PERIODS.map(p => <th key={p} className="p-1.5 text-center text-muted-foreground font-medium">{p}</th>)}
+              {hours.map(p => (
+                <th key={p} className="p-1.5 text-center text-muted-foreground font-medium whitespace-nowrap">
+                  <div>Hora {p - startPeriod + 1}</div>
+                  <div className="font-normal opacity-70">{clockLabel(p)}</div>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {DAY_LABELS.map((label, d) => (
+            {days.map(({ index: d, label }) => (
               <tr key={d} className="border-t border-border">
                 <td className="p-1.5 font-medium text-foreground">{label}</td>
-                {PERIODS.map((p) => {
+                {hours.map((p) => {
                   const isActive = active.has(keyOf(d, p))
                   return (
                     <td key={p} className="p-0.5 text-center">
@@ -85,7 +120,7 @@ export default function AvailabilityGrid({
                         type="button"
                         onClick={() => toggle(d, p)}
                         className={`size-6 rounded transition-colors ${isActive ? 'bg-primary' : 'bg-muted hover:bg-border'}`}
-                        aria-label={`${label} periodo ${p} — ${isActive ? 'disponible' : 'no disponible'}`}
+                        aria-label={`${label} hora ${p - startPeriod + 1} (${clockLabel(p)}) — ${isActive ? 'disponible' : 'no disponible'}`}
                         aria-pressed={isActive}
                       />
                     </td>

@@ -9,6 +9,7 @@ import { offeringService } from '@/lib/services/offering.service'
 import { institutionService } from '@/lib/services/institution.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import { useApiQuery } from './useApiQuery'
+import { useScheduleType } from './useScheduleType'
 import { hashStringToIndex } from '@/components/schedule/palette'
 import type { Assignment, Group } from '@/lib/types/scheduling'
 import type { Instructor } from '@/lib/types/personnel'
@@ -16,10 +17,8 @@ import type { Classroom } from '@/lib/types/infrastructure'
 import type { Subject } from '@/lib/types/academic'
 import type { EnrichedAssignment } from '@/components/schedule/types'
 
-const START_HOUR = 7
-
-function periodToTime(period: number, slotMinutes: number = 60): string {
-  const totalMinutes = START_HOUR * 60 + (period - 1) * slotMinutes
+function periodToTime(period: number, startHour: number, slotMinutes: number): string {
+  const totalMinutes = startHour * 60 + (period - 1) * slotMinutes
   const h = Math.floor(totalMinutes / 60)
   const m = totalMinutes % 60
   return `${h}:${String(m).padStart(2, '0')}`
@@ -33,6 +32,7 @@ export function useScheduleData(runId: string) {
     [institutionId],
   )
   const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
+  const { config: scheduleConfig } = useScheduleType()
 
   const { data: assData, loading: assLoad, error: assErr, refetch } =
     useApiQuery(
@@ -83,8 +83,8 @@ export function useScheduleData(runId: string) {
 
       for (const s of a.sessions ?? []) {
         const classroom = classroomMap.get(s.classroomId)
-        const startTime = periodToTime(s.startPeriod)
-        const endTime = periodToTime(s.startPeriod + s.duration)
+        const startTime = periodToTime(s.startPeriod, scheduleConfig.startHour, scheduleConfig.slotDurationMinutes)
+        const endTime = periodToTime(s.startPeriod + s.duration, scheduleConfig.startHour, scheduleConfig.slotDurationMinutes)
 
         rows.push({
           id: s.id,
@@ -105,7 +105,7 @@ export function useScheduleData(runId: string) {
       }
     }
     return rows
-  }, [rawAssignments, teacherMap, classroomMap, subjectMap, groupMap])
+  }, [rawAssignments, teacherMap, classroomMap, subjectMap, groupMap, scheduleConfig])
 
   const loading = assLoad || tchLoad || crLoad || subLoad || grpLoad
 
@@ -129,5 +129,6 @@ export function useScheduleData(runId: string) {
     classrooms,
     subjects,
     legendItems,
+    scheduleConfig,
   }
 }

@@ -138,6 +138,7 @@ class CreateScheduleType:
                 start_period=data.start_period,
                 end_period=data.end_period,
                 slot_duration_minutes=data.slot_duration_minutes or 60,
+                start_hour=data.start_hour if data.start_hour is not None else 7,
             )
             self._uow.schedule_types.save(entity)
             self._uow.commit()

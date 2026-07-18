@@ -90,7 +90,11 @@ class DeleteArea:
         self._uow = uow
 
     def execute(self, area_id: UUID) -> bool:
-        from app.application.services.cascade_delete import delete_offerings_cascade
+        from app.application.services.cascade_delete import (
+            delete_instructor_cascade,
+            delete_offerings_cascade,
+            delete_subject_cascade,
+        )
         from app.infrastructure.persistence.models.academic import (
             SubjectModel,
         )
@@ -113,12 +117,27 @@ class DeleteArea:
             ]
             delete_offerings_cascade(session, offering_ids)
 
-            session.query(SubjectModel).filter(
-                SubjectModel.area_id == area_id,
-            ).update({"area_id": None}, synchronize_session=False)
-            session.query(InstructorModel).filter(
-                InstructorModel.area_id == area_id,
-            ).update({"area_id": None}, synchronize_session=False)
+            # Subjects and instructors belong to exactly one area — deleting
+            # the area deletes them too (fully, via their own cascades)
+            # rather than leaving them behind as area-less orphans.
+            subject_ids = [
+                row.id
+                for row in session.query(SubjectModel.id)
+                .filter(SubjectModel.area_id == area_id)
+                .all()
+            ]
+            for subject_id in subject_ids:
+                delete_subject_cascade(session, subject_id)
+
+            instructor_ids = [
+                row.id
+                for row in session.query(InstructorModel.id)
+                .filter(InstructorModel.area_id == area_id)
+                .all()
+            ]
+            for instructor_id in instructor_ids:
+                delete_instructor_cascade(session, instructor_id)
+
             session.query(UserAreaModel).filter(
                 UserAreaModel.area_id == area_id,
             ).delete(synchronize_session=False)
@@ -175,39 +194,13 @@ class DeleteSubject:
         self._uow = uow
 
     def execute(self, subject_id: UUID) -> bool:
-        from app.application.services.cascade_delete import (
-            delete_offering_lines_cascade,
-        )
-        from app.infrastructure.persistence.models.infrastructure_models import (
-            SubjectResourceRequirementModel,
-        )
-        from app.infrastructure.persistence.models.offering import (
-            OfferingLineModel,
-        )
-        from app.infrastructure.persistence.models.personnel import (
-            InstructorSpecialtyModel,
-        )
+        from app.application.services.cascade_delete import delete_subject_cascade
 
         with self._uow:
-            session = self._uow._session
-
-            line_ids = [
-                row.id
-                for row in session.query(OfferingLineModel.id)
-                .filter(OfferingLineModel.subject_id == subject_id)
-                .all()
-            ]
-            delete_offering_lines_cascade(session, line_ids)
-
-            session.query(SubjectResourceRequirementModel).filter(
-                SubjectResourceRequirementModel.subject_id == subject_id,
-            ).delete(synchronize_session=False)
-            session.query(InstructorSpecialtyModel).filter(
-                InstructorSpecialtyModel.subject_id == subject_id,
-            ).delete(synchronize_session=False)
-
-            deleted = self._uow.subjects.delete(subject_id)
-            if not deleted:
+            existing = self._uow.subjects.get_by_id(subject_id)
+            if existing is None:
                 raise ResourceNotFoundError("Subject", subject_id)
+
+            delete_subject_cascade(self._uow._session, subject_id)
             self._uow.commit()
             return True

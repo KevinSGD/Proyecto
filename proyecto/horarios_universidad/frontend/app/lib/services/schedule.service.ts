@@ -44,6 +44,10 @@ export const scheduleService = {
     return api.post<ApiResponse<ScheduleRun>>(`${BASE}/schedule/block`, { scheduleRunId: runId })
   },
 
+  deleteRun(runId: string) {
+    return api.delete(`${BASE}/schedule-runs/${runId}`)
+  },
+
   validate(institutionId: string, periodId: string, runId?: string) {
     return api.post<ApiResponse<unknown>>(`${BASE}/schedule/validate`, { institutionId, periodId, runId })
   },
