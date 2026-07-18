@@ -183,6 +183,7 @@ class ScheduleGenerationService:
         self,
         institution_id: EntityId,
         period_id: EntityId,
+        run_id: EntityId | None = None,
     ) -> ValidationReport:
         """Run domain validation and return the report."""
         from app.application.services.domain_validator import (
@@ -190,7 +191,7 @@ class ScheduleGenerationService:
         )
 
         return DomainValidationService(self._uow).validate_for_optimization(
-            institution_id, period_id,
+            institution_id, period_id, run_id,
         )
 
     # ── private helpers ──────────────────────────────────────────────────

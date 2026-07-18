@@ -22,6 +22,8 @@ from .validators import (
     InstructorValidationData,
     OfferingDataValidator,
     OfferingValidationData,
+    ScheduleConflictValidationData,
+    ScheduleConflictValidator,
     SubjectDataValidator,
     SubjectValidationData,
 )
@@ -44,8 +46,15 @@ class DomainValidationService:
         self,
         institution_id: EntityId,
         period_id: EntityId,
+        run_id: EntityId | None = None,
     ) -> ValidationReport:
-        """Run all validators and return a comprehensive report."""
+        """Run all validators and return a comprehensive report.
+
+        If ``run_id`` is given, also checks that specific schedule run's
+        generated session blocks for teacher/classroom double-booking
+        (:class:`ScheduleConflictValidator`) — catches conflicts introduced
+        by manual drag-and-drop edits after the solver already ran.
+        """
         with self._uow:
             instructors = self._uow.instructors.list_by_institution(
                 institution_id,
@@ -137,6 +146,24 @@ class DomainValidationService:
                 (OfferingDataValidator(), offering_data),
                 (CapacityValidator(), capacity_data),
             ]
+
+            if run_id is not None:
+                assignments = self._uow.assignments.list_by_schedule_run(run_id)
+                session_blocks = []
+                for assignment in assignments:
+                    session_blocks.extend(
+                        self._uow.session_blocks.list_by_assignment(assignment.id),
+                    )
+                conflict_data = ScheduleConflictValidationData(
+                    assignments=assignments,
+                    session_blocks=session_blocks,
+                    groups=groups,
+                    subjects=subjects,
+                    instructors=instructors,
+                    classrooms=classrooms,
+                )
+                validators_and_data.append((ScheduleConflictValidator(), conflict_data))
+
             for validator, vdata in validators_and_data:
                 merged.merge(validator.validate(vdata))
 

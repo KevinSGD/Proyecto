@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Users, Plus, Eye, Pencil, Trash2, Mail, Phone, Search, Clock } from 'lucide-react'
+import { Users, Plus, Eye, Pencil, Trash2, Mail, Phone, Search, Clock, CalendarClock } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -20,6 +20,7 @@ import { useDebounce } from '@/lib/hooks/useDebounce'
 import { teacherService } from '@/lib/services/teacher.service'
 import { subjectService } from '@/lib/services/subject.service'
 import { areaService } from '@/lib/services/area.service'
+import { institutionService } from '@/lib/services/institution.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import { initials } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -27,6 +28,7 @@ import type { Instructor } from '@/lib/types/personnel'
 import type { Subject } from '@/lib/types/academic'
 import type { AcademicArea } from '@/lib/types/academic'
 import DocenteFormDrawer from '@/components/domain/DocenteFormDrawer'
+import AvailabilityGrid, { type AvailabilitySlot } from '@/components/domain/AvailabilityGrid'
 
 const PAGE_SIZE = 10
 const CONTRACT_LABELS: Record<string, string> = {
@@ -47,6 +49,10 @@ function DirectorDocentes() {
   const [viewing, setViewing] = useState<Instructor | null>(null)
   const [editing, setEditing] = useState<Instructor | null | 'new'>(null)
   const [deleting, setDeleting] = useState<Instructor | null>(null)
+  const [availabilityTarget, setAvailabilityTarget] = useState<Instructor | null>(null)
+  const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([])
+  const [loadingAvailability, setLoadingAvailability] = useState(false)
+  const [savingAvailability, setSavingAvailability] = useState(false)
   const { toasts, addToast, removeToast } = useToast()
 
   const { user } = useAuthStore()
@@ -58,6 +64,40 @@ function DirectorDocentes() {
     [institutionId],
   )
   const teachers: Instructor[] = data?.data ?? []
+
+  const { data: periodData } = useApiQuery(
+    () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
+    [institutionId],
+  )
+  const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
+
+  const openAvailability = async (t: Instructor) => {
+    setAvailabilityTarget(t)
+    setLoadingAvailability(true)
+    try {
+      const res = await teacherService.listAvailabilities(t.id, periodId || undefined)
+      setAvailabilitySlots((res.data ?? []).map(a => ({ dayOfWeek: a.dayOfWeek, period: a.period, isAvailable: a.isAvailable })))
+    } catch {
+      setAvailabilitySlots([])
+      addToast('error', 'Error al cargar la disponibilidad')
+    } finally {
+      setLoadingAvailability(false)
+    }
+  }
+
+  const handleSaveAvailability = async (slots: AvailabilitySlot[]) => {
+    if (!availabilityTarget) return
+    setSavingAvailability(true)
+    try {
+      await teacherService.setAvailability(availabilityTarget.id, { slots, periodId: periodId || undefined })
+      addToast('success', 'Disponibilidad guardada')
+      setAvailabilityTarget(null)
+    } catch {
+      addToast('error', 'Error al guardar la disponibilidad')
+    } finally {
+      setSavingAvailability(false)
+    }
+  }
 
   const { data: areaData } = useApiQuery(
     () => (isDirector && institutionId) ? areaService.list(institutionId) : Promise.resolve({ data: [] } as any),
@@ -161,6 +201,7 @@ function DirectorDocentes() {
                     <TD align="right">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => setViewing(t)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"><Eye className="size-4" /></button>
+                        <button onClick={() => openAvailability(t)} title="Disponibilidad" className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"><CalendarClock className="size-4" /></button>
                         <button onClick={() => setEditing(t)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"><Pencil className="size-4" /></button>
                         <button onClick={() => setDeleting(t)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger transition-colors"><Trash2 className="size-4" /></button>
                       </div>
@@ -209,6 +250,22 @@ function DirectorDocentes() {
         confirmLabel="Eliminar" onConfirm={handleDelete} destructive>
         <p>¿Eliminar a <strong>{deleting ? `${deleting.firstName} ${deleting.lastName}` : ''}</strong>?</p>
       </Modal>
+
+      <Drawer
+        open={!!availabilityTarget}
+        onClose={() => setAvailabilityTarget(null)}
+        title={availabilityTarget ? `Disponibilidad — ${fullName(availabilityTarget)}` : ''}
+      >
+        {loadingAvailability ? (
+          <p className="text-sm text-muted-foreground">Cargando disponibilidad...</p>
+        ) : (
+          <AvailabilityGrid
+            initialSlots={availabilitySlots}
+            onSave={handleSaveAvailability}
+            saving={savingAvailability}
+          />
+        )}
+      </Drawer>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>

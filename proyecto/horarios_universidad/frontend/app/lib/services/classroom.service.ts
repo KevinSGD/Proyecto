@@ -75,4 +75,16 @@ export const classroomService = {
   unassignResourceFromClassroom(classroomId: string, resourceId: string) {
     return api.delete(`${BASE}/classrooms/${classroomId}/resources/${resourceId}`)
   },
+
+  // Availability
+  listAvailability(classroomId: string, periodId?: string) {
+    return api.get<ApiResponse<{ id: string; classroomId: string; periodId: string | null; dayOfWeek: number; period: number; isAvailable: boolean }[]>>(
+      `${BASE}/classrooms/${classroomId}/availability`,
+      periodId ? { period_id: periodId } : undefined,
+    )
+  },
+
+  setAvailability(classroomId: string, data: { slots: { dayOfWeek: number; period: number; isAvailable: boolean }[]; periodId?: string }) {
+    return api.put<ApiResponse<{ saved: number }>>(`${BASE}/classrooms/${classroomId}/availability`, data)
+  },
 }

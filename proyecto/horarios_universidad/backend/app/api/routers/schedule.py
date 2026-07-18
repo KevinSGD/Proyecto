@@ -86,7 +86,7 @@ async def validate_schedule_data(
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[ValidationReportOut]:
     report = ValidateScheduleData(uow).execute(
-        body.institution_id, body.period_id,
+        body.institution_id, body.period_id, body.run_id,
     )
     return ApiResponse(
         data=ValidationReportOut.model_validate(asdict(report)),
@@ -230,12 +230,15 @@ async def get_schedule_assignments(
 @router.get("/schedule-runs/{run_id}/export")
 async def export_schedule_run(
     run_id: UUID,
+    area_id: UUID | None = None,
     uow: UnitOfWork = Depends(get_uow),
 ) -> Response:
     """Download a multi-sheet Excel workbook for a schedule run.
 
     Includes the visual weekly grid plus flat sheets for assignments,
-    subjects, teachers, groups, and solver statistics.
+    subjects, teachers, groups, and solver statistics. If ``area_id`` is
+    given (coordinador export), every sheet is scoped to that area's
+    subjects, teachers, groups, and session blocks only.
     """
     from app.application.services.excel_export import build_schedule_workbook
 
@@ -250,6 +253,16 @@ async def export_schedule_run(
         subjects = uow.subjects.list_by_institution(run.institution_id)
         teachers = uow.instructors.list_by_institution(run.institution_id)
         classrooms = uow.classrooms.list_by_institution(run.institution_id)
+
+        if area_id is not None:
+            subjects = [s for s in subjects if s.area_id == area_id]
+            subject_ids = {s.id for s in subjects}
+            teachers = [t for t in teachers if t.area_id == area_id]
+            groups = [g for g in groups if g.subject_id in subject_ids]
+            group_ids = {g.id for g in groups}
+            assignments = [a for a in assignments if a.group_id in group_ids]
+            assignment_ids = {a.id for a in assignments}
+            session_blocks = [b for b in session_blocks if b.assignment_id in assignment_ids]
 
     content = build_schedule_workbook(
         run=run,

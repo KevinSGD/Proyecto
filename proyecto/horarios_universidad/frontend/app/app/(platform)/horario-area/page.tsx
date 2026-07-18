@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Download, Printer, ChevronLeft, ChevronRight, Calendar, Clock3 } from 'lucide-react'
-import { FilterSelect } from '@/components/ui/Field'
+import { useState, useMemo } from 'react'
+import { Download, Printer, Clock3 } from 'lucide-react'
 import { Modal } from '@/components/coordinator/ui/Modal'
 import { ToastContainer, useToast } from '@/components/coordinator/ui/Toast'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
@@ -15,7 +14,6 @@ import { DAY_LABELS, WEEKDAYS } from '@/components/schedule/types'
 import type { ScheduleRun } from '@/lib/types/scheduling'
 import type { EnrichedAssignment } from '@/components/schedule/types'
 import RoleGuard from '@/lib/guards/RoleGuard'
-import { cn } from '@/lib/utils/cn'
 
 const HORA_START = 7
 const HORA_END = 21
@@ -92,11 +90,9 @@ export default function HorarioAreaPage() {
 function HorarioAreaContent() {
   const { user } = useAuthStore()
   const institutionId = user?.institutionId ?? ''
-  const [selectedRunId, setSelectedRunId] = useState('')
+  const areaId = user?.areaId ?? ''
   const [filterDocente, setFilterDocente] = useState('')
-  const [filterMateria, setFilterMateria] = useState('')
   const [filterSalon, setFilterSalon] = useState('')
-  const [weekOffset, setWeekOffset] = useState(0)
   const [selectedBloque, setSelectedBloque] = useState<EnrichedAssignment | null>(null)
   const { toasts, addToast, removeToast } = useToast()
 
@@ -111,19 +107,32 @@ function HorarioAreaContent() {
     [institutionId, periodId],
   )
   const runs: ScheduleRun[] = runsData?.data ?? []
-  const activeRunId = selectedRunId || runs[0]?.id || ''
 
-  const { assignments, loading, teachers, classrooms, subjects } = useScheduleData(activeRunId)
+  // Coordinador only ever sees the latest run the director has published —
+  // no manual version switching, and never a draft/unpublished run.
+  const activeRunId = useMemo(() => {
+    const published = runs
+      .filter(r => r.status === 'published')
+      .sort((a, b) => new Date(b.startedAt ?? 0).getTime() - new Date(a.startedAt ?? 0).getTime())
+    return published[0]?.id ?? ''
+  }, [runs])
 
-  const baseDate = new Date(2025, 6, 7)
-  baseDate.setDate(baseDate.getDate() + weekOffset * 7)
-  const weekLabel = `${baseDate.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })} – ${new Date(baseDate.getTime() + (WEEKDAYS.length - 1) * 86400000).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}`
+  const { assignments: allAssignments, loading, teachers: allTeachers, subjects: allSubjects } = useScheduleData(activeRunId)
+
+  // Area scoping: a coordinador must only ever see their own area's
+  // subjects, teachers, and sessions — never other areas' data.
+  const subjects = useMemo(() => allSubjects.filter(s => s.areaId === areaId), [allSubjects, areaId])
+  const teachers = useMemo(() => allTeachers.filter(t => t.areaId === areaId), [allTeachers, areaId])
+  const areaSubjectIds = useMemo(() => new Set(subjects.map(s => s.id)), [subjects])
+  const assignments = useMemo(
+    () => allAssignments.filter(a => areaSubjectIds.has(a.subjectId)),
+    [allAssignments, areaSubjectIds],
+  )
 
   const salones = [...new Set(assignments.map(a => a.classroomName))].sort()
 
   const filtered = assignments.filter((a) => {
     if (filterDocente && a.instructorId !== filterDocente) return false
-    if (filterMateria && a.subjectCode !== filterMateria) return false
     if (filterSalon && a.classroomName !== filterSalon) return false
     return true
   })
@@ -170,7 +179,7 @@ function HorarioAreaContent() {
     }).join('')
 
     return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8" />
-<title>Horario del Área — ${esc(weekLabel)}</title>
+<title>Horario del Área</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; color: #2D2D2D; margin: 24px; }
@@ -187,7 +196,7 @@ function HorarioAreaContent() {
   @media print { body { margin: 0; } }
 </style></head><body>
   <h1>Horario del Área</h1>
-  <div class="meta">Semana ${esc(weekLabel)}${filtros.length ? ' · ' + esc(filtros.join(' · ')) : ''}</div>
+  <div class="meta">${filtros.length ? esc(filtros.join(' · ')) : ''}</div>
   <table><thead><tr>${encabezado}</tr></thead><tbody>${filas}</tbody></table>
 </body></html>`
   }
@@ -216,7 +225,7 @@ function HorarioAreaContent() {
   async function handleExportExcel() {
     if (!activeRunId) return
     try {
-      const { blob, filename } = await scheduleService.exportExcel(activeRunId)
+      const { blob, filename } = await scheduleService.exportExcel(activeRunId, areaId)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -235,59 +244,34 @@ function HorarioAreaContent() {
 
   return (
     <div>
-      {runs.length > 1 && (
-        <div className="mb-4">
-          <FilterSelect
-            value={activeRunId} onChange={setSelectedRunId} placeholder="Ejecución"
-            options={runs.map(r => r.id)} labels={Object.fromEntries(runs.map(r => [r.id, r.name || r.id.slice(0, 8)]))}
-          />
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setWeekOffset((w) => w - 1)} className="p-2 rounded-lg hover:bg-white border border-border transition-colors" aria-label="Semana anterior">
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <div className="flex items-center gap-2 bg-white border border-border rounded-lg px-4 py-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">{weekLabel}</span>
-          </div>
-          <button onClick={() => setWeekOffset((w) => w + 1)} className="p-2 rounded-lg hover:bg-white border border-border transition-colors" aria-label="Semana siguiente">
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <button onClick={() => setWeekOffset(0)} className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-white border border-border rounded-lg transition-colors">
-            Hoy
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <select value={filterDocente} onChange={(e) => setFilterDocente(e.target.value)} className="px-3 py-2 text-sm bg-white border border-border rounded-lg outline-none focus:border-primary text-muted-foreground">
-            <option value="">Todos los docentes</option>
-            {teachers.map((t) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
-          </select>
-          <select value={filterMateria} onChange={(e) => setFilterMateria(e.target.value)} className="px-3 py-2 text-sm bg-white border border-border rounded-lg outline-none focus:border-primary text-muted-foreground">
-            <option value="">Todas las materias</option>
-            {subjects.map((s) => <option key={s.id} value={s.code}>{s.name}</option>)}
-          </select>
-          <select value={filterSalon} onChange={(e) => setFilterSalon(e.target.value)} className="px-3 py-2 text-sm bg-white border border-border rounded-lg outline-none focus:border-primary text-muted-foreground">
-            <option value="">Todos los salones</option>
-            {salones.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <button onClick={handlePDF} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground bg-white border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors">
-            <Download className="w-4 h-4" /> PDF
-          </button>
-          <button onClick={handleExportExcel} disabled={!activeRunId} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground bg-white border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors disabled:opacity-50">
-            <Download className="w-4 h-4" /> Excel
-          </button>
-          <button onClick={handleImprimir} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground bg-white border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors">
-            <Printer className="w-4 h-4" /> Imprimir
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-2 mb-6">
+        <select value={filterDocente} onChange={(e) => setFilterDocente(e.target.value)} className="px-3 py-2 text-sm bg-white border border-border rounded-lg outline-none focus:border-primary text-muted-foreground">
+          <option value="">Todos los docentes</option>
+          {teachers.map((t) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
+        </select>
+        <select value={filterSalon} onChange={(e) => setFilterSalon(e.target.value)} className="px-3 py-2 text-sm bg-white border border-border rounded-lg outline-none focus:border-primary text-muted-foreground">
+          <option value="">Todos los salones</option>
+          {salones.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <button onClick={handlePDF} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground bg-white border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors">
+          <Download className="w-4 h-4" /> PDF
+        </button>
+        <button onClick={handleExportExcel} disabled={!activeRunId} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground bg-white border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors disabled:opacity-50">
+          <Download className="w-4 h-4" /> Excel
+        </button>
+        <button onClick={handleImprimir} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground bg-white border border-border rounded-lg hover:text-foreground hover:border-primary/40 transition-colors">
+          <Printer className="w-4 h-4" /> Imprimir
+        </button>
       </div>
 
       {loading ? (
         <div className="bg-white rounded-xl border border-border shadow-sm p-16 text-center text-sm text-muted-foreground">Cargando horario...</div>
+      ) : !activeRunId ? (
+        <div className="bg-white rounded-xl border border-border shadow-sm p-16 text-center">
+          <Clock3 className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">Aún no hay un horario publicado</p>
+          <p className="text-xs text-muted-foreground mt-1">El horario aparecerá cuando el director publique una corrida.</p>
+        </div>
       ) : assignments.length === 0 ? (
         <div className="bg-white rounded-xl border border-border shadow-sm p-16 text-center">
           <Clock3 className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />

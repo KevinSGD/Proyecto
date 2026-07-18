@@ -6,6 +6,7 @@ export interface EnrichedAssignment {
   instructorId: string
   classroomId: string
   groupId: string
+  subjectId: string
   dayOfWeek: number
   startTime: string
   endTime: string

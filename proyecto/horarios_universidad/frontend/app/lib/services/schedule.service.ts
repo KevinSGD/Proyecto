@@ -27,8 +27,9 @@ export const scheduleService = {
     return api.get<ApiResponse<ExecutionLogEntry[]>>(`${BASE}/schedule-runs/${runId}/logs`)
   },
 
-  exportExcel(runId: string) {
-    return api.getBlob(`${BASE}/schedule-runs/${runId}/export`)
+  exportExcel(runId: string, areaId?: string) {
+    const query = areaId ? `?area_id=${encodeURIComponent(areaId)}` : ''
+    return api.getBlob(`${BASE}/schedule-runs/${runId}/export${query}`)
   },
 
   generate(data: { institutionId: string; periodId: string }) {
@@ -43,8 +44,8 @@ export const scheduleService = {
     return api.post<ApiResponse<ScheduleRun>>(`${BASE}/schedule/block`, { scheduleRunId: runId })
   },
 
-  validate(institutionId: string, periodId: string) {
-    return api.post<ApiResponse<unknown>>(`${BASE}/schedule/validate`, { institutionId, periodId })
+  validate(institutionId: string, periodId: string, runId?: string) {
+    return api.post<ApiResponse<unknown>>(`${BASE}/schedule/validate`, { institutionId, periodId, runId })
   },
 
   updateSessionBlock(blockId: string, data: {

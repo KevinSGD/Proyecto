@@ -40,6 +40,12 @@ def setup_logging(settings: LoggingSettings) -> None:
 
     formatter = _Formatter(settings.format)
 
+    # Windows consoles default stdout to cp1252, which can't encode the
+    # unicode arrows used in log messages (→, ←) — reconfigure to UTF-8
+    # with replacement so logging never crashes mid-request.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     console = logging.StreamHandler(sys.stdout)
     console.setFormatter(formatter)
     root.addHandler(console)

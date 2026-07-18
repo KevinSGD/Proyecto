@@ -35,6 +35,7 @@ class ScheduleValidateRequest(CamelModel):
 
     institution_id: UUID
     period_id: UUID
+    run_id: UUID | None = None
 
 
 class SchedulePublishRequest(CamelModel):

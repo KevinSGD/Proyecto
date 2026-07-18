@@ -21,6 +21,7 @@ from app.domain.entities.personnel import (
     InstructorContract,
     InstructorSpecialty,
 )
+from app.domain.entities.schedule import Assignment, SessionBlock
 from app.domain.entities.scheduling import Group, ScheduleType
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "ClassroomValidationData",
     "OfferingValidationData",
     "CapacityValidationData",
+    "ScheduleConflictValidationData",
 ]
 
 
@@ -87,3 +89,21 @@ class CapacityValidationData:
     groups: list[Group] = field(default_factory=list)
     offering_lines: list[OfferingLine] = field(default_factory=list)
     subjects: list[Subject] = field(default_factory=list)
+
+
+@dataclass
+class ScheduleConflictValidationData:
+    """All entities required by :class:`ScheduleConflictValidator`.
+
+    Checks a single, already-generated schedule run for hard-constraint
+    violations that a manual drag-and-drop edit could introduce: the same
+    instructor or the same classroom double-booked at an overlapping
+    day/period.
+    """
+
+    assignments: list[Assignment] = field(default_factory=list)
+    session_blocks: list[SessionBlock] = field(default_factory=list)
+    groups: list[Group] = field(default_factory=list)
+    subjects: list[Subject] = field(default_factory=list)
+    instructors: list[Instructor] = field(default_factory=list)
+    classrooms: list[Classroom] = field(default_factory=list)

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Building2, Plus, Eye, Pencil, Trash2, DoorOpen, Package, X } from 'lucide-react'
+import { Building2, Plus, Eye, Pencil, Trash2, DoorOpen, Package, X, CalendarClock } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -23,6 +23,7 @@ import { useAuthStore } from '@/lib/stores/auth.store'
 import type { Classroom, Building, Resource } from '@/lib/types/infrastructure'
 import RoleGuard from '@/lib/guards/RoleGuard'
 import AulaFormDrawer from '@/components/domain/AulaFormDrawer'
+import AvailabilityGrid, { type AvailabilitySlot } from '@/components/domain/AvailabilityGrid'
 
 const PAGE_SIZE = 10
 
@@ -36,6 +37,10 @@ export default function AulasPage() {
   const [viewing, setViewing] = useState<Classroom | null>(null)
   const [editing, setEditing] = useState<Classroom | null | 'new'>(null)
   const [deleting, setDeleting] = useState<Classroom | null>(null)
+  const [availabilityTarget, setAvailabilityTarget] = useState<Classroom | null>(null)
+  const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([])
+  const [loadingAvailability, setLoadingAvailability] = useState(false)
+  const [savingAvailability, setSavingAvailability] = useState(false)
   const { toasts, addToast, removeToast } = useToast()
 
   // Resource management
@@ -71,6 +76,40 @@ export default function AulasPage() {
     [institutionId],
   )
   const campusId = (campusData?.data as { id: string }[] | undefined)?.[0]?.id ?? ''
+
+  const { data: periodData } = useApiQuery(
+    () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
+    [institutionId],
+  )
+  const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
+
+  const openAvailability = async (c: Classroom) => {
+    setAvailabilityTarget(c)
+    setLoadingAvailability(true)
+    try {
+      const res = await classroomService.listAvailability(c.id, periodId || undefined)
+      setAvailabilitySlots((res.data ?? []).map(a => ({ dayOfWeek: a.dayOfWeek, period: a.period, isAvailable: a.isAvailable })))
+    } catch {
+      setAvailabilitySlots([])
+      addToast('error', 'Error al cargar la disponibilidad')
+    } finally {
+      setLoadingAvailability(false)
+    }
+  }
+
+  const handleSaveAvailability = async (slots: AvailabilitySlot[]) => {
+    if (!availabilityTarget) return
+    setSavingAvailability(true)
+    try {
+      await classroomService.setAvailability(availabilityTarget.id, { slots, periodId: periodId || undefined })
+      addToast('success', 'Disponibilidad guardada')
+      setAvailabilityTarget(null)
+    } catch {
+      addToast('error', 'Error al guardar la disponibilidad')
+    } finally {
+      setSavingAvailability(false)
+    }
+  }
 
   const { data: crData, loading: crLoad, error: crErr, refetch: crRefetch } =
     useApiQuery(
@@ -276,6 +315,7 @@ export default function AulasPage() {
                         <TD align="right">
                           <div className="flex items-center justify-end gap-1">
                             <button onClick={() => openClassroomDetail(c)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"><Eye className="size-4" /></button>
+                            <button onClick={() => openAvailability(c)} title="Disponibilidad" className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"><CalendarClock className="size-4" /></button>
                             <button onClick={() => setEditing(c)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"><Pencil className="size-4" /></button>
                             <button onClick={() => setDeleting(c)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-danger-soft hover:text-danger transition-colors"><Trash2 className="size-4" /></button>
                           </div>
@@ -459,6 +499,22 @@ export default function AulasPage() {
             <NumberField label="Cantidad" value={assignQty} onChange={setAssignQty} />
           </div>
         </Modal>
+
+        <Drawer
+          open={!!availabilityTarget}
+          onClose={() => setAvailabilityTarget(null)}
+          title={availabilityTarget ? `Disponibilidad — ${availabilityTarget.name}` : ''}
+        >
+          {loadingAvailability ? (
+            <p className="text-sm text-muted-foreground">Cargando disponibilidad...</p>
+          ) : (
+            <AvailabilityGrid
+              initialSlots={availabilitySlots}
+              onSave={handleSaveAvailability}
+              saving={savingAvailability}
+            />
+          )}
+        </Drawer>
 
         {/* Delete confirmations */}
         <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Eliminar salón"

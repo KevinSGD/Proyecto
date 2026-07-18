@@ -91,6 +91,7 @@ export function useScheduleData(runId: string) {
           instructorId: a.instructorId,
           classroomId: s.classroomId,
           groupId: a.groupId,
+          subjectId,
           dayOfWeek: s.dayOfWeek + 1,
           startTime,
           endTime,

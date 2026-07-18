@@ -130,7 +130,7 @@ export default function HorariosPage() {
     if (!institutionId || !periodId) return
     setValidating(true)
     try {
-      const resp = await scheduleService.validate(institutionId, periodId)
+      const resp = await scheduleService.validate(institutionId, periodId, activeRunId || undefined)
       const data = (resp as any)?.data
       const extractIssues = (items: unknown[]): ValidationIssue[] =>
         (items ?? []).map((i: any) => typeof i === 'string'

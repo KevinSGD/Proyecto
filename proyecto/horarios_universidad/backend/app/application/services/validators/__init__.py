@@ -11,10 +11,12 @@ from .data_types import (
     ClassroomValidationData,
     InstructorValidationData,
     OfferingValidationData,
+    ScheduleConflictValidationData,
     SubjectValidationData,
 )
 from .instructor_validator import InstructorDataValidator
 from .offering_validator import OfferingDataValidator
+from .schedule_conflict_validator import ScheduleConflictValidator
 from .subject_validator import SubjectDataValidator
 
 __all__ = [
@@ -24,10 +26,12 @@ __all__ = [
     "ClassroomDataValidator",
     "OfferingDataValidator",
     "CapacityValidator",
+    "ScheduleConflictValidator",
     # Data types
     "InstructorValidationData",
     "SubjectValidationData",
     "ClassroomValidationData",
     "OfferingValidationData",
     "CapacityValidationData",
+    "ScheduleConflictValidationData",
 ]

@@ -94,13 +94,14 @@ class ValidateScheduleData:
         self,
         institution_id,
         period_id,
+        run_id=None,
     ) -> ValidationReport:
         from app.application.services.schedule_service import (
             ScheduleGenerationService,
         )
 
         return ScheduleGenerationService(self._uow).validate(
-            institution_id, period_id,
+            institution_id, period_id, run_id,
         )
 
 

@@ -41,8 +41,6 @@ export default function OfertaPage() {
   const { toasts, addToast, removeToast } = useToast()
 
   const [expandedArea, setExpandedArea] = useState<string | null>(null)
-  const [createModal, setCreateModal] = useState(false)
-  const [createAreaId, setCreateAreaId] = useState('')
   const [rejectModal, setRejectModal] = useState<Offering | null>(null)
   const [rejectObs, setRejectObs] = useState('')
   const [addLineModal, setAddLineModal] = useState<string | null>(null)
@@ -88,17 +86,6 @@ export default function OfertaPage() {
     }
     return map
   }, [offerings])
-
-  const handleCreate = async () => {
-    if (!createAreaId || !periodId) return
-    try {
-      await offeringService.create({ institutionId, periodId, areaId: createAreaId })
-      addToast('success', 'Oferta creada')
-      setCreateModal(false)
-      setCreateAreaId('')
-      refetch()
-    } catch { addToast('error', 'Error al crear oferta') }
-  }
 
   const handleApprove = async (offering: Offering) => {
     try {
@@ -195,7 +182,6 @@ export default function OfertaPage() {
         <PageHeader
           title="Oferta Académica"
           description="Revisión y aprobación de ofertas por área"
-          actions={<Button icon={<Plus className="size-4" />} onClick={() => setCreateModal(true)}>Nueva Oferta</Button>}
         />
 
         {loading ? (
@@ -306,15 +292,6 @@ export default function OfertaPage() {
             </div>
           )}
         </DataView>
-
-        {/* Create offering modal */}
-        <Modal open={createModal} onClose={() => setCreateModal(false)} title="Nueva Oferta" confirmLabel="Crear" onConfirm={handleCreate}>
-          <SelectField
-            label="Área académica" value={createAreaId} onChange={setCreateAreaId}
-            options={['', ...areas.map(a => a.id)]}
-            labels={{ '': '— Seleccionar área —', ...Object.fromEntries(areas.map(a => [a.id, a.name])) }}
-          />
-        </Modal>
 
         {/* Reject offering modal */}
         <Modal open={!!rejectModal} onClose={() => setRejectModal(null)} title="Rechazar Oferta" confirmLabel="Rechazar" onConfirm={handleReject} destructive>

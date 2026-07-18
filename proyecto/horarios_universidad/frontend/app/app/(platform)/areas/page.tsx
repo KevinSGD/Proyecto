@@ -6,19 +6,23 @@ import { SkeletonCard } from '@/components/ui/Skeleton'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
-import { SearchInput, FilterSelect } from '@/components/ui/Field'
+import Modal from '@/components/ui/Modal'
+import { SearchInput, FilterSelect, Field } from '@/components/ui/Field'
 import { Table, THead, TH, TBody, TR, TD } from '@/components/ui/Table'
 import DataView from '@/components/ui/DataView'
 import PageHeader from '@/components/ui/PageHeader'
 import StatCard from '@/components/ui/StatCard'
 import Drawer from '@/components/ui/Drawer'
+import { useToast, ToastContainer } from '@/components/ui/Toast'
 import AreaFormDrawer from '@/components/domain/AreaFormDrawer'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { areaService } from '@/lib/services/area.service'
 import { subjectService } from '@/lib/services/subject.service'
 import { teacherService } from '@/lib/services/teacher.service'
+import { authService } from '@/lib/services/auth.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
+import { ApiError } from '@/lib/api/client'
 import RoleGuard from '@/lib/guards/RoleGuard'
 import type { AcademicArea } from '@/lib/types/academic'
 
@@ -28,6 +32,11 @@ export default function AreasPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingArea, setEditingArea] = useState<AcademicArea | undefined>()
   const [viewingArea, setViewingArea] = useState<AcademicArea | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<AcademicArea | null>(null)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const { toasts, addToast, removeToast } = useToast()
 
   const { user } = useAuthStore()
   const institutionId = user?.institutionId ?? ''
@@ -68,14 +77,54 @@ export default function AreasPage() {
   const handleSaved = () => { setFormOpen(false); setEditingArea(undefined); refetch() }
 
   const handleToggleActive = async (area: AcademicArea) => {
-    await areaService.update(area.id, { isActive: !area.isActive })
-    refetch()
+    try {
+      await areaService.update(area.id, { isActive: !area.isActive })
+      refetch()
+    } catch (err) {
+      addToast('error', err instanceof ApiError ? err.detail : 'Error al actualizar el área')
+    }
   }
 
-  const handleDelete = async (area: AcademicArea) => {
-    if (!confirm(`¿Eliminar el área "${area.name}"? Esta acción no se puede deshacer.`)) return
-    await areaService.delete(area.id)
-    refetch()
+  const openDeleteConfirm = (area: AcademicArea) => {
+    setDeleteTarget(area)
+    setDeletePassword('')
+    setDeleteError('')
+  }
+
+  const closeDeleteConfirm = () => {
+    if (deleting) return
+    setDeleteTarget(null)
+    setDeletePassword('')
+    setDeleteError('')
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    if (!deletePassword) {
+      setDeleteError('Ingresa tu contraseña para confirmar.')
+      return
+    }
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      if (!user?.email) throw new Error('no-user')
+      await authService.login({ email: user.email, password: deletePassword })
+    } catch {
+      setDeleteError('Contraseña incorrecta.')
+      setDeleting(false)
+      return
+    }
+    try {
+      await areaService.delete(deleteTarget.id)
+      addToast('success', `Área "${deleteTarget.name}" eliminada`)
+      setDeleteTarget(null)
+      setDeletePassword('')
+      refetch()
+    } catch (err) {
+      addToast('error', err instanceof ApiError ? err.detail : 'Error al eliminar el área')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -149,7 +198,7 @@ export default function AreasPage() {
                           <button onClick={() => handleToggleActive(a)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" title={a.isActive ? 'Desactivar' : 'Activar'}>
                             {a.isActive ? <UserX className="size-4" /> : <UserCheck className="size-4" />}
                           </button>
-                          <button onClick={() => handleDelete(a)} className="rounded-md p-1.5 text-muted-foreground hover:bg-danger hover:text-white" title="Eliminar">
+                          <button onClick={() => openDeleteConfirm(a)} className="rounded-md p-1.5 text-muted-foreground hover:bg-danger hover:text-white" title="Eliminar">
                             <Trash2 className="size-4" />
                           </button>
                         </div>
@@ -219,6 +268,33 @@ export default function AreasPage() {
             </div>
           </Drawer>
         )}
+
+        <Modal
+          open={!!deleteTarget}
+          onClose={closeDeleteConfirm}
+          title={`Eliminar área "${deleteTarget?.name ?? ''}"`}
+          confirmLabel={deleting ? 'Eliminando...' : 'Eliminar'}
+          onConfirm={handleConfirmDelete}
+          destructive
+        >
+          <div className="space-y-3">
+            <p>
+              Esta acción no se puede deshacer. Se eliminarán las materias, docentes,
+              ofertas y horarios asociados a esta área. Ingresa tu contraseña de
+              director para confirmar.
+            </p>
+            <Field
+              label="Contraseña"
+              type="password"
+              value={deletePassword}
+              onChange={(v) => { setDeletePassword(v); setDeleteError('') }}
+              placeholder="••••••••"
+              error={deleteError}
+            />
+          </div>
+        </Modal>
+
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
       </div>
     </RoleGuard>
   )
