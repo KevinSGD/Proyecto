@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, Plus, Trash2, Users } from 'lucide-react'
 import Drawer from '@/components/ui/Drawer'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
@@ -9,10 +9,14 @@ import { Field, NumberField, SelectField, Textarea } from '@/components/ui/Field
 import { subjectService } from '@/lib/services/subject.service'
 import { classroomService } from '@/lib/services/classroom.service'
 import { areaService } from '@/lib/services/area.service'
+import { offeringService } from '@/lib/services/offering.service'
+import { institutionService } from '@/lib/services/institution.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
+import { ApiError } from '@/lib/api/client'
 import type { Subject, AcademicArea } from '@/lib/types/academic'
 import type { Resource } from '@/lib/types/infrastructure'
+import type { Group } from '@/lib/types/scheduling'
 
 interface Props {
   subject?: Subject
@@ -76,6 +80,72 @@ export default function MateriaFormDrawer({ subject, onClose, onSaved }: Props) 
       }).catch(() => {})
     }
   }, [isEdit, subject])
+
+  // Groups (only manageable once the subject exists)
+  const [groups, setGroups] = useState<Group[]>([])
+  const [loadingGroups, setLoadingGroups] = useState(false)
+  const [groupsError, setGroupsError] = useState('')
+  const [newGroupCapacity, setNewGroupCapacity] = useState(30)
+  const [addingGroup, setAddingGroup] = useState(false)
+  const [savingGroupId, setSavingGroupId] = useState<string | null>(null)
+
+  const { data: periodData } = useApiQuery(
+    () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
+    [institutionId],
+  )
+  const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
+
+  const loadGroups = () => {
+    if (!isEdit || !subject || !periodId) return
+    setLoadingGroups(true)
+    offeringService.listSubjectGroups(subject.id, periodId)
+      .then(r => setGroups(r?.data ?? []))
+      .catch(() => setGroupsError('No se pudieron cargar los grupos.'))
+      .finally(() => setLoadingGroups(false))
+  }
+
+  useEffect(() => {
+    loadGroups()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, subject?.id, periodId])
+
+  const handleAddGroup = async () => {
+    if (!subject || !periodId) return
+    setGroupsError('')
+    setAddingGroup(true)
+    try {
+      await offeringService.createSubjectGroup(subject.id, { periodId, expectedEnrollment: newGroupCapacity })
+      loadGroups()
+    } catch (err) {
+      setGroupsError(err instanceof ApiError ? err.detail : 'Error al crear el grupo.')
+    } finally {
+      setAddingGroup(false)
+    }
+  }
+
+  const handleUpdateGroupCapacity = async (group: Group, capacity: number) => {
+    if (capacity === group.expectedEnrollment) return
+    setSavingGroupId(group.id)
+    setGroupsError('')
+    try {
+      await offeringService.updateGroup(group.id, { expectedEnrollment: capacity })
+      setGroups(prev => prev.map(g => g.id === group.id ? { ...g, expectedEnrollment: capacity } : g))
+    } catch {
+      setGroupsError('Error al actualizar el cupo del grupo.')
+    } finally {
+      setSavingGroupId(null)
+    }
+  }
+
+  const handleDeleteGroup = async (group: Group) => {
+    setGroupsError('')
+    try {
+      await offeringService.deleteGroup(group.id)
+      setGroups(prev => prev.filter(g => g.id !== group.id))
+    } catch {
+      setGroupsError('Error al eliminar el grupo.')
+    }
+  }
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -226,7 +296,79 @@ export default function MateriaFormDrawer({ subject, onClose, onSaved }: Props) 
         </div>
 
         <Textarea label="Observaciones" value={observations} onChange={setObservations} placeholder="Notas adicionales..." />
+
+        {isEdit && (
+          <div className="space-y-3">
+            <hr className="border-border" />
+            <div>
+              <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                <Users className="size-4" /> Grupos de esta materia
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Cada grupo tiene su propio cupo. El algoritmo solo lo asignará a aulas con
+                capacidad suficiente para ese cupo.
+              </p>
+            </div>
+
+            {groupsError && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{groupsError}</p>}
+
+            {loadingGroups ? (
+              <p className="text-xs text-muted-foreground">Cargando grupos...</p>
+            ) : groups.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Esta materia todavía no tiene grupos.</p>
+            ) : (
+              <div className="space-y-2">
+                {groups.map(g => (
+                  <GroupRow
+                    key={g.id}
+                    group={g}
+                    saving={savingGroupId === g.id}
+                    onSave={(capacity) => handleUpdateGroupCapacity(g, capacity)}
+                    onDelete={() => handleDeleteGroup(g)}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-end gap-2 rounded-lg border border-dashed border-border p-3">
+              <div className="flex-1">
+                <NumberField label="Cupo del nuevo grupo" value={newGroupCapacity} onChange={setNewGroupCapacity} />
+              </div>
+              <Button size="sm" icon={<Plus className="size-4" />} loading={addingGroup} disabled={!periodId} onClick={handleAddGroup}>
+                Agregar grupo
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </Drawer>
+  )
+}
+
+function GroupRow({ group, saving, onSave, onDelete }: {
+  group: Group; saving: boolean; onSave: (capacity: number) => void; onDelete: () => void
+}) {
+  const [capacity, setCapacity] = useState(group.expectedEnrollment)
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+      <Badge variant="neutral">Grupo {group.groupNumber}</Badge>
+      <div className="w-28">
+        <NumberField label="Cupo" value={capacity} onChange={setCapacity} />
+      </div>
+      <Button
+        size="sm" variant="secondary" loading={saving}
+        disabled={capacity === group.expectedEnrollment}
+        onClick={() => onSave(capacity)}
+      >
+        Guardar
+      </Button>
+      <button
+        onClick={onDelete}
+        className="ml-auto rounded-md p-1.5 text-muted-foreground hover:bg-danger-soft hover:text-danger"
+        aria-label={`Eliminar grupo ${group.groupNumber}`}
+      >
+        <Trash2 className="size-4" />
+      </button>
+    </div>
   )
 }

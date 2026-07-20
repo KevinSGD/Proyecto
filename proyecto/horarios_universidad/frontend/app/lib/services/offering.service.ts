@@ -53,8 +53,20 @@ export const offeringService = {
     return api.get<ApiResponse<Group>>(`${BASE}/groups/${groupId}`)
   },
 
+  updateGroup(groupId: string, data: { expectedEnrollment?: number; modality?: string; priority?: number }) {
+    return api.put<ApiResponse<Group>>(`${BASE}/groups/${groupId}`, data)
+  },
+
   deleteGroup(groupId: string) {
     return api.delete(`${BASE}/groups/${groupId}`)
+  },
+
+  listSubjectGroups(subjectId: string, periodId: string) {
+    return api.get<ApiResponse<Group[]>>(`${BASE}/subjects/${subjectId}/groups`, { period_id: periodId })
+  },
+
+  createSubjectGroup(subjectId: string, data: { periodId: string; expectedEnrollment: number; modality?: string }) {
+    return api.post<ApiResponse<Group>>(`${BASE}/subjects/${subjectId}/groups`, data)
   },
 
   removeLine(lineId: string) {

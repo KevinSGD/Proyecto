@@ -12,6 +12,7 @@ from app.api.schemas.base import ApiResponse
 from app.api.schemas.offering import (
     GroupCreate,
     GroupOut,
+    GroupUpdate,
     OfferingCreate,
     OfferingDetail,
     OfferingLineCreate,
@@ -23,6 +24,7 @@ from app.api.schemas.offering import (
     ScheduleTypeCreate,
     ScheduleTypeOut,
     ScheduleTypeUpdate,
+    SubjectGroupCreate,
 )
 from app.application.commands.offering_commands import (
     AddOfferingLine,
@@ -30,6 +32,7 @@ from app.application.commands.offering_commands import (
     CreateGroup,
     CreateOffering,
     CreateScheduleType,
+    CreateSubjectGroup,
     DeleteGroup,
     DeleteOffering,
     DeleteScheduleType,
@@ -38,6 +41,7 @@ from app.application.commands.offering_commands import (
     RemoveOfferingLine,
     ResubmitOffering,
     SubmitOffering,
+    UpdateGroup,
     UpdateOffering,
     UpdateOfferingLine,
     UpdateScheduleType,
@@ -59,9 +63,29 @@ from app.application.queries.offering_queries import (
     ListOfferings,
     ListScheduleTypes,
 )
+from app.application.services.auth_service import AuthService
+from app.domain.entities.auth import User
 from app.domain.interfaces.unit_of_work import UnitOfWork
 
 router = APIRouter(tags=["offerings"], dependencies=[Depends(get_current_user)])
+
+
+def _ensure_subject_area_access(uow: UnitOfWork, user: User, subject_id: UUID) -> None:
+    """Restrict area-coordinator users to subjects within their own area."""
+    role = AuthService(uow).get_role_display_name(user)
+    if role != "coordinador":
+        return
+    with uow:
+        areas = uow.user_areas.list_by_user(user.id)
+        area_id = str(areas[0].area_id) if areas else None
+        subject = uow.subjects.get_by_id(subject_id)
+    if subject is None or not area_id or str(subject.area_id) != area_id:
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes acceso a esta materia",
+        )
 
 _Uow = Depends(get_uow)
 
@@ -240,7 +264,58 @@ def get_group(group_id: UUID, uow: UnitOfWork = _Uow):
     return ApiResponse(data=GroupOut(**group_to_dict(entity)))
 
 
+@router.put("/groups/{group_id}", response_model=ApiResponse[GroupOut])
+def update_group(group_id: UUID, body: GroupUpdate, uow: UnitOfWork = _Uow):
+    entity = UpdateGroup(uow).execute(group_id, body)
+    return ApiResponse(message="Group updated", data=GroupOut(**group_to_dict(entity)))
+
+
 @router.delete("/groups/{group_id}", response_model=ApiResponse[bool])
 def delete_group(group_id: UUID, uow: UnitOfWork = _Uow):
     DeleteGroup(uow).execute(group_id)
     return ApiResponse(message="Group deleted", data=True)
+
+
+# ── Subject groups (director/coordinator-facing, from the Materia form) ────
+
+
+@router.get(
+    "/subjects/{subject_id}/groups",
+    response_model=ApiResponse[list[GroupOut]],
+)
+def list_subject_groups(
+    subject_id: UUID,
+    period_id: UUID,
+    user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+):
+    _ensure_subject_area_access(uow, user, subject_id)
+    with uow:
+        subject = uow.subjects.get_by_id(subject_id)
+    if subject is None:
+        from app.application.exceptions.application_exceptions import (
+            ResourceNotFoundError,
+        )
+
+        raise ResourceNotFoundError("Subject", subject_id)
+    items = [
+        g for g in ListGroups(uow).execute(subject.institution_id, period_id)
+        if g.subject_id == subject_id
+    ]
+    return ApiResponse(data=[GroupOut(**group_to_dict(g)) for g in items])
+
+
+@router.post(
+    "/subjects/{subject_id}/groups",
+    response_model=ApiResponse[GroupOut],
+    status_code=201,
+)
+def create_subject_group(
+    subject_id: UUID,
+    body: SubjectGroupCreate,
+    user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+):
+    _ensure_subject_area_access(uow, user, subject_id)
+    entity = CreateSubjectGroup(uow).execute(subject_id, body)
+    return ApiResponse(message="Group created", data=GroupOut(**group_to_dict(entity)))

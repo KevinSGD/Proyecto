@@ -123,6 +123,12 @@ class GroupCreate(CamelModel):
     priority: int | None = None
 
 
+class GroupUpdate(CamelModel):
+    expected_enrollment: int | None = Field(default=None, ge=1)
+    modality: str | None = None
+    priority: int | None = None
+
+
 class GroupOut(CamelModel):
     id: UUID
     offering_line_id: UUID
@@ -132,3 +138,12 @@ class GroupOut(CamelModel):
     modality: str
     schedule_type_id: UUID
     priority: int
+
+
+# -- Subject groups (director-facing, managed from the Materia form) --------
+
+
+class SubjectGroupCreate(CamelModel):
+    period_id: UUID
+    expected_enrollment: int = Field(..., ge=1)
+    modality: str | None = None
