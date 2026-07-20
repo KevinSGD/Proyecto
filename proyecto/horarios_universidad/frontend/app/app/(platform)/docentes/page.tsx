@@ -127,8 +127,9 @@ function DirectorDocentes() {
     if (!deleting) return
     try {
       await teacherService.delete(deleting.id)
-      addToast('success', 'Docente eliminado')
+      addToast('success', `Docente "${deleting.firstName} ${deleting.lastName}" (${deleting.employeeCode}) eliminado`)
       setDeleting(null)
+      setSearch('')
       refetch()
     } catch { addToast('error', 'Error al eliminar') }
   }
@@ -250,7 +251,7 @@ function DirectorDocentes() {
 
       <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Eliminar docente"
         confirmLabel="Eliminar" onConfirm={handleDelete} destructive>
-        <p>¿Eliminar a <strong>{deleting ? `${deleting.firstName} ${deleting.lastName}` : ''}</strong>?</p>
+        <p>¿Eliminar a <strong>{deleting ? `${deleting.firstName} ${deleting.lastName} (${deleting.employeeCode})` : ''}</strong>?</p>
       </Modal>
 
       <Drawer

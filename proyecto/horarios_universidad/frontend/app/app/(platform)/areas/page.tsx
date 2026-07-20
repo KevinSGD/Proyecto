@@ -119,6 +119,7 @@ export default function AreasPage() {
       addToast('success', `Área "${deleteTarget.name}" eliminada`)
       setDeleteTarget(null)
       setDeletePassword('')
+      setSearch('')
       refetch()
     } catch (err) {
       addToast('error', err instanceof ApiError ? err.detail : 'Error al eliminar el área')
@@ -272,7 +273,7 @@ export default function AreasPage() {
         <Modal
           open={!!deleteTarget}
           onClose={closeDeleteConfirm}
-          title={`Eliminar área "${deleteTarget?.name ?? ''}"`}
+          title={`Eliminar área "${deleteTarget?.name ?? ''}" (${deleteTarget?.code ?? ''})`}
           confirmLabel={deleting ? 'Eliminando...' : 'Eliminar'}
           onConfirm={handleConfirmDelete}
           destructive

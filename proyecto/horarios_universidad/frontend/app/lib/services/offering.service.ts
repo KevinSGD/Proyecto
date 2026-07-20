@@ -57,6 +57,10 @@ export const offeringService = {
     return api.put<ApiResponse<Group>>(`${BASE}/groups/${groupId}`, data)
   },
 
+  assignGroupInstructor(groupId: string, instructorId: string | null) {
+    return api.put<ApiResponse<Group>>(`${BASE}/groups/${groupId}/instructor`, { instructorId })
+  },
+
   deleteGroup(groupId: string) {
     return api.delete(`${BASE}/groups/${groupId}`)
   },

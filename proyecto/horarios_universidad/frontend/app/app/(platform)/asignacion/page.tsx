@@ -1,17 +1,20 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { CheckCircle2, Users, Clock, BookOpen, ChevronRight } from 'lucide-react'
+import { CheckCircle2, Users, Clock, BookOpen, ChevronRight, Layers } from 'lucide-react'
 import { BadgeStatus } from '@/components/coordinator/ui/BadgeStatus'
 import { ToastContainer, useToast } from '@/components/coordinator/ui/Toast'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
 import { subjectService } from '@/lib/services/subject.service'
 import { teacherService } from '@/lib/services/teacher.service'
+import { offeringService } from '@/lib/services/offering.service'
+import { institutionService } from '@/lib/services/institution.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
 import RoleGuard from '@/lib/guards/RoleGuard'
 import { cn } from '@/lib/utils/cn'
 import type { Subject } from '@/lib/types/academic'
 import type { Instructor, Specialty } from '@/lib/types/personnel'
+import type { Group } from '@/lib/types/scheduling'
 
 function iniciales(nombre: string) {
   return nombre.split(' ').filter((_, i) => i < 2).map((n) => n[0]).join('').toUpperCase()
@@ -59,6 +62,52 @@ function AsignacionContent() {
   }, [subjects.length])
 
   useEffect(() => { loadSpecialties() }, [loadSpecialties])
+
+  const { data: periodData } = useApiQuery(
+    () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
+    [institutionId],
+  )
+  const periodId = (periodData?.data as { id: string } | null)?.id ?? ''
+
+  const [groups, setGroups] = useState<Group[]>([])
+  const [loadingGroups, setLoadingGroups] = useState(false)
+  const [mutatingGroupId, setMutatingGroupId] = useState<string | null>(null)
+
+  const loadGroups = useCallback((subjectId: string) => {
+    if (!subjectId || !periodId) { setGroups([]); return }
+    setLoadingGroups(true)
+    offeringService.listSubjectGroups(subjectId, periodId)
+      .then(r => setGroups(r?.data ?? []))
+      .catch(() => setGroups([]))
+      .finally(() => setLoadingGroups(false))
+  }, [periodId])
+
+  useEffect(() => {
+    if (selectedSubjectId) loadGroups(selectedSubjectId)
+    else setGroups([])
+  }, [selectedSubjectId, loadGroups])
+
+  const handleAssignGroup = async (group: Group, instructorId: string, silent = false) => {
+    setMutatingGroupId(group.id)
+    try {
+      await offeringService.assignGroupInstructor(group.id, instructorId || null)
+      if (!silent) {
+        const teacher = teachers.find(t => t.id === instructorId)
+        addToast(
+          instructorId ? 'success' : 'info',
+          instructorId ? 'Docente asignado al grupo' : 'Asignación de grupo removida',
+          instructorId && selectedSubject
+            ? `${teacher?.firstName} ${teacher?.lastName} asignado al Grupo ${group.groupNumber} de ${selectedSubject.name}.`
+            : undefined,
+        )
+      }
+      if (selectedSubjectId) loadGroups(selectedSubjectId)
+    } catch {
+      if (!silent) addToast('error', 'Error al asignar', 'No se pudo asignar el docente a ese grupo.')
+    } finally {
+      setMutatingGroupId(null)
+    }
+  }
 
   // Horas ya comprometidas por cada docente, sumando las materias que tiene asignadas.
   const hoursAssignedByTeacher = (): Record<string, number> => {
@@ -115,8 +164,79 @@ function AsignacionContent() {
   const activeTeachers = teachers.filter(t => t.isActive)
   const loading = subjectsLoading || teachersLoading
 
+  // Only teachers actually assigned to this subject (via especialidad) can
+  // be picked per group — never the whole area's teacher pool.
+  const qualifiedTeachers = activeTeachers.filter(t => assignedTeacherIds.has(t.id))
+  const soleQualifiedTeacherId = qualifiedTeachers.length === 1 ? qualifiedTeachers[0].id : null
+
+  // With exactly one qualified teacher there's nothing to choose — every
+  // group of the subject defaults to that teacher automatically.
+  useEffect(() => {
+    if (!soleQualifiedTeacherId || groups.length === 0) return
+    const unpinned = groups.filter(g => g.assignedInstructorId !== soleQualifiedTeacherId)
+    unpinned.forEach(g => handleAssignGroup(g, soleQualifiedTeacherId, true))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [soleQualifiedTeacherId, groups.map(g => `${g.id}:${g.assignedInstructorId}`).join('|')])
+
   return (
     <div>
+      {selectedSubject && (
+        <div className="bg-white rounded-xl border border-border shadow-sm mb-6">
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="flex items-center gap-1.5 font-bold text-foreground">
+              <Layers className="w-4 h-4" /> Grupos de {selectedSubject.name}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {qualifiedTeachers.length >= 2
+                ? 'Decide qué docente calificado dicta cada grupo.'
+                : qualifiedTeachers.length === 1
+                ? 'Solo hay un docente calificado — se asigna automáticamente a todos los grupos.'
+                : 'Asigna al menos un docente calificado a esta materia (abajo a la derecha) para poder elegir por grupo.'}
+            </p>
+          </div>
+          <div className="p-5">
+            {loadingGroups ? (
+              <p className="text-sm text-muted-foreground">Cargando grupos...</p>
+            ) : groups.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Esta materia todavía no tiene grupos. Créalos desde "Materias".
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {groups.map((g) => (
+                  <div key={g.id} className="rounded-lg border border-border p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <BadgeStatus variant="neutral" label={`Grupo ${g.groupNumber}`} dot={false} />
+                      <span className="text-xs text-muted-foreground">Cupo {g.expectedEnrollment}</span>
+                    </div>
+                    {qualifiedTeachers.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic py-1.5">Sin docentes calificados</p>
+                    ) : qualifiedTeachers.length === 1 ? (
+                      <div className="flex items-center gap-1.5 text-sm text-foreground bg-muted/50 rounded-lg px-2 py-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                        {qualifiedTeachers[0].firstName} {qualifiedTeachers[0].lastName}
+                      </div>
+                    ) : (
+                      <select
+                        value={g.assignedInstructorId ?? ''}
+                        onChange={(e) => handleAssignGroup(g, e.target.value)}
+                        disabled={mutatingGroupId === g.id}
+                        className="w-full text-sm rounded-lg border border-border px-2 py-1.5 bg-white disabled:opacity-60"
+                      >
+                        <option value="">Sin asignar — el algoritmo decide</option>
+                        {qualifiedTeachers.map(t => (
+                          <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Left: Materias */}
         <div className="bg-white rounded-xl border border-border shadow-sm flex flex-col overflow-hidden">

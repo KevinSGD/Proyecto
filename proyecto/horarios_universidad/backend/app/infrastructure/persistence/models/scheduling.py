@@ -89,6 +89,12 @@ class GroupModel(Base):
         index=True,
     )
     priority: Mapped[int] = mapped_column(Integer, default=2)
+    assigned_instructor_id: Mapped[Any | None] = mapped_column(
+        Uuid,
+        ForeignKey("instructors.id"),
+        nullable=True,
+        index=True,
+    )
 
     offering_line: Mapped["OfferingLineModel"] = relationship()
     subject: Mapped["SubjectModel"] = relationship()

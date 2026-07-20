@@ -138,6 +138,11 @@ class GroupOut(CamelModel):
     modality: str
     schedule_type_id: UUID
     priority: int
+    assigned_instructor_id: UUID | None = None
+
+
+class GroupInstructorAssign(CamelModel):
+    instructor_id: UUID | None = None
 
 
 # -- Subject groups (director-facing, managed from the Materia form) --------

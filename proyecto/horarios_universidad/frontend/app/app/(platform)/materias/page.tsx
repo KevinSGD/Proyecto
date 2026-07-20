@@ -79,8 +79,9 @@ function DirectorMaterias() {
     if (!deleting) return
     try {
       await subjectService.delete(deleting.id)
-      addToast('success', 'Materia eliminada')
+      addToast('success', `Materia "${deleting.name}" (${deleting.code}) eliminada`)
       setDeleting(null)
+      setSearch('')
       refetch()
     } catch {
       addToast('error', 'Error al eliminar la materia')
@@ -209,7 +210,7 @@ function DirectorMaterias() {
         onConfirm={handleDelete}
         destructive
       >
-        <p>¿Estás seguro de eliminar <strong>{deleting?.name}</strong>? Esta acción no se puede deshacer.</p>
+        <p>¿Estás seguro de eliminar <strong>{deleting?.name} ({deleting?.code})</strong>? Esta acción no se puede deshacer.</p>
       </Modal>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
@@ -292,9 +293,11 @@ function CoordinadorMaterias() {
   const modalityLabel = (t: string) => ({ presential: 'Presencial', virtual: 'Virtual', hybrid: 'Híbrida' }[t] ?? t)
 
   const handleDelete = async (id: string) => {
+    const subject = subjects.find(s => s.id === id)
     try {
       await subjectService.delete(id)
-      addToast('success', 'Materia eliminada', 'La materia fue removida del área.')
+      addToast('success', subject ? `Materia "${subject.name}" (${subject.code}) eliminada` : 'Materia eliminada', 'La materia fue removida del área.')
+      setSearch('')
     } catch {
       addToast('error', 'Error al eliminar')
     }
@@ -460,7 +463,12 @@ function CoordinadorMaterias() {
         onClose={() => setDeleteId(null)}
         onConfirm={() => deleteId && handleDelete(deleteId)}
         title="Eliminar materia"
-        description="¿Estás seguro de que deseas eliminar esta materia? Esta acción no se puede deshacer."
+        description={(() => {
+          const s = subjects.find(x => x.id === deleteId)
+          return s
+            ? `¿Estás seguro de que deseas eliminar "${s.name}" (${s.code})? Esta acción no se puede deshacer.`
+            : '¿Estás seguro de que deseas eliminar esta materia? Esta acción no se puede deshacer.'
+        })()}
         confirmLabel="Sí, eliminar"
         danger
       />

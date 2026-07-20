@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Calendar, Users, Building2, Save, RotateCcw, ShieldCheck, Lock, ClipboardCheck, Download, ArrowRight, ListTree, Trash2 } from 'lucide-react'
 import { FilterSelect, SelectField, NumberField } from '@/components/ui/Field'
@@ -73,7 +73,11 @@ export default function HorariosPage() {
     [institutionId, periodId],
   )
   const runs: ScheduleRun[] = runsData?.data ?? []
-  const activeRunId = selectedRunId || runs[0]?.id || ''
+  const latestRunId = useMemo(() => {
+    const sorted = [...runs].sort((a, b) => new Date(b.startedAt ?? 0).getTime() - new Date(a.startedAt ?? 0).getTime())
+    return sorted[0]?.id ?? ''
+  }, [runs])
+  const activeRunId = selectedRunId || latestRunId
   const activeRun = runs.find(r => r.id === activeRunId)
   const isLocked = activeRun?.status === 'blocked' || activeRun?.status === 'published'
 
@@ -451,7 +455,7 @@ export default function HorariosPage() {
             {runs.length === 0 && (
               <p className="text-sm text-muted-foreground">No hay corridas todavía.</p>
             )}
-            {[...runs].reverse().map((r) => (
+            {runs.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{r.name || r.id.slice(0, 8)}</p>

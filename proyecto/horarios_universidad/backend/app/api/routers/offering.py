@@ -11,6 +11,7 @@ from app.api.dependencies.database import get_uow
 from app.api.schemas.base import ApiResponse
 from app.api.schemas.offering import (
     GroupCreate,
+    GroupInstructorAssign,
     GroupOut,
     GroupUpdate,
     OfferingCreate,
@@ -29,6 +30,7 @@ from app.api.schemas.offering import (
 from app.application.commands.offering_commands import (
     AddOfferingLine,
     ApproveOffering,
+    AssignGroupInstructor,
     CreateGroup,
     CreateOffering,
     CreateScheduleType,
@@ -86,6 +88,18 @@ def _ensure_subject_area_access(uow: UnitOfWork, user: User, subject_id: UUID) -
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes acceso a esta materia",
         )
+
+
+def _ensure_group_area_access(uow: UnitOfWork, user: User, group_id: UUID) -> None:
+    """Restrict area-coordinator users to groups within their own area."""
+    role = AuthService(uow).get_role_display_name(user)
+    if role != "coordinador":
+        return
+    with uow:
+        group = uow.groups.get_by_id(group_id)
+    if group is None:
+        return
+    _ensure_subject_area_access(uow, user, group.subject_id)
 
 _Uow = Depends(get_uow)
 
@@ -268,6 +282,18 @@ def get_group(group_id: UUID, uow: UnitOfWork = _Uow):
 def update_group(group_id: UUID, body: GroupUpdate, uow: UnitOfWork = _Uow):
     entity = UpdateGroup(uow).execute(group_id, body)
     return ApiResponse(message="Group updated", data=GroupOut(**group_to_dict(entity)))
+
+
+@router.put("/groups/{group_id}/instructor", response_model=ApiResponse[GroupOut])
+def assign_group_instructor(
+    group_id: UUID,
+    body: GroupInstructorAssign,
+    user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+):
+    _ensure_group_area_access(uow, user, group_id)
+    entity = AssignGroupInstructor(uow).execute(group_id, body.instructor_id)
+    return ApiResponse(message="Group instructor updated", data=GroupOut(**group_to_dict(entity)))
 
 
 @router.delete("/groups/{group_id}", response_model=ApiResponse[bool])

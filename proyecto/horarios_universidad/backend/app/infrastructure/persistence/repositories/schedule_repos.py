@@ -49,6 +49,7 @@ class SqlScheduleRunRepository(
                 self._model_cls.institution_id == institution_id,
                 self._model_cls.period_id == period_id,
             )
+            .order_by(self._model_cls.started_at.desc())
             .all()
         )
         return [self._to_entity(m) for m in models]

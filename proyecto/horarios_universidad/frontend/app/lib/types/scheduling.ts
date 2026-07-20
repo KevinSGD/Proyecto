@@ -78,4 +78,5 @@ export interface Group {
   modality: string
   scheduleTypeId: string
   priority: number
+  assignedInstructorId?: string | null
 }

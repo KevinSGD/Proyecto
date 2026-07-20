@@ -194,9 +194,16 @@ class DatasetBuilder:
             block_durations = self._compute_block_durations(
                 subject, schedule_type,
             )
-            candidate_instructors = specialty_index.get(
-                group.subject_id, [],
-            )
+            if group.assigned_instructor_id is not None:
+                # A coordinator pinned this specific group to one instructor
+                # (e.g. picking who teaches each of "Cálculo"'s 3 groups) —
+                # that choice is authoritative, overriding the subject-wide
+                # specialty pool for this group only.
+                candidate_instructors = [group.assigned_instructor_id]
+            else:
+                candidate_instructors = specialty_index.get(
+                    group.subject_id, [],
+                )
             compatible_classrooms = self._find_compatible_classrooms(
                 group,
                 subject,

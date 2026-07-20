@@ -39,3 +39,4 @@ class Group:
     modality: str = ""
     schedule_type_id: EntityId = field(default_factory=generate_id)
     priority: int = 2
+    assigned_instructor_id: EntityId | None = None

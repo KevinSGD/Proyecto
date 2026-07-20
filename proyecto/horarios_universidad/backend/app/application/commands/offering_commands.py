@@ -219,6 +219,36 @@ class UpdateGroup:
             return entity
 
 
+class AssignGroupInstructor:
+    """Pin (or unpin) a specific instructor to a specific group.
+
+    Lets a coordinator decide exactly who teaches which group of a subject
+    (e.g. "Cálculo" has 3 groups — pick a different instructor per group)
+    instead of only offering the whole subject to a pool of qualified
+    instructors and letting the solver pick. When set, the solver treats it
+    as the only candidate for that group (see
+    dataset_builder._build_groups); ``None`` clears the pin and returns the
+    group to the subject-wide specialty pool.
+    """
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
+    def execute(self, group_id: UUID, instructor_id: UUID | None) -> Group:
+        with self._uow:
+            entity = self._uow.groups.get_by_id(group_id)
+            if entity is None:
+                raise ResourceNotFoundError("Group", group_id)
+            if instructor_id is not None:
+                instructor = self._uow.instructors.get_by_id(instructor_id)
+                if instructor is None:
+                    raise ResourceNotFoundError("Instructor", instructor_id)
+            entity.assigned_instructor_id = instructor_id
+            self._uow.groups.save(entity)
+            self._uow.commit()
+            return entity
+
+
 class DeleteGroup:
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
