@@ -34,18 +34,6 @@ class ListInstitutions:
             return self._uow.institutions.list_all()
 
 
-class GetCampus:
-    def __init__(self, uow: UnitOfWork) -> None:
-        self._uow = uow
-
-    def execute(self, campus_id: UUID) -> Campus:
-        with self._uow:
-            entity = self._uow.campuses.get_by_id(campus_id)
-            if entity is None:
-                raise ResourceNotFoundError("Campus", campus_id)
-            return entity
-
-
 class ListCampuses:
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
@@ -53,18 +41,6 @@ class ListCampuses:
     def execute(self, institution_id: UUID) -> list[Campus]:
         with self._uow:
             return self._uow.campuses.list_by_institution(institution_id)
-
-
-class GetAcademicPeriod:
-    def __init__(self, uow: UnitOfWork) -> None:
-        self._uow = uow
-
-    def execute(self, period_id: UUID) -> AcademicPeriod:
-        with self._uow:
-            entity = self._uow.academic_periods.get_by_id(period_id)
-            if entity is None:
-                raise ResourceNotFoundError("AcademicPeriod", period_id)
-            return entity
 
 
 class ListAcademicPeriods:

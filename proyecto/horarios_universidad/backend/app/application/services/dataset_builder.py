@@ -54,7 +54,6 @@ class DatasetBuilder:
             schedule_types = self._uow.schedule_types.list_by_institution(
                 institution_id,
             )
-            schedule_type_map = {st.id: st for st in schedule_types}
 
             subject_map = {
                 s.id: s
@@ -86,7 +85,6 @@ class DatasetBuilder:
             solver_groups = self._build_groups(
                 groups,
                 subject_map,
-                schedule_type_map,
                 specialty_index,
                 active_classrooms,
                 classroom_resource_index,
@@ -175,7 +173,6 @@ class DatasetBuilder:
         self,
         groups: list[Group],
         subject_map: dict[EntityId, object],
-        schedule_type_map: dict[EntityId, ScheduleType],
         specialty_index: dict[EntityId, list[EntityId]],
         classrooms: list[Classroom],
         classroom_resource_index: dict[EntityId, set[EntityId]],
@@ -190,10 +187,7 @@ class DatasetBuilder:
             if subject is None:
                 continue
 
-            schedule_type = schedule_type_map.get(group.schedule_type_id)
-            block_durations = self._compute_block_durations(
-                subject, schedule_type,
-            )
+            block_durations = self._compute_block_durations(subject)
             if group.assigned_instructor_id is not None:
                 # A coordinator pinned this specific group to one instructor
                 # (e.g. picking who teaches each of "Cálculo"'s 3 groups) —
@@ -234,32 +228,42 @@ class DatasetBuilder:
             ))
         return solver_groups
 
-    def _compute_block_durations(
-        self,
-        subject: object,
-        schedule_type: ScheduleType | None,
-    ) -> list[int]:
+    def _compute_block_durations(self, subject: object) -> list[int]:
+        """Split a subject's weekly hours into contiguous session blocks.
+
+        Follows the institution's fixed credit/format rules (HD-13 already
+        forces every block onto a different day, so only the block *sizes*
+        are decided here):
+
+        - 1h  -> one 1h block (always virtual; see ``_validate_modality_credits``).
+        - 2h  -> one single 2h block — never two separate 1h days.
+        - 3h  -> 2h + 1h on two different days (the common case; a single
+          3h block is the documented alternative but this pre-computation
+          picks one deterministic split).
+        - 4h  -> 2h + 2h on two different days — never a single 4h block.
+        - >4h -> only reachable by virtual subjects (presencial is capped at
+          4h by ``_validate_modality_credits``); extends the same 2h-block
+          pattern with a trailing 1h block if the total is odd.
+        """
         weekly_hours = getattr(subject, "weekly_hours", 0) or 0
         if weekly_hours <= 0:
             weekly_hours = getattr(subject, "credit_hours", 0) or 0
         if weekly_hours <= 0:
             return [1]
 
-        slot_minutes = 60
-        if schedule_type is not None:
-            slot_minutes = schedule_type.slot_duration_minutes or 60
+        if weekly_hours == 1:
+            return [1]
+        if weekly_hours == 2:
+            return [2]
+        if weekly_hours == 3:
+            return [2, 1]
+        if weekly_hours == 4:
+            return [2, 2]
 
-        # Each block is one period (slot) long; distribute weekly_hours across
-        # active days up to a max of 2 blocks per session.
-        num_days = 1
-        if schedule_type is not None and schedule_type.active_days:
-            num_days = len(schedule_type.active_days)
-
-        periods_per_block = max(1, (weekly_hours * 60) // (slot_minutes * num_days))
-        num_blocks = min(num_days, weekly_hours)
-        if num_blocks <= 0:
-            num_blocks = 1
-        return [periods_per_block] * num_blocks
+        blocks = [2] * (weekly_hours // 2)
+        if weekly_hours % 2 == 1:
+            blocks.append(1)
+        return blocks
 
     def _find_compatible_classrooms(
         self,

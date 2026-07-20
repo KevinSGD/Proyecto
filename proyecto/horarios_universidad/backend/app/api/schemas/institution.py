@@ -48,21 +48,6 @@ class InstitutionOut(CamelModel):
 # ── Campus ───────────────────────────────────────────────────────────────────
 
 
-class CampusCreate(CamelModel):
-    institution_id: UUID
-    name: str = Field(..., min_length=1, max_length=200)
-    code: str = Field(..., min_length=1, max_length=20)
-    address: str | None = None
-    city: str | None = None
-
-
-class CampusUpdate(CamelModel):
-    name: str | None = None
-    code: str | None = None
-    address: str | None = None
-    city: str | None = None
-
-
 class CampusOut(CamelModel):
     id: UUID
     institution_id: UUID
@@ -83,21 +68,6 @@ class AcademicPeriodCreate(CamelModel):
     period_number: int = Field(..., ge=1)
     start_date: date | None = None
     end_date: date | None = None
-
-
-class AcademicPeriodUpdate(CamelModel):
-    name: str | None = None
-    year: int | None = None
-    period_number: int | None = None
-    status: str | None = None
-    is_active: bool | None = None
-    start_date: date | None = None
-    end_date: date | None = None
-
-
-class ClonePeriodRequest(CamelModel):
-    name: str = Field(..., min_length=1, max_length=200)
-    year: int = Field(..., ge=2000, le=2100)
 
 
 class AcademicPeriodOut(CamelModel):

@@ -42,14 +42,14 @@ export function NumberField({ label, value, onChange, error }: {
   )
 }
 
-export function SelectField({ label, value, onChange, options, labels, ariaLabel, error }: {
-  label?: string; value: string; onChange: (v: string) => void; options: string[]; labels?: Record<string, string>; ariaLabel?: string; error?: string
+export function SelectField({ label, value, onChange, options, labels, ariaLabel, error, disabled }: {
+  label?: string; value: string; onChange: (v: string) => void; options: string[]; labels?: Record<string, string>; ariaLabel?: string; error?: string; disabled?: boolean
 }) {
   const id = useId()
   return (
     <div>
       {label ? <Label htmlFor={id}>{label}</Label> : null}
-      <select id={id} aria-label={!label ? (ariaLabel ?? 'Selecciona una opción') : undefined} value={value} onChange={e => onChange(e.target.value)} className={`${inputBase} ${error ? borderErr : borderOk}`}>
+      <select id={id} aria-label={!label ? (ariaLabel ?? 'Selecciona una opción') : undefined} value={value} onChange={e => onChange(e.target.value)} disabled={disabled} className={`${inputBase} ${error ? borderErr : borderOk} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
         {options.map(o => <option key={o} value={o}>{labels?.[o] ?? o}</option>)}
       </select>
       <ErrorText>{error}</ErrorText>

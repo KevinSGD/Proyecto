@@ -237,11 +237,35 @@ class DeleteArea:
 # ── Subject ──────────────────────────────────────────────────────────────────
 
 
+def _validate_modality_credits(weekly_hours: int, modality: str) -> None:
+    """Enforce the credit/modality rules that also drive block scheduling.
+
+    1 hora semanal -> siempre virtual (no ocupa salón). 2 horas -> siempre
+    presencial (se ve en un único bloque de 2h, nunca partido en dos días).
+    Presenciales no pueden pasar de 4 horas semanales; para más horas la
+    materia debe ser virtual, que no tiene tope al no ocupar espacio físico.
+    """
+    if weekly_hours == 1 and modality != "virtual":
+        raise BusinessRuleError(
+            "Las materias de 1 hora semanal (1 crédito) deben ser virtuales.",
+        )
+    if weekly_hours == 2 and modality != "presential":
+        raise BusinessRuleError(
+            "Las materias de 2 horas semanales (2 créditos) deben ser presenciales.",
+        )
+    if weekly_hours > 4 and modality != "virtual":
+        raise BusinessRuleError(
+            "Las materias presenciales no pueden superar las 4 horas semanales. "
+            "Para más horas, la materia debe ser virtual.",
+        )
+
+
 class CreateSubject:
     def __init__(self, uow: UnitOfWork) -> None:
         self._uow = uow
 
     def execute(self, data: SubjectCreate) -> Subject:
+        _validate_modality_credits(data.weekly_hours, data.modality_default)
         with self._uow:
             entity = Subject(
                 id=generate_id(),
@@ -269,6 +293,7 @@ class UpdateSubject:
                 raise ResourceNotFoundError("Subject", subject_id)
             for field, value in data.model_dump(exclude_unset=True).items():
                 setattr(entity, field, value)
+            _validate_modality_credits(entity.weekly_hours, entity.modality_default)
             self._uow.subjects.save(entity)
             self._uow.commit()
             return entity

@@ -12,29 +12,19 @@ from app.api.schemas.base import ApiResponse
 from app.api.schemas.institution import (
     AcademicPeriodCreate,
     AcademicPeriodOut,
-    AcademicPeriodUpdate,
-    CampusCreate,
     CampusOut,
-    CampusUpdate,
-    ClonePeriodRequest,
     InstitutionCreate,
     InstitutionOut,
     InstitutionUpdate,
 )
 from app.application.commands.institution_commands import (
-    CloneAcademicPeriod,
     CreateAcademicPeriod,
-    CreateCampus,
     CreateInstitution,
     DeleteInstitution,
-    UpdateAcademicPeriod,
-    UpdateCampus,
     UpdateInstitution,
 )
 from app.application.queries.institution_queries import (
-    GetAcademicPeriod,
     GetActiveAcademicPeriod,
-    GetCampus,
     GetInstitution,
     ListAcademicPeriods,
     ListCampuses,
@@ -97,21 +87,9 @@ async def delete_institution(
 
 
 # ── Campus ───────────────────────────────────────────────────────────────────
-
-
-@router.post(
-    "/institutions/{institution_id}/campuses",
-    response_model=ApiResponse[CampusOut],
-    status_code=201,
-)
-async def create_campus(
-    institution_id: UUID,
-    body: CampusCreate,
-    uow: UnitOfWork = Depends(get_uow),
-) -> ApiResponse[CampusOut]:
-    body.institution_id = institution_id
-    entity = CreateCampus(uow).execute(body)
-    return ApiResponse(data=CampusOut(**entity.__dict__), message="Campus created")
+# Only listing is exposed — campuses are seeded once per institution and
+# aren't managed from the UI at all yet, so create/get/update stayed dead
+# code until there's an actual campus-management screen to wire them to.
 
 
 @router.get(
@@ -127,25 +105,6 @@ async def list_campuses(
         data=[CampusOut(**e.__dict__) for e in entities],
         message="Campuses retrieved",
     )
-
-
-@router.get("/campuses/{campus_id}", response_model=ApiResponse[CampusOut])
-async def get_campus(
-    campus_id: UUID,
-    uow: UnitOfWork = Depends(get_uow),
-) -> ApiResponse[CampusOut]:
-    entity = GetCampus(uow).execute(campus_id)
-    return ApiResponse(data=CampusOut(**entity.__dict__), message="Campus retrieved")
-
-
-@router.put("/campuses/{campus_id}", response_model=ApiResponse[CampusOut])
-async def update_campus(
-    campus_id: UUID,
-    body: CampusUpdate,
-    uow: UnitOfWork = Depends(get_uow),
-) -> ApiResponse[CampusOut]:
-    entity = UpdateCampus(uow).execute(campus_id, body)
-    return ApiResponse(data=CampusOut(**entity.__dict__), message="Campus updated")
 
 
 # ── Academic Period ──────────────────────────────────────────────────────────
@@ -179,39 +138,6 @@ async def list_academic_periods(
         data=[AcademicPeriodOut(**e.__dict__) for e in entities],
         message="Academic periods retrieved",
     )
-
-
-@router.get("/periods/{period_id}", response_model=ApiResponse[AcademicPeriodOut])
-async def get_academic_period(
-    period_id: UUID,
-    uow: UnitOfWork = Depends(get_uow),
-) -> ApiResponse[AcademicPeriodOut]:
-    entity = GetAcademicPeriod(uow).execute(period_id)
-    return ApiResponse(data=AcademicPeriodOut(**entity.__dict__), message="Academic period retrieved")
-
-
-@router.put("/periods/{period_id}", response_model=ApiResponse[AcademicPeriodOut])
-async def update_academic_period(
-    period_id: UUID,
-    body: AcademicPeriodUpdate,
-    uow: UnitOfWork = Depends(get_uow),
-) -> ApiResponse[AcademicPeriodOut]:
-    entity = UpdateAcademicPeriod(uow).execute(period_id, body)
-    return ApiResponse(data=AcademicPeriodOut(**entity.__dict__), message="Academic period updated")
-
-
-@router.post("/periods/{period_id}/clone", response_model=ApiResponse[AcademicPeriodOut], status_code=201)
-async def clone_academic_period(
-    period_id: UUID,
-    body: ClonePeriodRequest,
-    uow: UnitOfWork = Depends(get_uow),
-) -> ApiResponse[AcademicPeriodOut]:
-    entity = CloneAcademicPeriod(uow).execute(
-        source_id=period_id,
-        new_name=body.name,
-        new_year=body.year,
-    )
-    return ApiResponse(data=AcademicPeriodOut(**entity.__dict__), message="Academic period cloned")
 
 
 @router.get(

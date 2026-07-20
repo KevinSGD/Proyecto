@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import status
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from app.api.schemas.base import ErrorDetail, ErrorResponse
 from app.application.exceptions import (
@@ -251,6 +252,65 @@ async def _handle_authorization(
     )
 
 
+_TABLE_LABELS = {
+    "campuses": "campus",
+    "classrooms": "aula",
+    "subjects": "materia",
+    "buildings": "edificio",
+    "resources": "recurso",
+    "academic_areas": "área académica",
+    "instructors": "docente",
+    "users": "usuario",
+    "schedule_types": "tipo de horario",
+    "academic_periods": "período académico",
+    "institutions": "institución",
+    "roles": "rol",
+}
+_FIELD_LABELS = {
+    "code": "código",
+    "email": "correo",
+    "employee_code": "código de empleado",
+    "name": "nombre",
+}
+_FOREIGN_KEY_FIELDS = {"institution_id", "area_id", "period_id", "role_id", "campus_id", "building_id"}
+
+
+async def _handle_integrity_error(
+    _request: Request, exc: IntegrityError,
+) -> JSONResponse:
+    """Translate a raw SQLite UNIQUE-constraint violation into a clean 409.
+
+    Every ``Create``/``Update`` command relies on the DB's unique
+    constraints rather than a pre-check, so a duplicate code/email/name
+    used to bubble up as an opaque 500. This does it once, for every
+    endpoint, instead of adding a bespoke pre-check to each command.
+    """
+    message = str(exc.orig) if exc.orig else str(exc)
+    if "UNIQUE constraint failed" in message:
+        columns_part = message.split("UNIQUE constraint failed:", 1)[-1].strip()
+        columns = [c.strip() for c in columns_part.split(",") if c.strip()]
+        table = columns[0].split(".", 1)[0] if columns else ""
+        fields = [c.split(".", 1)[-1] for c in columns]
+        meaningful = [f for f in fields if f not in _FOREIGN_KEY_FIELDS]
+        field = (meaningful or fields or ["valor"])[-1]
+
+        table_label = _TABLE_LABELS.get(table, table or "registro")
+        field_label = _FIELD_LABELS.get(field, field)
+        return _error_response(
+            status.HTTP_409_CONFLICT,
+            "DUPLICATE_ENTITY",
+            f"Ya existe un registro de {table_label} con ese {field_label}. "
+            "Usa un valor distinto.",
+        )
+
+    logger.error("Integrity error: %s", exc, exc_info=True)
+    return _error_response(
+        status.HTTP_409_CONFLICT,
+        "INTEGRITY_ERROR",
+        "La operación viola una restricción de integridad de los datos.",
+    )
+
+
 async def _handle_unhandled(
     _request: Request, exc: Exception,
 ) -> JSONResponse:
@@ -283,4 +343,5 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ExportError, _handle_export)
     app.add_exception_handler(ConfigurationError, _handle_config)
     app.add_exception_handler(SchedulerError, _handle_scheduler_base)
+    app.add_exception_handler(IntegrityError, _handle_integrity_error)
     app.add_exception_handler(Exception, _handle_unhandled)

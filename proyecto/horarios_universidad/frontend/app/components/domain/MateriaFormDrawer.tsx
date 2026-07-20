@@ -51,6 +51,24 @@ export default function MateriaFormDrawer({ subject, onClose, onSaved }: Props) 
   const [modalityDefault, setModalityDefault] = useState(subject?.modalityDefault ?? 'presential')
   const [observations, setObservations] = useState(subject?.observations ?? '')
 
+  // 1h siempre virtual, 2h siempre presencial, y presencial nunca pasa de 4h
+  // — la modalidad no es una eleccion libre en esos casos.
+  const modalityLocked = weeklyHours === 1 || weeklyHours === 2 || weeklyHours > 4
+  const modalityHint =
+    weeklyHours === 1 ? 'Las materias de 1 hora semanal son siempre virtuales.'
+    : weeklyHours === 2 ? 'Las materias de 2 horas semanales son siempre presenciales, en un único bloque de 2h.'
+    : weeklyHours > 4 ? 'Más de 4 horas semanales solo puede ser virtual (presencial tiene tope de 4h).'
+    : weeklyHours === 3 ? 'Se agenda en bloques de 2h + 1h (o 3h seguidas), en días distintos.'
+    : weeklyHours === 4 ? 'Se agenda en dos bloques de 2h, en días distintos — nunca 4h seguidas.'
+    : ''
+
+  useEffect(() => {
+    if (weeklyHours === 1 && modalityDefault !== 'virtual') setModalityDefault('virtual')
+    else if (weeklyHours === 2 && modalityDefault !== 'presential') setModalityDefault('presential')
+    else if (weeklyHours > 4 && modalityDefault !== 'virtual') setModalityDefault('virtual')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeklyHours])
+
   // Resource requirements
   const [selectedResources, setSelectedResources] = useState<string[]>([])
   const [existingReqs, setExistingReqs] = useState<SubjectResourceReq[]>([])
@@ -189,8 +207,8 @@ export default function MateriaFormDrawer({ subject, onClose, onSaved }: Props) 
       }
 
       onSaved()
-    } catch {
-      setErrors({ _form: 'Error al guardar. Verifica los datos e intenta de nuevo.' })
+    } catch (err) {
+      setErrors({ _form: err instanceof ApiError ? err.detail : 'Error al guardar. Verifica los datos e intenta de nuevo.' })
     } finally {
       setSaving(false)
     }
@@ -232,9 +250,10 @@ export default function MateriaFormDrawer({ subject, onClose, onSaved }: Props) 
           <NumberField label="Horas semanales" value={weeklyHours} onChange={setWeeklyHours} error={errors.weeklyHours} />
           <SelectField
             label="Modalidad" value={modalityDefault} onChange={setModalityDefault}
-            options={MODALITY_OPTIONS} labels={MODALITY_LABELS}
+            options={MODALITY_OPTIONS} labels={MODALITY_LABELS} disabled={modalityLocked}
           />
         </div>
+        {modalityHint && <p className="text-xs text-muted-foreground -mt-3">{modalityHint}</p>}
 
         {isCoordinador ? (
           <p className="text-xs text-muted-foreground">Esta materia quedará asignada automáticamente a tu área.</p>
