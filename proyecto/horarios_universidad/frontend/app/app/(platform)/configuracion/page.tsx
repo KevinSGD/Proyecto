@@ -43,8 +43,8 @@ export default function ConfiguracionPage() {
 
   useEffect(() => {
     if (institution) {
-      setName(institution.name)
-      setCode(institution.code)
+      setName(institution.name ?? '')
+      setCode(institution.code ?? '')
       setEmail(institution.email ?? '')
       setPhone(institution.phone ?? '')
       setWebsite(institution.website ?? '')

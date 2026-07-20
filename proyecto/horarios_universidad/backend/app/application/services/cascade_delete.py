@@ -24,6 +24,7 @@ __all__ = [
     "delete_offerings_cascade",
     "delete_subject_cascade",
     "delete_instructor_cascade",
+    "delete_user_cascade",
 ]
 
 
@@ -197,4 +198,59 @@ def delete_instructor_cascade(session: Session, instructor_id: EntityId) -> None
 
     session.query(InstructorModel).filter(
         InstructorModel.id == instructor_id,
+    ).delete(synchronize_session=False)
+
+
+def delete_user_cascade(session: Session, user_id: EntityId) -> None:
+    """Delete a user account and detach it from historical records.
+
+    Rows that are the user's own data (notifications) are deleted. Rows
+    that merely record who performed an action (audit logs, schedule
+    runs, optimization configs, import sessions, validation reports,
+    academic offerings) are kept but have their user reference cleared,
+    so removing a user never raises a raw FK ``IntegrityError`` and
+    never erases unrelated history.
+    """
+    from app.infrastructure.persistence.models.auth import UserModel
+    from app.infrastructure.persistence.models.import_export import (
+        ImportSessionModel,
+        ValidationReportModel,
+    )
+    from app.infrastructure.persistence.models.offering import (
+        AcademicOfferingModel,
+    )
+    from app.infrastructure.persistence.models.schedule import (
+        OptimizationConfigModel,
+        ScheduleRunModel,
+    )
+    from app.infrastructure.persistence.models.system import (
+        AuditLogModel,
+        NotificationModel,
+    )
+
+    session.query(NotificationModel).filter(
+        NotificationModel.user_id == user_id,
+    ).delete(synchronize_session=False)
+
+    session.query(AuditLogModel).filter(
+        AuditLogModel.user_id == user_id,
+    ).update({"user_id": None}, synchronize_session=False)
+    session.query(ImportSessionModel).filter(
+        ImportSessionModel.user_id == user_id,
+    ).update({"user_id": None}, synchronize_session=False)
+    session.query(ValidationReportModel).filter(
+        ValidationReportModel.created_by == user_id,
+    ).update({"created_by": None}, synchronize_session=False)
+    session.query(OptimizationConfigModel).filter(
+        OptimizationConfigModel.created_by == user_id,
+    ).update({"created_by": None}, synchronize_session=False)
+    session.query(ScheduleRunModel).filter(
+        ScheduleRunModel.created_by == user_id,
+    ).update({"created_by": None}, synchronize_session=False)
+    session.query(AcademicOfferingModel).filter(
+        AcademicOfferingModel.created_by == user_id,
+    ).update({"created_by": None}, synchronize_session=False)
+
+    session.query(UserModel).filter(
+        UserModel.id == user_id,
     ).delete(synchronize_session=False)

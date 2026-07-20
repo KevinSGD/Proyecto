@@ -118,13 +118,27 @@ class SqlClassroomAvailabilityRepository(
         return [self._to_entity(m) for m in query.all()]
 
     def bulk_save(self, entries: list[ClassroomAvailability]) -> int:
-        count = 0
+        """Replace availability for every (classroom, period) pair in ``entries``.
+
+        Each call generates fresh ids, so ``session.merge`` (which matches
+        on primary key) would insert duplicates instead of updating the
+        existing row for a given classroom/period/day/slot — violating the
+        unique constraint on a second save. Deleting the prior rows for the
+        affected (classroom_id, period_id) pairs first makes this a true
+        replace, so re-saving availability is idempotent.
+        """
+        if not entries:
+            return 0
+        pairs = {(e.classroom_id, e.period_id) for e in entries}
+        for classroom_id, period_id in pairs:
+            self._session.query(self._model_cls).filter(
+                self._model_cls.classroom_id == classroom_id,
+                self._model_cls.period_id == period_id,
+            ).delete(synchronize_session=False)
         for entry in entries:
-            model = self._to_model(entry)
-            self._session.merge(model)
-            count += 1
+            self._session.add(self._to_model(entry))
         self._session.flush()
-        return count
+        return len(entries)
 
 
 class SqlResourceRepository(

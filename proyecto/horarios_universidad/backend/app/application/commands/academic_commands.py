@@ -94,11 +94,16 @@ class DeleteArea:
             delete_instructor_cascade,
             delete_offerings_cascade,
             delete_subject_cascade,
+            delete_user_cascade,
         )
         from app.infrastructure.persistence.models.academic import (
             SubjectModel,
         )
-        from app.infrastructure.persistence.models.auth import UserAreaModel
+        from app.infrastructure.persistence.models.auth import (
+            RoleModel,
+            UserAreaModel,
+            UserModel,
+        )
         from app.infrastructure.persistence.models.offering import (
             AcademicOfferingModel,
         )
@@ -138,9 +143,37 @@ class DeleteArea:
             for instructor_id in instructor_ids:
                 delete_instructor_cascade(session, instructor_id)
 
+            coordinator_ids = {
+                row.user_id
+                for row in session.query(UserAreaModel.user_id)
+                .filter(UserAreaModel.area_id == area_id)
+                .all()
+            }
+
             session.query(UserAreaModel).filter(
                 UserAreaModel.area_id == area_id,
             ).delete(synchronize_session=False)
+
+            # A coordinator only ever manages the area they were created
+            # for. Once their last area link is gone, their account is an
+            # orphan the UI can no longer show — but it could still log
+            # in — so it must be removed along with the area.
+            for user_id in coordinator_ids:
+                remaining_areas = (
+                    session.query(UserAreaModel)
+                    .filter(UserAreaModel.user_id == user_id)
+                    .count()
+                )
+                if remaining_areas:
+                    continue
+                role_name = (
+                    session.query(RoleModel.name)
+                    .join(UserModel, UserModel.role_id == RoleModel.id)
+                    .filter(UserModel.id == user_id)
+                    .scalar()
+                )
+                if role_name == RoleName.AREA_COORDINATOR.value:
+                    delete_user_cascade(session, user_id)
 
             deleted = self._uow.academic_areas.delete(area_id)
             if not deleted:
