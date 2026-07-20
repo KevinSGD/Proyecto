@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.application.exceptions.application_exceptions import ResourceNotFoundError
-from app.core.security import hash_password
+from app.application.exceptions.application_exceptions import (
+    BusinessRuleError,
+    ResourceNotFoundError,
+)
+from app.core.security import hash_password, verify_password
 from app.core.utils.types import generate_id
 from app.domain.entities.academic import AcademicArea, Subject
 from app.domain.entities.auth import RoleName, User, UserArea
@@ -16,6 +19,7 @@ if TYPE_CHECKING:
     from app.api.schemas.academic import (
         AreaCreate,
         AreaUpdate,
+        CoordinatorUpdate,
         SubjectCreate,
         SubjectUpdate,
     )
@@ -83,6 +87,54 @@ class UpdateArea:
             self._uow.academic_areas.save(entity)
             self._uow.commit()
             return entity
+
+
+class UpdateAreaCoordinator:
+    """Rename a coordinator or change their login credentials.
+
+    Renaming needs no confirmation — it's just profile info. Changing the
+    email or password is a credential change, so it requires the
+    coordinator's own current password before it's allowed.
+    """
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
+    def execute(self, area_id: UUID, data: CoordinatorUpdate) -> User:
+        with self._uow:
+            links = self._uow.user_areas.list_by_area(area_id)
+            if not links:
+                raise ResourceNotFoundError("Coordinator", area_id)
+            user = self._uow.users.get_by_id(links[0].user_id)
+            if user is None:
+                raise ResourceNotFoundError("User", links[0].user_id)
+
+            changing_credentials = (
+                data.email is not None or data.new_password is not None
+            )
+            if changing_credentials:
+                if not data.current_password or not verify_password(
+                    data.current_password, user.hashed_password,
+                ):
+                    raise BusinessRuleError(
+                        "La contraseña actual del coordinador es incorrecta.",
+                    )
+                if data.email is not None and data.email != user.email:
+                    existing = self._uow.users.get_by_email(data.email)
+                    if existing is not None and existing.id != user.id:
+                        raise BusinessRuleError(
+                            "Ese correo ya está en uso por otro usuario.",
+                        )
+                    user.email = data.email
+                if data.new_password is not None:
+                    user.hashed_password = hash_password(data.new_password)
+
+            if data.name is not None:
+                user.name = data.name
+
+            self._uow.users.save(user)
+            self._uow.commit()
+            return user
 
 
 class DeleteArea:

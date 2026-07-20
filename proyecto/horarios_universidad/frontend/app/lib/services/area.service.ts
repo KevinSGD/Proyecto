@@ -1,6 +1,6 @@
 import { api } from '@/lib/api/client'
 import type { ApiResponse } from '@/lib/types/common'
-import type { AcademicArea, AreaCreatePayload } from '@/lib/types/academic'
+import type { AcademicArea, AreaCreatePayload, Coordinator, CoordinatorUpdatePayload } from '@/lib/types/academic'
 
 const BASE = '/api/v1'
 
@@ -23,5 +23,9 @@ export const areaService = {
 
   delete(id: string) {
     return api.delete(`${BASE}/areas/${id}`)
+  },
+
+  updateCoordinator(areaId: string, data: CoordinatorUpdatePayload) {
+    return api.put<ApiResponse<Coordinator>>(`${BASE}/areas/${areaId}/coordinator`, data)
   },
 }

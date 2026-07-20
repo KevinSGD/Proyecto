@@ -13,6 +13,7 @@ from app.api.schemas.academic import (
     AreaOut,
     AreaUpdate,
     CoordinatorOut,
+    CoordinatorUpdate,
     SubjectCreate,
     SubjectOut,
     SubjectUpdate,
@@ -25,6 +26,7 @@ from app.application.commands.academic_commands import (
     DeleteArea,
     DeleteSubject,
     UpdateArea,
+    UpdateAreaCoordinator,
     UpdateSubject,
 )
 from app.application.queries.academic_queries import (
@@ -44,6 +46,17 @@ def _current_user_area_id(uow: UnitOfWork, user_id) -> str | None:
     with uow:
         areas = uow.user_areas.list_by_user(user_id)
         return str(areas[0].area_id) if areas else None
+
+
+def _get_area_coordinator(uow: UnitOfWork, area_id) -> CoordinatorOut | None:
+    with uow:
+        links = uow.user_areas.list_by_area(area_id)
+        if not links:
+            return None
+        user = uow.users.get_by_id(links[0].user_id)
+        if user is None:
+            return None
+        return CoordinatorOut(user_id=user.id, email=user.email, name=user.name)
 
 
 def _ensure_subject_area_access(uow: UnitOfWork, user: User, subject_id) -> None:
@@ -89,7 +102,11 @@ async def list_areas(
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[list[AreaOut]]:
     entities = ListAreas(uow).execute(institution_id)
-    return ApiResponse(data=[AreaOut(**e.__dict__) for e in entities], message="Areas retrieved")
+    items = [
+        AreaOut(**e.__dict__, coordinator=_get_area_coordinator(uow, e.id))
+        for e in entities
+    ]
+    return ApiResponse(data=items, message="Areas retrieved")
 
 
 @router.get("/areas/{area_id}", response_model=ApiResponse[AreaOut])
@@ -99,7 +116,8 @@ async def get_area(
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[AreaOut]:
     entity = GetArea(uow).execute(area_id)
-    return ApiResponse(data=AreaOut(**entity.__dict__), message="Area retrieved")
+    coordinator = _get_area_coordinator(uow, area_id)
+    return ApiResponse(data=AreaOut(**entity.__dict__, coordinator=coordinator), message="Area retrieved")
 
 
 @router.put("/areas/{area_id}", response_model=ApiResponse[AreaOut])
@@ -110,7 +128,25 @@ async def update_area(
     uow: UnitOfWork = Depends(get_uow),
 ) -> ApiResponse[AreaOut]:
     entity = UpdateArea(uow).execute(area_id, body)
-    return ApiResponse(data=AreaOut(**entity.__dict__), message="Area updated")
+    coordinator = _get_area_coordinator(uow, area_id)
+    return ApiResponse(data=AreaOut(**entity.__dict__, coordinator=coordinator), message="Area updated")
+
+
+@router.put(
+    "/areas/{area_id}/coordinator",
+    response_model=ApiResponse[CoordinatorOut],
+    dependencies=[Depends(require_role("director"))],
+)
+async def update_area_coordinator(
+    area_id: UUID,
+    body: CoordinatorUpdate,
+    uow: UnitOfWork = Depends(get_uow),
+) -> ApiResponse[CoordinatorOut]:
+    user = UpdateAreaCoordinator(uow).execute(area_id, body)
+    return ApiResponse(
+        data=CoordinatorOut(user_id=user.id, email=user.email, name=user.name),
+        message="Coordinator updated",
+    )
 
 
 @router.delete("/areas/{area_id}", status_code=204)

@@ -101,10 +101,15 @@ async def list_teachers(
 
     with uow:
         contracts = uow.contracts.list_all()
+        subjects = uow.subjects.list_by_institution(institution_id)
+        specialties_by_instructor = {
+            str(e.id): uow.specialties.list_by_instructor(e.id) for e in entities
+        }
     contract_map: dict[str, Any] = {}
     for c in contracts:
         if c.is_active and str(c.instructor_id) not in contract_map:
             contract_map[str(c.instructor_id)] = c
+    subject_hours = {str(s.id): s.weekly_hours for s in subjects}
 
     items = []
     for e in entities:
@@ -113,6 +118,10 @@ async def list_teachers(
         if c:
             d["contract_type"] = c.contract_type
             d["max_weekly_hours"] = c.max_weekly_periods
+        d["assigned_hours"] = sum(
+            subject_hours.get(str(sp.subject_id), 0)
+            for sp in specialties_by_instructor.get(str(e.id), [])
+        )
         items.append(InstructorOut.model_validate(d))
     return ApiResponse(data=items, message="Teachers retrieved")
 

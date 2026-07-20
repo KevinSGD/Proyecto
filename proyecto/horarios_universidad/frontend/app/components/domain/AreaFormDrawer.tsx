@@ -7,6 +7,7 @@ import Modal from '@/components/ui/Modal'
 import { Field, Textarea } from '@/components/ui/Field'
 import { areaService } from '@/lib/services/area.service'
 import { useAuthStore } from '@/lib/stores/auth.store'
+import { ApiError } from '@/lib/api/client'
 import type { AcademicArea } from '@/lib/types/academic'
 
 interface Props {
@@ -37,10 +38,18 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
   const [name, setName] = useState(area?.name ?? '')
   const [description, setDescription] = useState(area?.description ?? '')
 
-  const [coordName, setCoordName] = useState('')
+  const [coordName, setCoordName] = useState(area?.coordinator?.name ?? '')
   const [coordEmail, setCoordEmail] = useState('')
   const [coordPassword, setCoordPassword] = useState('')
   const [coordPasswordConfirm, setCoordPasswordConfirm] = useState('')
+
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false)
+  const [credEmail, setCredEmail] = useState(area?.coordinator?.email ?? '')
+  const [credNewPassword, setCredNewPassword] = useState('')
+  const [credNewPasswordConfirm, setCredNewPasswordConfirm] = useState('')
+  const [credCurrentPassword, setCredCurrentPassword] = useState('')
+  const [credErrors, setCredErrors] = useState<Record<string, string>>({})
+  const [credSaving, setCredSaving] = useState(false)
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
@@ -80,6 +89,9 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
       setSaving(true)
       try {
         await areaService.update(area.id, { name, code, description })
+        if (coordName.trim() && coordName !== (area.coordinator?.name ?? '')) {
+          await areaService.updateCoordinator(area.id, { name: coordName })
+        }
         onSaved()
       } catch {
         setErrors({ _form: 'Error al guardar. Verifica los datos e intenta de nuevo.' })
@@ -89,6 +101,38 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
       return
     }
     setShowPasswordStep(true)
+  }
+
+  const validateCredentials = () => {
+    const e: Record<string, string> = {}
+    if (!credEmail.trim()) e.credEmail = 'El correo es obligatorio'
+    else if (!/\S+@\S+\.\S+/.test(credEmail)) e.credEmail = 'Correo inválido'
+    if (credNewPassword && credNewPassword.length < 8) e.credNewPassword = 'Mínimo 8 caracteres'
+    if (credNewPassword && credNewPassword !== credNewPasswordConfirm) e.credNewPasswordConfirm = 'Las contraseñas no coinciden'
+    if (!credCurrentPassword) e.credCurrentPassword = 'Ingresa la contraseña actual del coordinador'
+    setCredErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  const handleSaveCredentials = async () => {
+    if (!area || !validateCredentials()) return
+    setCredSaving(true)
+    try {
+      await areaService.updateCoordinator(area.id, {
+        email: credEmail !== area.coordinator?.email ? credEmail : undefined,
+        newPassword: credNewPassword || undefined,
+        currentPassword: credCurrentPassword,
+      })
+      setShowCredentialsModal(false)
+      setCredNewPassword('')
+      setCredNewPasswordConfirm('')
+      setCredCurrentPassword('')
+      onSaved()
+    } catch (err) {
+      setCredErrors({ _form: err instanceof ApiError ? err.detail : 'Error al actualizar las credenciales.' })
+    } finally {
+      setCredSaving(false)
+    }
   }
 
   const handleCreateCoordinator = async () => {
@@ -164,6 +208,31 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
             <Field label="Correo electrónico" value={coordEmail} onChange={v => { setCoordEmail(v); setErrors(e => ({ ...e, coordEmail: '' })) }} placeholder="coordinador@universidad.edu" error={errors.coordEmail} />
           </>
         )}
+
+        {isEdit && (
+          <>
+            <hr className="border-border" />
+            <h3 className="text-sm font-semibold text-foreground">Coordinador del Área</h3>
+            {area.coordinator ? (
+              <>
+                <Field label="Nombre completo" value={coordName} onChange={setCoordName} placeholder="María López" />
+                <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
+                  <p className="text-muted-foreground text-xs">Correo actual</p>
+                  <p className="font-mono text-xs">{area.coordinator.email}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setCredEmail(area.coordinator!.email); setCredErrors({}); setShowCredentialsModal(true) }}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Cambiar correo o contraseña
+                </button>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">Esta área no tiene coordinador asignado.</p>
+            )}
+          </>
+        )}
       </div>
     </Drawer>
 
@@ -189,6 +258,39 @@ export default function AreaFormDrawer({ area, onClose, onSaved }: Props) {
           <button type="button" onClick={generatePassword} className="text-xs font-medium text-primary hover:underline">
             Generar contraseña segura automáticamente
           </button>
+        </div>
+      </Modal>
+    )}
+
+    {showCredentialsModal && area?.coordinator && (
+      <Modal
+        open
+        onClose={() => setShowCredentialsModal(false)}
+        title="Cambiar correo o contraseña"
+        confirmLabel={credSaving ? 'Guardando...' : 'Guardar'}
+        onConfirm={handleSaveCredentials}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Para cambiar el correo o la contraseña de <strong>{area.coordinator.name}</strong>, confirma
+            primero su contraseña actual.
+          </p>
+          {credErrors._form && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{credErrors._form}</p>}
+          <Field label="Correo electrónico" value={credEmail}
+            onChange={v => { setCredEmail(v); setCredErrors(e => ({ ...e, credEmail: '' })) }}
+            placeholder="coordinador@universidad.edu" error={credErrors.credEmail} />
+          <Field label="Nueva contraseña (opcional)" type="password" value={credNewPassword}
+            onChange={v => { setCredNewPassword(v); setCredErrors(e => ({ ...e, credNewPassword: '' })) }}
+            placeholder="Dejar en blanco para no cambiarla" error={credErrors.credNewPassword} />
+          {credNewPassword && (
+            <Field label="Confirmar nueva contraseña" type="password" value={credNewPasswordConfirm}
+              onChange={v => { setCredNewPasswordConfirm(v); setCredErrors(e => ({ ...e, credNewPasswordConfirm: '' })) }}
+              placeholder="Repite la nueva contraseña" error={credErrors.credNewPasswordConfirm} />
+          )}
+          <hr className="border-border" />
+          <Field label="Contraseña actual del coordinador" type="password" value={credCurrentPassword}
+            onChange={v => { setCredCurrentPassword(v); setCredErrors(e => ({ ...e, credCurrentPassword: '' })) }}
+            placeholder="Requerida para confirmar el cambio" error={credErrors.credCurrentPassword} />
         </div>
       </Modal>
     )}

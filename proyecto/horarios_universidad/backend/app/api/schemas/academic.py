@@ -33,6 +33,19 @@ class AreaUpdate(CamelModel):
     is_active: bool | None = None
 
 
+class CoordinatorUpdate(CamelModel):
+    """Payload to rename a coordinator or change their login credentials.
+
+    ``current_password`` is only required when ``email`` or
+    ``new_password`` is set — renaming alone needs no confirmation.
+    """
+
+    name: str | None = None
+    email: str | None = Field(default=None, min_length=5, max_length=255)
+    new_password: str | None = Field(default=None, min_length=8, max_length=128)
+    current_password: str | None = None
+
+
 class CoordinatorOut(CamelModel):
     user_id: UUID
     email: str

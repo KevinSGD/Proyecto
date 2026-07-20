@@ -48,6 +48,13 @@ export interface AreaCreatePayload {
   }
 }
 
+export interface CoordinatorUpdatePayload {
+  name?: string
+  email?: string
+  newPassword?: string
+  currentPassword?: string
+}
+
 export interface Subject {
   id: string
   institutionId: string

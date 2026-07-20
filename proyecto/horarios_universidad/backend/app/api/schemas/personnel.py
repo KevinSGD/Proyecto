@@ -199,6 +199,7 @@ class InstructorOut(CamelModel):
     is_active: bool
     contract_type: str | None = None
     max_weekly_hours: int | None = None
+    assigned_hours: int | None = None
 
 
 class InstructorDetail(InstructorOut):
