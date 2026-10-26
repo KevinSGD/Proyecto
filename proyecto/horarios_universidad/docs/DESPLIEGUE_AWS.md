@@ -149,7 +149,10 @@ cubre solo `us-east-1`; si alguna vez creaste algo en otra región, bórralo all
 | Corrida `timeout` | Confirmar en la EC2 los valores `SCHEDULER_SOLVER_*` de la sección 1 (`aws-update.sh` los pone). |
 | No hay `~/db.sh` o `~/smoke.sh` | Copiarlos del repo: `cp proyecto/horarios_universidad/scripts/aws-db.sh ~/db.sh` (idem `aws-smoke.sh`). |
 
-## 7. Lo que NO está probado
-Los scripts de AWS (`aws-*.sh`) se probaron en sintaxis y su lógica de datos se probó en un PostgreSQL local, pero
-**no se ejecutaron contra AWS desde el entorno de desarrollo**: el primer uso real de `aws-up.sh` y del borrado
-es en tu cuenta. Instalar `python3.12` y crear el entorno virtual en Amazon Linux 2023 tampoco se verificó localmente.
+## 7. Qué está confirmado y qué no
+- **Confirmado en AWS:** `aws-deploy.sh` (infraestructura, tablas, API con Python 3.12 en Amazon Linux 2023),
+  `aws-update.sh` (frontend en el puerto 3000) y el uso de `db.sh`.
+- **Probado solo en local (PostgreSQL 16):** la lógica de `reiniciar_base.sql`, `completar_datos.sql`,
+  `respaldo_datos.sql`, `aws-smoke.sh` y los seeds.
+- **Sin ejecutar todavía en AWS:** `aws-up.sh` (encadena los anteriores), la versión nueva de `aws-destroy.sh`
+  (con verificación) y `aws-seed.sh`. Revisa su salida la primera vez.
