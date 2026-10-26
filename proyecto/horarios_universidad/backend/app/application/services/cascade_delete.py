@@ -1,7 +1,6 @@
 """Cascade-delete helpers for entities referenced by scheduling data.
 
-SQLite enforces foreign keys in this project (``PRAGMA foreign_keys=ON``),
-so deleting an academic area, subject, or classroom that already has
+PostgreSQL enforces foreign keys, so deleting an academic area, subject, or classroom that already has
 dependent offerings/groups/schedule data raises a raw ``IntegrityError``
 unless the dependent rows are cleaned up first. These helpers walk the
 dependency chain (offering -> offering_line -> group -> assignment ->

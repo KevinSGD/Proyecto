@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import TYPE_CHECKING
 
 from fastapi import status
@@ -275,22 +276,41 @@ _FIELD_LABELS = {
 _FOREIGN_KEY_FIELDS = {"institution_id", "area_id", "period_id", "role_id", "campus_id", "building_id"}
 
 
+_PG_UNIQUE_VIOLATION = "23505"
+# Locale-independent: matches "Key (a, b)=(" and "Ya existe la llave (a, b)=(".
+_PG_KEY_DETAIL = re.compile(r"\((?P<cols>[^()]*)\)=\(")
+
+
+def _unique_violation_target(exc: IntegrityError) -> tuple[str, list[str]] | None:
+    """Return ``(table, columns)`` for a PostgreSQL UNIQUE violation, or ``None``.
+
+    PostgreSQL reports SQLSTATE 23505 with the table in ``diag`` and the
+    offending columns in the ``Key (a, b)=(...)`` detail line.
+    """
+    orig = exc.orig
+    if getattr(orig, "sqlstate", None) != _PG_UNIQUE_VIOLATION:
+        return None
+    diag = getattr(orig, "diag", None)
+    table = getattr(diag, "table_name", None) or ""
+    detail = getattr(diag, "message_detail", None) or str(orig)
+    match = _PG_KEY_DETAIL.search(detail)
+    fields = [c.strip() for c in match["cols"].split(",")] if match else []
+    return table, fields
+
+
 async def _handle_integrity_error(
     _request: Request, exc: IntegrityError,
 ) -> JSONResponse:
-    """Translate a raw SQLite UNIQUE-constraint violation into a clean 409.
+    """Translate a UNIQUE-constraint violation into a clean 409.
 
     Every ``Create``/``Update`` command relies on the DB's unique
     constraints rather than a pre-check, so a duplicate code/email/name
     used to bubble up as an opaque 500. This does it once, for every
     endpoint, instead of adding a bespoke pre-check to each command.
     """
-    message = str(exc.orig) if exc.orig else str(exc)
-    if "UNIQUE constraint failed" in message:
-        columns_part = message.split("UNIQUE constraint failed:", 1)[-1].strip()
-        columns = [c.strip() for c in columns_part.split(",") if c.strip()]
-        table = columns[0].split(".", 1)[0] if columns else ""
-        fields = [c.split(".", 1)[-1] for c in columns]
+    target = _unique_violation_target(exc)
+    if target is not None:
+        table, fields = target
         meaningful = [f for f in fields if f not in _FOREIGN_KEY_FIELDS]
         field = (meaningful or fields or ["valor"])[-1]
 

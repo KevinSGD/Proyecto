@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: str = "INFO"
 
-    database_url: str = "sqlite:///scheduler.db"
+    database_url: str = "postgresql+psycopg://postgres@localhost:5432/scheduler"
 
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
     cors_allow_credentials: bool = True
