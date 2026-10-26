@@ -67,6 +67,10 @@ export SCHEDULER_DATABASE_URL="$(grep '^SCHEDULER_DATABASE_URL=' "$B/.env" | cut
 PYTHON=python3.12 bash "$ROOT/scripts/bootstrap.sh"
 sed -i '/^SCHEDULER_CORS_ORIGINS=/d' "$B/.env"
 echo "SCHEDULER_CORS_ORIGINS=[\"http://$PUBLIC_IP:3000\",\"http://localhost:3000\"]" >> "$B/.env"
+# Solver: 60 s y 2 hilos (una t3.medium tiene 2 vCPU; con el valor por defecto de 10 s / 8 hilos da timeout)
+sed -i '/^SCHEDULER_SOLVER_/d' "$B/.env"
+echo "SCHEDULER_SOLVER_MAX_TIME_SECONDS=60" >> "$B/.env"
+echo "SCHEDULER_SOLVER_NUM_WORKERS=2" >> "$B/.env"
 
 echo "-- node $NODE_VERSION"
 if [ ! -x /opt/node/bin/node ] || ! /opt/node/bin/node -v | grep -q "v$NODE_VERSION"; then
