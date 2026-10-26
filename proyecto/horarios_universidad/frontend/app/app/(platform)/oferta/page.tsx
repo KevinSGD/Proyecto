@@ -15,6 +15,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import StatCard from '@/components/ui/StatCard'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
+import { ApiError } from '@/lib/api/client'
 import { useApiQuery } from '@/lib/hooks/useApiQuery'
 import { offeringService } from '@/lib/services/offering.service'
 import { areaService } from '@/lib/services/area.service'
@@ -92,7 +93,9 @@ export default function OfertaPage() {
       await offeringService.approve(offering.id)
       addToast('success', 'Oferta aprobada')
       refetch()
-    } catch { addToast('error', 'Error al aprobar. Solo ofertas enviadas pueden aprobarse.') }
+    } catch (err) {
+      addToast('error', err instanceof ApiError ? `No se pudo aprobar: ${err.detail}` : 'Error al aprobar la oferta.')
+    }
   }
 
   const handleReject = async () => {
@@ -103,7 +106,9 @@ export default function OfertaPage() {
       setRejectModal(null)
       setRejectObs('')
       refetch()
-    } catch { addToast('error', 'Error al rechazar. Solo ofertas enviadas pueden rechazarse.') }
+    } catch (err) {
+      addToast('error', err instanceof ApiError ? `No se pudo rechazar: ${err.detail}` : 'Error al rechazar la oferta.')
+    }
   }
 
   const handleDelete = async (offering: Offering) => {

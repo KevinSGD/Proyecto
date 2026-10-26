@@ -31,6 +31,7 @@ from app.infrastructure.persistence.models.infrastructure_models import (
     RoomResourceModel,
     SubjectResourceRequirementModel,
 )
+from app.infrastructure.persistence.models.auth import UserAreaModel, UserModel
 from app.infrastructure.persistence.models.institution import (
     AcademicPeriodModel,
     CampusModel,
@@ -218,6 +219,7 @@ def seed() -> None:
         _seed_campus(session, inst_id)
         _seed_period(session, inst_id)
         _seed_areas(session, inst_id)
+        _seed_coordinator_area(session)
         _seed_subjects(session, inst_id)
         _seed_instructors(session, inst_id)
         _seed_contracts(session)
@@ -269,17 +271,29 @@ def _seed_campus(session: Session, inst_id: UUID) -> None:
 
 
 def _seed_period(session: Session, inst_id: UUID) -> None:
+    # get_active() returns an arbitrary row if several are active, so the demo
+    # period only becomes the active one when the institution has none yet.
+    other_active = session.execute(
+        select(AcademicPeriodModel).where(
+            AcademicPeriodModel.institution_id == inst_id,
+            AcademicPeriodModel.is_active.is_(True),
+            AcademicPeriodModel.id != ID_PERIOD,
+        )
+    ).first()
+    activate = other_active is None
     _, created = _upsert(
         session, AcademicPeriodModel,
         [AcademicPeriodModel.institution_id == inst_id,
          AcademicPeriodModel.year == 2025,
          AcademicPeriodModel.period_number == 1],
         {"id": ID_PERIOD, "institution_id": inst_id, "name": "2025-1",
-         "year": 2025, "period_number": 1, "status": "active",
-         "is_active": True, "start_date": date(2025, 3, 1),
+         "year": 2025, "period_number": 1,
+         "status": "active" if activate else "draft",
+         "is_active": activate, "start_date": date(2025, 3, 1),
          "end_date": date(2025, 7, 15)},
     )
-    print(f"  Período 2025-1 — {'creado' if created else 'existente'}.")
+    print(f"  Período 2025-1 — {'creado' if created else 'existente'}"
+          f"{'' if activate else ' (inactivo: ya hay otro período activo)'}.")
 
 
 def _seed_areas(session: Session, inst_id: UUID) -> None:
@@ -296,6 +310,21 @@ def _seed_areas(session: Session, inst_id: UUID) -> None:
              "name": name, "description": desc},
         )
         print(f"  Área '{name}' — {'creada' if created else 'existente'}.")
+
+
+def _seed_coordinator_area(session: Session) -> None:
+    """Link the demo coordinator to Ciencias Basicas so the coordinator screens have an area."""
+    user = session.execute(
+        select(UserModel).where(UserModel.email == "coordinador@udemo.edu")
+    ).scalar_one_or_none()
+    if user is None:
+        return
+    _, created = _upsert(
+        session, UserAreaModel,
+        [UserAreaModel.user_id == user.id, UserAreaModel.area_id == ID_AREA_CIENCIAS],
+        {"user_id": user.id, "area_id": ID_AREA_CIENCIAS},
+    )
+    print(f"  Coordinador -> Ciencias Básicas — {'asignado' if created else 'existente'}.")
 
 
 def _seed_subjects(session: Session, inst_id: UUID) -> None:

@@ -9,7 +9,7 @@ Usage:
 from __future__ import annotations
 
 import sys
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 
@@ -17,7 +17,13 @@ from app.api.config.settings import get_settings
 from app.core.security.password import hash_password
 from app.infrastructure.persistence.database import DatabaseEngine
 from app.infrastructure.persistence.models.auth import RoleModel, UserModel
-from app.infrastructure.persistence.models.institution import InstitutionModel
+from app.infrastructure.persistence.models.institution import CampusModel, InstitutionModel
+from app.infrastructure.persistence.models.scheduling import ScheduleTypeModel
+
+# Same id seed_demo uses, so running both scripts in any order is safe.
+ID_CAMPUS = UUID("00000000-0000-4000-a000-000000000010")
+
+ID_SCHEDULE_TYPE = UUID("00000000-0000-4000-a000-000000006001")
 
 INSTITUTION = {
     "name": "Universidad Demo",
@@ -56,6 +62,8 @@ def seed() -> None:
 
     with engine.get_session() as session:
         institution_id = _ensure_institution(session)
+        _ensure_campus(session, institution_id)
+        _ensure_schedule_type(session, institution_id)
         role_map = _ensure_roles(session, institution_id)
         _ensure_users(session, institution_id, role_map)
 
@@ -78,6 +86,44 @@ def _ensure_institution(session) -> uuid4:
     session.flush()
     print(f"  Institución '{inst.name}' creada.")
     return inst.id
+
+
+def _ensure_campus(session, institution_id) -> None:
+    existing = session.execute(
+        select(CampusModel).where(
+            CampusModel.institution_id == institution_id,
+            CampusModel.code == "MAIN",
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        print(f"  Campus '{existing.name}' ya existe — omitiendo.")
+        return
+    session.add(CampusModel(
+        id=ID_CAMPUS, institution_id=institution_id,
+        code="MAIN", name="Campus Principal",
+    ))
+    session.flush()
+    print("  Campus 'Campus Principal' creado.")
+
+
+def _ensure_schedule_type(session, institution_id) -> None:
+    # Approving an offering generates its groups, which needs at least one schedule type.
+    existing = session.execute(
+        select(ScheduleTypeModel).where(
+            ScheduleTypeModel.institution_id == institution_id,
+            ScheduleTypeModel.name == "Diurno",
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        print(f"  Tipo de horario '{existing.name}' ya existe — omitiendo.")
+        return
+    session.add(ScheduleTypeModel(
+        id=ID_SCHEDULE_TYPE, institution_id=institution_id, name="Diurno",
+        schedule_type="regular", active_days=[0, 1, 2, 3, 4],
+        start_period=1, end_period=12, slot_duration_minutes=60,
+    ))
+    session.flush()
+    print("  Tipo de horario 'Diurno' creado.")
 
 
 def _ensure_roles(session, institution_id) -> dict[str, uuid4]:
