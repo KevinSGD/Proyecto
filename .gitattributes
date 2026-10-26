@@ -1,0 +1,2 @@
+# Los scripts de shell se ejecutan en Linux (EC2/CloudShell): siempre LF
+*.sh text eol=lf

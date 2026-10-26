@@ -1,12 +1,14 @@
-"""End-to-end API tests against a real SQLite database.
+"""End-to-end API tests against a real PostgreSQL database.
 
 Tests the full flow:  auth → CRUD → seed → solve → list results → assignments.
-No mocks — every query hits an in-memory SQLite DB (StaticPool ensures all
-connections share the same database).
+No mocks — every query hits the database in SCHEDULER_TEST_DATABASE_URL.
+The tables of that database are dropped and recreated, so never point it at
+real data.
 """
 
 from __future__ import annotations
 
+import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -14,9 +16,8 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -49,6 +50,11 @@ from app.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
 
 pytest.importorskip("ortools", reason="ortools not installed")
 
+TEST_DATABASE_URL = os.environ.get(
+    "SCHEDULER_TEST_DATABASE_URL",
+    "postgresql+psycopg://postgres@localhost:5432/scheduler_test",
+)
+
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
@@ -67,18 +73,8 @@ IDS = {
 
 @pytest.fixture(scope="module")
 def session_factory():
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-
-    @event.listens_for(engine, "connect")
-    def _set_sqlite_pragma(dbapi_conn, _):
-        cursor = dbapi_conn.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
-
+    engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
     sf = sessionmaker(bind=engine, expire_on_commit=False)
@@ -113,6 +109,7 @@ def session_factory():
     yield sf
 
     Base.metadata.drop_all(engine)
+    engine.dispose()
 
 
 @pytest.fixture(scope="module")
