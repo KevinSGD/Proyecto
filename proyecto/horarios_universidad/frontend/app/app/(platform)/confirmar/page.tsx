@@ -37,7 +37,7 @@ function ConfirmarContent() {
   const { toasts, addToast, removeToast } = useToast()
   const savingLineIds = useRef(new Set<string>())
 
-  const { data: periodData } = useApiQuery(
+  const { data: periodData, loading: periodLoading } = useApiQuery(
     () => institutionId ? institutionService.getActivePeriod(institutionId) : Promise.resolve({ data: null } as any),
     [institutionId],
   )
@@ -59,7 +59,11 @@ function ConfirmarContent() {
   // the coordinador's materias + asignaciones ARE their oferta académica, so
   // it must be generated from here rather than pre-created by the director.
   const ensureOffering = useCallback(async () => {
-    if (!institutionId || !periodId || !userAreaId) return
+    if (!institutionId || !periodId || !userAreaId) {
+      // Nothing to prepare: stop the "Preparando…" state so the page can say what is missing.
+      setEnsuring(false)
+      return
+    }
     setEnsuring(true)
     try {
       const listResp = await offeringService.list(institutionId, periodId)
@@ -101,7 +105,7 @@ function ConfirmarContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [institutionId, periodId, userAreaId, subjects.length])
 
-  useEffect(() => { if (subjects.length > 0 || periodId) ensureOffering() }, [ensureOffering, subjects.length, periodId])
+  useEffect(() => { if (!periodLoading) ensureOffering() }, [ensureOffering, subjects.length, periodId, periodLoading])
 
   useEffect(() => {
     if (subjects.length === 0) return
@@ -182,6 +186,24 @@ function ConfirmarContent() {
 
   if (ensuring) {
     return <div className="max-w-3xl mx-auto py-16 text-center text-sm text-muted-foreground">Preparando oferta académica del área...</div>
+  }
+
+  if (!periodId || !userAreaId) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white rounded-xl border border-border p-8 text-center shadow-sm">
+          <BookOpen className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">
+            {!periodId ? 'No hay un período académico activo' : 'Tu usuario no tiene un área asignada'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {!periodId
+              ? 'Pídele al Director Académico que cree y active un período en "Generar horarios".'
+              : 'Pídele al Director Académico que te asigne a un área.'}
+          </p>
+        </div>
+      </div>
+    )
   }
 
   if (subjects.length === 0) {
