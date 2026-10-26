@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from app.application.exceptions.application_exceptions import ResourceNotFoundError
 from app.core.utils.types import generate_id
-from app.domain.entities.institution import AcademicPeriod, Institution
+from app.domain.entities.institution import AcademicPeriod, Campus, Institution
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -36,6 +36,16 @@ class CreateInstitution:
                 logo_url=data.logo_url or "",
             )
             self._uow.institutions.save(entity)
+            # Campuses can't be created from the API/UI, and buildings need one:
+            # every institution starts with a default campus.
+            self._uow.campuses.save(
+                Campus(
+                    id=generate_id(),
+                    institution_id=entity.id,
+                    name="Campus Principal",
+                    code="MAIN",
+                )
+            )
             self._uow.commit()
             return entity
 

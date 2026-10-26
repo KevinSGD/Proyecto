@@ -209,6 +209,10 @@ export default function AulasPage() {
 
   const handleSaveBuilding = async () => {
     if (!bldName.trim() || !bldCode.trim()) return
+    if (!editingBuilding && !campusId) {
+      addToast('error', 'La institución no tiene un campus configurado')
+      return
+    }
     setBldSaving(true)
     try {
       if (editingBuilding) {
